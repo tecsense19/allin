@@ -1,0 +1,125 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "API",
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "http://localhost/allin/"
+        }
+    ],
+    "paths": {
+        "/api/v1/send-otp": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Send Otp",
+                "description": "Send Otp",
+                "operationId": "sendOtp",
+                "parameters": [
+                    {
+                        "name": "country_code",
+                        "in": "query",
+                        "description": "Enter Country Code",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "+91"
+                    },
+                    {
+                        "name": "mobile",
+                        "in": "query",
+                        "description": "Enter Mobile Number",
+                        "required": true,
+                        "schema": {
+                            "type": "number"
+                        },
+                        "example": "9876543210"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "json schema",
+                        "content": {
+                            "application/json": {}
+                        }
+                    },
+                    "404": {
+                        "description": "Invalid Request"
+                    }
+                }
+            }
+        },
+        "/api/v1/verify-otp": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Verify Otp",
+                "description": "Verify Otp",
+                "operationId": "verifyOtp",
+                "parameters": [
+                    {
+                        "name": "country_code",
+                        "in": "query",
+                        "description": "Enter Country Code",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "+91"
+                    },
+                    {
+                        "name": "mobile",
+                        "in": "query",
+                        "description": "Enter Mobile Number",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "9876543210"
+                    },
+                    {
+                        "name": "otp",
+                        "in": "query",
+                        "description": "Enter OTP",
+                        "required": true,
+                        "schema": {
+                            "type": "number"
+                        },
+                        "example": "123456"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "json schema",
+                        "content": {
+                            "application/json": {}
+                        }
+                    },
+                    "404": {
+                        "description": "Invalid Request"
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "bearerFormat": "JWT",
+                "scheme": "bearer"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Authentication",
+            "description": ""
+        }
+    ]
+}
