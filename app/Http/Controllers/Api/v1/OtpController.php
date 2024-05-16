@@ -56,8 +56,7 @@ class OtpController extends Controller
      * )
      */
 
-     public function sendOtp(Request $request)
-    {
+     public function sendOtp(Request $request){
         try {
             $rules = [
                 'country_code' => 'required|string|max:255|regex:/^\+\d{1,3}$/',
@@ -98,7 +97,6 @@ class OtpController extends Controller
 
             UserOtp::where('country_code',$request->country_code)
                     ->where('mobile',$request->mobile)
-                    ->where('user_id',$userData->id)
                     ->update([
                         'status' => 'Inactive'
                     ]);
@@ -186,8 +184,7 @@ class OtpController extends Controller
      * )
      */
 
-     public function verifyOtp(Request $request)
-    {
+     public function verifyOtp(Request $request){
         try {
             $rules = [
                 'country_code' => 'required|string|max:255|regex:/^\+\d{1,3}$/',
@@ -280,5 +277,8 @@ class OtpController extends Controller
             );
             return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
         }
-    }
+     }
+    
+    
+    
 }

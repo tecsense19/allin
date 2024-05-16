@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('user_otp', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id',10)->unsigned()->constrained('users');
+            $table->foreignId('user_id',10)->nullable()->unsigned()->constrained('users');
             $table->string('country_code',5)->nullable();
             $table->string('mobile',12)->nullable();
             $table->integer('otp');

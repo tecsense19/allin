@@ -14,7 +14,7 @@ class UserData extends Seeder
     public function run(): void
     {
         User::create([
-            'name' => 'Test User',
+            'first_name' => 'Test User',
             'email' => 'user@yopmail.com',
             'country_code' => '+91',
             'mobile' => '9876543210',
