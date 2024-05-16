@@ -105,6 +105,122 @@
                     }
                 }
             }
+        },
+        "/api/v1/check-mobile-exists": {
+            "post": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Check Mobile Exists",
+                "description": "Check Mobile Exists",
+                "operationId": "checkMobileExists",
+                "parameters": [
+                    {
+                        "name": "country_code",
+                        "in": "query",
+                        "description": "Enter Country Code",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "+91"
+                    },
+                    {
+                        "name": "mobile",
+                        "in": "query",
+                        "description": "Enter Mobile Number",
+                        "required": true,
+                        "schema": {
+                            "type": "number"
+                        },
+                        "example": "9876543210"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "json schema",
+                        "content": {
+                            "application/json": {}
+                        }
+                    },
+                    "404": {
+                        "description": "Invalid Request"
+                    }
+                }
+            }
+        },
+        "/api/v1/user-rigstration": {
+            "post": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "User Registration",
+                "description": "User Registration",
+                "operationId": "userRegistration",
+                "parameters": [
+                    {
+                        "name": "first_name",
+                        "in": "query",
+                        "description": "Enter First Name",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "Test"
+                    },
+                    {
+                        "name": "last_name",
+                        "in": "query",
+                        "description": "Enter Last Name",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "User"
+                    },
+                    {
+                        "name": "country_code",
+                        "in": "query",
+                        "description": "Enter Country Code",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "+91"
+                    },
+                    {
+                        "name": "mobile",
+                        "in": "query",
+                        "description": "Enter Mobile Number",
+                        "required": true,
+                        "schema": {
+                            "type": "number"
+                        },
+                        "example": "9876543210"
+                    },
+                    {
+                        "name": "otp",
+                        "in": "query",
+                        "description": "Enter OTP",
+                        "required": true,
+                        "schema": {
+                            "type": "number"
+                        },
+                        "example": "123456"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "json schema",
+                        "content": {
+                            "application/json": {}
+                        }
+                    },
+                    "404": {
+                        "description": "Invalid Request"
+                    }
+                }
+            }
         }
     },
     "components": {

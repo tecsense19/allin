@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\v1\OtpController;
+use App\Http\Controllers\Api\v1\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -25,6 +26,10 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
     Route::controller(OtpController::class)->group(function () {
         Route::post('/send-otp', 'sendOtp');
         Route::post('/verify-otp', 'verifyOtp');
+    });
+    Route::controller(UserController::class)->group(function () {
+        Route::post('/check-mobile-exists', 'checkMobileExists');
+        Route::post('/user-rigstration', 'userRegistration');
     });
     Route::group(['middleware' => ['UserAuthentication']], function () {
         //
