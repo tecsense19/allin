@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\v1;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Models\userDeviceToken;
 use App\Models\UserOtp;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -171,6 +172,16 @@ class UserController extends Controller
      *             type="number",
      *         )
      *     ),
+     *     @OA\Parameter(
+     *         name="device_token",
+     *         in="query",
+     *         example="",
+     *         description="Enter Device Token",
+     *         required=true,
+     *         @OA\Schema(
+     *             type="string",
+     *         )
+     *     ),
      *      @OA\Response(
      *         response=200,
      *         description="json schema",
@@ -261,6 +272,11 @@ class UserController extends Controller
             $token = JWTAuth::fromUser($user);
             $otpVerification->status = 'Inactive';
             $otpVerification->save();
+
+            $userDeviceToken  = new userDeviceToken();
+            $userDeviceToken->user_id = $user->id;
+            $userDeviceToken->token = $request->device_token;
+            $userDeviceToken->save();
 
             $authData['userDetails'] = $user;
             $authData['token'] = $token;
