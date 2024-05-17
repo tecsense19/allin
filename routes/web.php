@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\LoginController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -13,6 +15,21 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
+// Route::get('/', function () {
+//     return view('welcome');
+// });
+
+Route::group(['middleware' => ['XssSanitization']], function () {
+    Route::controller(LoginController::class)->group(function () {
+        Route::get('/login', 'login')->name('login');
+        Route::post('login', 'loginPost')->name('loginPost');
+    });
+    Route::group(['middleware' => ['auth','checkAuth']], function () {
+        Route::controller(LoginController::class)->group(function () {
+            Route::post('logout', 'logout')->name('logout');
+        });
+        Route::controller(DashboardController::class)->group(function () {
+            Route::get('/', 'index')->name('dashboard');
+        });
+    });
 });
