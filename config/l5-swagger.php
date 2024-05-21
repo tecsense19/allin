@@ -99,7 +99,16 @@ return [
              * @deprecated Please use `scanOptions.exclude`
              * `scanOptions.exclude` overwrites this
             */
-            'excludes' => [],
+            'excludes' => [
+                base_path('app/Http/Middleware'), // Exclude middleware directory
+            ],
+        ],
+        'securityDefinitions' => [
+            'bearerAuth' => [
+                'type' => 'http',
+                'scheme' => 'bearer',
+                'bearerFormat' => 'JWT',
+            ],
         ],
 
         'scanOptions' => [
