@@ -41,17 +41,7 @@ return [
                 'annotations' => [
                     base_path('app'),
                 ],
-                'excludes' => [
-                    base_path('app/Http/Middleware'), // Exclude middleware directory
-                ],
 
-            ],
-            'securityDefinitions' => [
-                'bearerAuth' => [
-                    'type' => 'http',
-                    'scheme' => 'bearer',
-                    'bearerFormat' => 'JWT',
-                ],
             ],
         ],
     ],
@@ -109,16 +99,7 @@ return [
              * @deprecated Please use `scanOptions.exclude`
              * `scanOptions.exclude` overwrites this
             */
-            'excludes' => [
-                base_path('app/Http/Middleware'), // Exclude middleware directory
-            ],
-        ],
-        'securityDefinitions' => [
-            'bearerAuth' => [
-                'type' => 'http',
-                'scheme' => 'bearer',
-                'bearerFormat' => 'JWT',
-            ],
+            'excludes' => [],
         ],
 
         'scanOptions' => [
