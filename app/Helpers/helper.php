@@ -21,8 +21,8 @@ if (!function_exists('create_slug')) {
     return $string;
   }
 }
-if (!function_exists('imageUpload')) {
-  function imageUpload($image, $folder)
+if (!function_exists('imageUploadBase64')) {
+  function imageUploadBase64($image, $folder)
   {
     $data = explode(";base64,", $image);
     $typedata = explode("image/", $data[0]);
@@ -39,6 +39,24 @@ if (!function_exists('imageUpload')) {
     Storage::disk('public')->put($folder . '/' . $imageName, $image);
     $imgFullPath = $destinationPath . $imageName;
     return $imageName;
+  }
+}
+if (!function_exists('imageUpload')) {
+  function imageUpload($image, $folder)
+  {
+      if ($image->isValid()) {
+          $extension = strtolower($image->getClientOriginalExtension());
+          $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'svg'];
+          if (!in_array($extension, $allowedExtensions)) {
+              return 'invalid_image';
+          }
+          $imageName = $folder . '_' . time() . '.' . $extension;
+          $destinationPath = public_path($folder . '/');
+          $image->move($destinationPath, $imageName);
+          return $imageName;
+      } else {
+          return 'upload_failed';
+      }
   }
 }
 

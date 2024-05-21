@@ -20,7 +20,7 @@ class UserAuthentication {
      */
     public function handle($request, Closure $next) {
         $requestHeader = substr($request->header('content-type'), 0, strpos($request->header('content-type'), ';'));
-
+        //dd($request->headers->all());
         if ($request->header('authorization') !== null) {
             try {
                 if(!$user = JWTAuth::parseToken()->authenticate()) {

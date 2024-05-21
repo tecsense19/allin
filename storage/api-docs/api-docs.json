@@ -91,6 +91,16 @@
                             "type": "number"
                         },
                         "example": "123456"
+                    },
+                    {
+                        "name": "device_token",
+                        "in": "query",
+                        "description": "Enter Device Token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": ""
                     }
                 ],
                 "responses": {
@@ -149,7 +159,7 @@
                 }
             }
         },
-        "/api/v1/user-rigstration": {
+        "/api/v1/user-registration": {
             "post": {
                 "tags": [
                     "User"
@@ -157,56 +167,96 @@
                 "summary": "User Registration",
                 "description": "User Registration",
                 "operationId": "userRegistration",
+                "requestBody": {
+                    "description": "User Registration Request",
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "first_name",
+                                    "last_name",
+                                    "country_code",
+                                    "mobile",
+                                    "otp",
+                                    "device_token"
+                                ],
+                                "properties": {
+                                    "first_name": {
+                                        "description": "Enter First Name",
+                                        "type": "string",
+                                        "example": "Test"
+                                    },
+                                    "last_name": {
+                                        "description": "Enter Last Name",
+                                        "type": "string",
+                                        "example": "User"
+                                    },
+                                    "country_code": {
+                                        "description": "Enter Country Code",
+                                        "type": "string",
+                                        "example": "+91"
+                                    },
+                                    "mobile": {
+                                        "description": "Enter Mobile Number",
+                                        "type": "number",
+                                        "example": "9876543210"
+                                    },
+                                    "otp": {
+                                        "description": "Enter OTP",
+                                        "type": "number",
+                                        "example": "123456"
+                                    },
+                                    "device_token": {
+                                        "description": "Enter Device Token",
+                                        "type": "string",
+                                        "example": ""
+                                    },
+                                    "profile": {
+                                        "description": "Profile Image",
+                                        "type": "file"
+                                    },
+                                    "cover_image": {
+                                        "description": "Cover Image",
+                                        "type": "file"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "json schema",
+                        "content": {
+                            "application/json": {}
+                        }
+                    },
+                    "404": {
+                        "description": "Invalid Request"
+                    }
+                }
+            }
+        },
+        "/api/v1/logout": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Logout",
+                "description": "Logout",
+                "operationId": "logout",
                 "parameters": [
                     {
-                        "name": "first_name",
+                        "name": "device_token",
                         "in": "query",
-                        "description": "Enter First Name",
+                        "description": "Enter Device Token",
                         "required": true,
                         "schema": {
                             "type": "string"
                         },
-                        "example": "Test"
-                    },
-                    {
-                        "name": "last_name",
-                        "in": "query",
-                        "description": "Enter Last Name",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        },
-                        "example": "User"
-                    },
-                    {
-                        "name": "country_code",
-                        "in": "query",
-                        "description": "Enter Country Code",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        },
-                        "example": "+91"
-                    },
-                    {
-                        "name": "mobile",
-                        "in": "query",
-                        "description": "Enter Mobile Number",
-                        "required": true,
-                        "schema": {
-                            "type": "number"
-                        },
-                        "example": "9876543210"
-                    },
-                    {
-                        "name": "otp",
-                        "in": "query",
-                        "description": "Enter OTP",
-                        "required": true,
-                        "schema": {
-                            "type": "number"
-                        },
-                        "example": "123456"
+                        "example": ""
                     }
                 ],
                 "responses": {
@@ -219,7 +269,38 @@
                     "404": {
                         "description": "Invalid Request"
                     }
-                }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/users-mobile-numbers": {
+            "post": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "User Mobile Numbers",
+                "description": "User Mobile Numbers",
+                "operationId": "userMobileNumbers",
+                "responses": {
+                    "200": {
+                        "description": "json schema",
+                        "content": {
+                            "application/json": {}
+                        }
+                    },
+                    "404": {
+                        "description": "Invalid Request"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             }
         }
     },
