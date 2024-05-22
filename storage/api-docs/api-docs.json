@@ -387,6 +387,109 @@
                     }
                 ]
             }
+        },
+        "/api/v1/edit-profile": {
+            "post": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Edit Profile",
+                "description": "Edit Profile",
+                "operationId": "editProfile",
+                "requestBody": {
+                    "description": "Edit Profile",
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [],
+                                "properties": {
+                                    "first_name": {
+                                        "description": "Enter First Name",
+                                        "type": "string",
+                                        "example": "Test"
+                                    },
+                                    "last_name": {
+                                        "description": "Enter Last Name",
+                                        "type": "string",
+                                        "example": "User"
+                                    },
+                                    "country_code": {
+                                        "description": "Enter Country Code",
+                                        "type": "string",
+                                        "example": "+91"
+                                    },
+                                    "mobile": {
+                                        "description": "Enter Mobile Number",
+                                        "type": "number",
+                                        "example": "9876543210"
+                                    },
+                                    "description": {
+                                        "description": "Enter Description",
+                                        "type": "string",
+                                        "example": ""
+                                    },
+                                    "account_id": {
+                                        "description": "Enter Account Id",
+                                        "type": "string",
+                                        "example": ""
+                                    },
+                                    "profile": {
+                                        "description": "Profile Image",
+                                        "type": "file"
+                                    },
+                                    "cover_image": {
+                                        "description": "Cover Image",
+                                        "type": "file"
+                                    },
+                                    "instagram_profile_url": {
+                                        "description": "Enter Instagram Profile Url",
+                                        "type": "string",
+                                        "example": ""
+                                    },
+                                    "facebook_profile_url": {
+                                        "description": "Enter Facebook Profile Url",
+                                        "type": "string",
+                                        "example": ""
+                                    },
+                                    "twitter_profile_url": {
+                                        "description": "Enter Twitter Profile Url",
+                                        "type": "string",
+                                        "example": ""
+                                    },
+                                    "youtube_profile_url": {
+                                        "description": "Enter Youtube Profile Url",
+                                        "type": "string",
+                                        "example": ""
+                                    },
+                                    "linkedin_profile_url": {
+                                        "description": "Enter LinkedIn Profile Url",
+                                        "type": "string",
+                                        "example": ""
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "json schema",
+                        "content": {
+                            "application/json": {}
+                        }
+                    },
+                    "404": {
+                        "description": "Invalid Request"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
         }
     },
     "components": {

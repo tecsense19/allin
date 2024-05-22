@@ -195,7 +195,7 @@ class UserController extends Controller
 
     public function userRegistration(Request $request)
     {
-        try {
+        //try {
             $rules = [
                 'first_name' => 'required|string|regex:/^[a-zA-Z\s]+$/|max:255',
                 'last_name' => 'nullable|string|regex:/^[a-zA-Z\s]+$/|max:255',
@@ -325,20 +325,20 @@ class UserController extends Controller
                 'data' => $authData
             ];
             return $this->sendJsonResponse($data);
-        } catch (\Exception $e) {
-            Log::error(
-                [
-                    'method' => __METHOD__,
-                    'error' => [
-                        'file' => $e->getFile(),
-                        'line' => $e->getLine(),
-                        'message' => $e->getMessage()
-                    ],
-                    'created_at' => date("Y-m-d H:i:s")
-                ]
-            );
-            return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
-        }
+        // } catch (\Exception $e) {
+        //     Log::error(
+        //         [
+        //             'method' => __METHOD__,
+        //             'error' => [
+        //                 'file' => $e->getFile(),
+        //                 'line' => $e->getLine(),
+        //                 'message' => $e->getMessage()
+        //             ],
+        //             'created_at' => date("Y-m-d H:i:s")
+        //         ]
+        //     );
+        //     return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
+        // }
     }
 
     /**
@@ -492,13 +492,12 @@ class UserController extends Controller
     public function userList(Request $request)
     {
         try {
-            $mobileNumbers = User::where('role', 'User')->where('status', 'Active')->get();
-
+            $userList = User::where('role', 'User')->where('status', 'Active')->get();
             $data = [
                 'status_code' => 200,
                 'message' => "Get Data Successfully.",
                 'data' => [
-                    'mobileNumbers' => $mobileNumbers
+                    'userList' => $userList
                 ]
             ];
             return $this->sendJsonResponse($data);
@@ -601,22 +600,98 @@ class UserController extends Controller
     /**
      * @OA\Post(
      *     path="/api/v1/edit-profile",
-     *     summary="User Details",
+     *     summary="Edit Profile",
      *     tags={"User"},
-     *     description="User Details",
-     *     operationId="userDetails",
+     *     description="Edit Profile",
+     *     operationId="editProfile",
      *     security={{"bearerAuth":{}}},
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="query",
-     *         example="2",
-     *         description="Enter userId",
+     *     @OA\RequestBody(
      *         required=true,
-     *         @OA\Schema(
-     *             type="number",
+     *         description="Edit Profile",
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={},
+     *                 @OA\Property(
+     *                     property="first_name",
+     *                     type="string",
+     *                     example="Test",
+     *                     description="Enter First Name"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="last_name",
+     *                     type="string",
+     *                     example="User",
+     *                     description="Enter Last Name"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="country_code",
+     *                     type="string",
+     *                     example="+91",
+     *                     description="Enter Country Code"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="mobile",
+     *                     type="number",
+     *                     example="9876543210",
+     *                     description="Enter Mobile Number"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="description",
+     *                     type="string",
+     *                     example="",
+     *                     description="Enter Description"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="account_id",
+     *                     type="string",
+     *                     example="",
+     *                     description="Enter Account Id"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="profile",
+     *                     type="file",
+     *                     description="Profile Image"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="cover_image",
+     *                     type="file",
+     *                     description="Cover Image"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="instagram_profile_url",
+     *                     type="string",
+     *                     example="",
+     *                     description="Enter Instagram Profile Url"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="facebook_profile_url",
+     *                     type="string",
+     *                     example="",
+     *                     description="Enter Facebook Profile Url"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="twitter_profile_url",
+     *                     type="string",
+     *                     example="",
+     *                     description="Enter Twitter Profile Url"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="youtube_profile_url",
+     *                     type="string",
+     *                     example="",
+     *                     description="Enter Youtube Profile Url"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="linkedin_profile_url",
+     *                     type="string",
+     *                     example="",
+     *                     description="Enter LinkedIn Profile Url"
+     *                 ),
+     *             )
      *         )
      *     ),
-     *      @OA\Response(
+     *     @OA\Response(
      *         response=200,
      *         description="json schema",
      *         @OA\MediaType(
@@ -629,4 +704,77 @@ class UserController extends Controller
      *     ),
      * )
      */
+
+    public function editProfile(Request $request)
+    {
+        try {
+            $userId = auth()->user()->id;
+            if (empty($userId)) {
+                $data = [
+                    'status_code' => 400,
+                    'message' => "User Not Found!",
+                    'data' => ""
+                ];
+                return $this->sendJsonResponse($data);
+            }
+            $users = new User();
+            $user = $users->find($userId);
+            $profileImageName = $user->profile;
+            if ($request->hasFile('profile')) {
+                $profileImage = $request->file('profile');
+                $profileImageName = imageUpload($profileImage, 'user-profile');
+                if ($profileImageName == 'upload_failed') {
+                    $data = [
+                        'status_code' => 400,
+                        'message' => 'profile Upload faild',
+                        'data' => ""
+                    ];
+                    return $this->sendJsonResponse($data);
+                }
+            }
+            $coverImageName = $user->cover_image;
+            if ($request->hasFile('cover_image')) {
+                $coverImage = $request->file('cover_image');
+                $coverImageName = imageUpload($coverImage, 'user-profile-cover-image');
+                if ($coverImageName == 'upload_failed') {
+                    $data = [
+                        'status_code' => 400,
+                        'message' => 'Cover Image Upload faild',
+                        'data' => ""
+                    ];
+                    return $this->sendJsonResponse($data);
+                }
+            }
+            $user->first_name = @$request->first_name ? $request->first_name : $user->first_name;
+            $user->last_name = @$request->last_name ? $request->last_name : $user->last_name;
+            $user->country_code = @$request->country_code;
+            $user->mobile = $request->mobile;
+            $user->profile = $profileImageName;
+            $user->cover_image = $coverImageName;
+            $user->role = "User";
+            $user->status = "Active";
+            $user->save();
+            $data = [
+                'status_code' => 200,
+                'message' => "User Updated Successfully!",
+                'data' => [
+                    'userData' => $userData
+                ]
+            ];
+            return $this->sendJsonResponse($data);
+        } catch (\Exception $e) {
+            Log::error(
+                [
+                    'method' => __METHOD__,
+                    'error' => [
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'message' => $e->getMessage()
+                    ],
+                    'created_at' => date("Y-m-d H:i:s")
+                ]
+            );
+            return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
+        }
+    }
 }
