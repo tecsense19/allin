@@ -747,18 +747,22 @@ class UserController extends Controller
             }
             $user->first_name = @$request->first_name ? $request->first_name : $user->first_name;
             $user->last_name = @$request->last_name ? $request->last_name : $user->last_name;
-            $user->country_code = @$request->country_code;
-            $user->mobile = $request->mobile;
+            $user->country_code = @$request->country_code ? $request->country_code : $user->country_code;
+            $user->mobile = @$request->mobile ? $request->mobile : $user->mobile;
             $user->profile = $profileImageName;
             $user->cover_image = $coverImageName;
-            $user->role = "User";
-            $user->status = "Active";
+            $user->description = @$request->description ? $request->description : NULL;
+            $user->instagram_profile_url = @$request->instagram_profile_url ? $request->instagram_profile_url : NULL;
+            $user->facebook_profile_url = @$request->facebook_profile_url ? $request->facebook_profile_url : NULL;
+            $user->twitter_profile_url = @$request->twitter_profile_url ? $request->twitter_profile_url : NULL;
+            $user->youtube_profile_url = @$request->youtube_profile_url ? $request->youtube_profile_url : NULL;
+            $user->linkedin_profile_url = @$request->linkedin_profile_url ? $request->linkedin_profile_url : NULL;
             $user->save();
             $data = [
                 'status_code' => 200,
                 'message' => "User Updated Successfully!",
                 'data' => [
-                    'userData' => $userData
+                    'userData' => $user
                 ]
             ];
             return $this->sendJsonResponse($data);

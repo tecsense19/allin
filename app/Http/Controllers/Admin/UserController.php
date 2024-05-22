@@ -21,8 +21,11 @@ class UserController extends Controller
             foreach ($request->order as $order) {
                 $column = $request->columns[$order['column']]['data'];
                 $dir = $order['dir'];
-                $query->orderBy($column, $dir);
+                //$query->orderBy($column, $dir);
+                $query->orderBy('id', 'desc');
             }
+        }else{
+            $query->orderBy('id', 'desc');
         }
         if ($request->has('search') && !is_null($request->search['value'])) {
             $search = $request->search['value'];
