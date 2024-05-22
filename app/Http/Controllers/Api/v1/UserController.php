@@ -214,8 +214,8 @@ class UserController extends Controller
                 'first_name' => 'required|string|regex:/^[a-zA-Z\s]+$/|max:255',
                 'last_name' => 'nullable|string|regex:/^[a-zA-Z\s]+$/|max:255',
                 'country_code' => 'required|string|max:255|regex:/^\+\d{1,3}$/',
-                'mobile' => 'required|string|max:10|regex:/^\d{10,}$/',
-                'otp' => 'required|numeric|min:100000|max:999999',
+                'mobile' => 'required|string|max:10|regex:/^\d{6,14}$/',
+                'otp' => 'required|numeric|min:000000|max:999999',
                 'profile' => 'nullable|image|mimes:jpeg,jpg,png,webp,svg|max:2048',
                 'cover_image' => 'nullable|image|mimes:jpeg,jpg,png,webp,svg|max:2048',
                 'device_token' => 'required|string'

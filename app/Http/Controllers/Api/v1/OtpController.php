@@ -266,15 +266,10 @@ class OtpController extends Controller
             }
 
             // Twilio Verification
-
             if ($request->mobile == '9876543210') {
                 if ($request->country_code == '+91' && $request->mobile == '9876543210' && $request->otp == '123456') {
                     $token = JWTAuth::fromUser($user);
-
-                    $userDeviceToken  = new userDeviceToken();
-                    $userDeviceToken->user_id = $user->id;
-                    $userDeviceToken->token = $request->device_token;
-                    $userDeviceToken->save();
+                    $this->saveUserDeviceToken($user->id, $request->device_token);
 
                     $authData['userDetails'] = $user;
                     $authData['token'] = $token;
@@ -288,59 +283,85 @@ class OtpController extends Controller
                     ];
                     return $this->sendJsonResponse($data);
                 } else {
-                    $data = [
-                        'status_code' => 400,
-                        'message' => 'Invalid OTP',
-                        'data' => ""
-                    ];
-                    return $this->sendJsonResponse($data);
+                    $this->handleInvalidOtp();
                 }
             } else {
-                $verification_check = $this->twilio->verify->v2->services($this->twilio_verify_sid)->verificationChecks->create(["to" => $request->country_code . $request->mobile, "code" => $request->otp]);
-
-                if ($verification_check->status == 'approved') {
-                    $token = JWTAuth::fromUser($user);
-
-                    $userDeviceToken  = new userDeviceToken();
-                    $userDeviceToken->user_id = $user->id;
-                    $userDeviceToken->token = $request->device_token;
-                    $userDeviceToken->save();
-
-                    $authData['userDetails'] = $user;
-                    $authData['token'] = $token;
-                    $authData['token_type'] = 'bearer';
-                    $authData['expires_in'] = JWTAuth::factory()->getTTL() * 60 * 24;
-
-                    $data = [
-                        'status_code' => 200,
-                        'message' => 'OTP Verified Successfully!',
-                        'data' => $authData
-                    ];
-                    return $this->sendJsonResponse($data);
-                } else {
-                    $data = [
-                        'status_code' => 400,
-                        'message' => 'Invalid OTP',
-                        'data' => ""
-                    ];
-                    return $this->sendJsonResponse($data);
-                }
+                $this->verifyWithTwilio($user, $request);
             }
+        } catch (\Twilio\Exceptions\TwilioException $e) {
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => now()->format("Y-m-d H:i:s")
+            ]);
+            return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Twilio exception occurred']);
         } catch (\Exception $e) {
-            Log::error(
-                [
-                    'method' => __METHOD__,
-                    'error' => [
-                        'file' => $e->getFile(),
-                        'line' => $e->getLine(),
-                        'message' => $e->getMessage()
-                    ],
-                    'created_at' => date("Y-m-d H:i:s")
-                ]
-            );
-            return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => now()->format("Y-m-d H:i:s")
+            ]);
+            return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
         }
     }
+
+    private function verifyWithTwilio($user, $request)
+    {
+        try {
+            $verification_check = $this->twilio->verify->v2->services($this->twilio_verify_sid)->verificationChecks->create([
+                "to" => $request->country_code . $request->mobile,
+                "code" => $request->otp
+            ]);
+
+            if ($verification_check->status == 'approved') {
+                $token = JWTAuth::fromUser($user);
+                $this->saveUserDeviceToken($user->id, $request->device_token);
+
+                $authData['userDetails'] = $user;
+                $authData['token'] = $token;
+                $authData['token_type'] = 'bearer';
+                $authData['expires_in'] = JWTAuth::factory()->getTTL() * 60 * 24;
+
+                $data = [
+                    'status_code' => 200,
+                    'message' => 'OTP Verified Successfully!',
+                    'data' => $authData
+                ];
+                return $this->sendJsonResponse($data);
+            } else {
+                $this->handleInvalidOtp();
+            }
+        } catch (\Twilio\Exceptions\TwilioException $e) {
+            throw $e;
+        }
+    }
+
+    private function handleInvalidOtp()
+    {
+        $data = [
+            'status_code' => 400,
+            'message' => 'Invalid OTP',
+            'data' => ""
+        ];
+        return $this->sendJsonResponse($data);
+    }
+
+    private function saveUserDeviceToken($userId, $deviceToken)
+    {
+        $userDeviceToken = new userDeviceToken();
+        $userDeviceToken->user_id = $userId;
+        $userDeviceToken->token = $deviceToken;
+        $userDeviceToken->save();
+    }
+
 
     /**
      * @OA\Post(
