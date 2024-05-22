@@ -47,7 +47,7 @@ if (!function_exists('imageUpload')) {
   {
     if ($image->isValid()) {
       $extension = strtolower($image->getClientOriginalExtension());
-      $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'svg'];
+      $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'svg','heif'];
       if (!in_array($extension, $allowedExtensions)) {
         return 'invalid_image';
       }

@@ -38,6 +38,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
             Route::post('/users-mobile-numbers', 'userMobileNumbers');
             Route::post('/user-list', 'userList');
             Route::post('/user-details', 'userDetails');
+            Route::post('/edit-profile', 'editProfile');
         });
     });
 });
