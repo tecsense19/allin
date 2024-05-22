@@ -195,7 +195,7 @@ class UserController extends Controller
 
     public function userRegistration(Request $request)
     {
-        //try {
+        try {
             $rules = [
                 'first_name' => 'required|string|regex:/^[a-zA-Z\s]+$/|max:255',
                 'last_name' => 'nullable|string|regex:/^[a-zA-Z\s]+$/|max:255',
@@ -325,20 +325,20 @@ class UserController extends Controller
                 'data' => $authData
             ];
             return $this->sendJsonResponse($data);
-        // } catch (\Exception $e) {
-        //     Log::error(
-        //         [
-        //             'method' => __METHOD__,
-        //             'error' => [
-        //                 'file' => $e->getFile(),
-        //                 'line' => $e->getLine(),
-        //                 'message' => $e->getMessage()
-        //             ],
-        //             'created_at' => date("Y-m-d H:i:s")
-        //         ]
-        //     );
-        //     return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
-        // }
+        } catch (\Exception $e) {
+            Log::error(
+                [
+                    'method' => __METHOD__,
+                    'error' => [
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'message' => $e->getMessage()
+                    ],
+                    'created_at' => date("Y-m-d H:i:s")
+                ]
+            );
+            return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
+        }
     }
 
     /**
