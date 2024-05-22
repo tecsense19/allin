@@ -287,6 +287,49 @@ class OtpController extends Controller
         }
     }
     
+    /**
+     * @OA\Post(
+     *     path="/api/v1/refresh-token",
+     *     summary="Refresh Token",
+     *     tags={"Authentication"},
+     *     description="Refresh Token",
+     *     operationId="refreshToken",
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+
+     
+    public function refreshToken(Request $request)
+    {
+        try {
+            // Refresh the token
+            $newToken = JWTAuth::parseToken()->refresh();
+            
+            $data = [
+                'status_code' => 200,
+                'message' => 'New Token Generated!',
+                'data' => [
+                    'token' => $newToken
+                ]
+            ];
+            return $this->sendJsonResponse($data);
+        } catch (JWTException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Token refresh failed',
+            ], 401);
+        }
+    }
      
     
 }

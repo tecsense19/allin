@@ -296,7 +296,7 @@ class UserController extends Controller
                     return $this->sendJsonResponse($data);
                 }
             }
-
+            $user->account_id = generateAccountNumber();
             $user->first_name = $request->first_name;
             $user->last_name = $request->last_name;
             $user->country_code = $request->country_code;
@@ -393,7 +393,7 @@ class UserController extends Controller
                 ];
                 return $this->sendJsonResponse($data);
             }
-            userDeviceToken::where('user_id',auth()->user()->id)->where('token',$request->device_token)->forceDelete();
+            userDeviceToken::where('user_id', auth()->user()->id)->where('token', $request->device_token)->forceDelete();
 
             $data = [
                 'status_code' => 200,
@@ -439,10 +439,10 @@ class UserController extends Controller
      * )
      */
 
-     public function userMobileNumbers(Request $request)
+    public function userMobileNumbers(Request $request)
     {
         try {
-            $mobileNumbers = User::where('role','User')->where('status','Active')->get(['country_code','mobile']);
+            $mobileNumbers = User::where('role', 'User')->where('status', 'Active')->get(['country_code', 'mobile']);
 
             $data = [
                 'status_code' => 200,
@@ -468,4 +468,165 @@ class UserController extends Controller
         }
     }
 
+    /**
+     * @OA\Post(
+     *     path="/api/v1/user-list",
+     *     summary="User List",
+     *     tags={"User"},
+     *     description="User List",
+     *     operationId="userList",
+     *     security={{"bearerAuth":{}}},
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+    public function userList(Request $request)
+    {
+        try {
+            $mobileNumbers = User::where('role', 'User')->where('status', 'Active')->get();
+
+            $data = [
+                'status_code' => 200,
+                'message' => "Get Data Successfully.",
+                'data' => [
+                    'mobileNumbers' => $mobileNumbers
+                ]
+            ];
+            return $this->sendJsonResponse($data);
+        } catch (\Exception $e) {
+            Log::error(
+                [
+                    'method' => __METHOD__,
+                    'error' => [
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'message' => $e->getMessage()
+                    ],
+                    'created_at' => date("Y-m-d H:i:s")
+                ]
+            );
+            return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/v1/user-details",
+     *     summary="User Details",
+     *     tags={"User"},
+     *     description="User Details",
+     *     operationId="userDetails",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="query",
+     *         example="2",
+     *         description="Enter userId",
+     *         required=true,
+     *         @OA\Schema(
+     *             type="number",
+     *         )
+     *     ),
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+
+    public function userDetails(Request $request)
+    {
+        try {
+            $rules = [
+                'id' => 'required|integer|exists:users,id',
+            ];
+
+            $message = [
+                'id.required' => 'User ID is required.',
+                'id.integer' => 'User ID must be an integer.',
+                'id.exists' => 'The specified user does not exist.',
+            ];
+
+            $validator = Validator::make($request->all(), $rules, $message);
+            if ($validator->fails()) {
+                $data = [
+                    'status_code' => 400,
+                    'message' => $validator->errors()->first(),
+                    'data' => ""
+                ];
+                return $this->sendJsonResponse($data);
+            }
+            $user = new User();
+            $userData = $user->find($request->id);
+            $data = [
+                'status_code' => 200,
+                'message' => "Get Data Successfully!",
+                'data' => [
+                    'userData' => $userData
+                ]
+            ];
+            return $this->sendJsonResponse($data);
+        } catch (\Exception $e) {
+            Log::error(
+                [
+                    'method' => __METHOD__,
+                    'error' => [
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'message' => $e->getMessage()
+                    ],
+                    'created_at' => date("Y-m-d H:i:s")
+                ]
+            );
+            return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/v1/edit-profile",
+     *     summary="User Details",
+     *     tags={"User"},
+     *     description="User Details",
+     *     operationId="userDetails",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="query",
+     *         example="2",
+     *         description="Enter userId",
+     *         required=true,
+     *         @OA\Schema(
+     *             type="number",
+     *         )
+     *     ),
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
 }

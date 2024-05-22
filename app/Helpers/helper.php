@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use Illuminate\Support\Facades\Facade;
 
 if (!function_exists('create_slug')) {
@@ -44,19 +45,29 @@ if (!function_exists('imageUploadBase64')) {
 if (!function_exists('imageUpload')) {
   function imageUpload($image, $folder)
   {
-      if ($image->isValid()) {
-          $extension = strtolower($image->getClientOriginalExtension());
-          $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'svg'];
-          if (!in_array($extension, $allowedExtensions)) {
-              return 'invalid_image';
-          }
-          $imageName = $folder . '_' . time() . '.' . $extension;
-          $destinationPath = public_path($folder . '/');
-          $image->move($destinationPath, $imageName);
-          return $imageName;
-      } else {
-          return 'upload_failed';
+    if ($image->isValid()) {
+      $extension = strtolower($image->getClientOriginalExtension());
+      $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'svg'];
+      if (!in_array($extension, $allowedExtensions)) {
+        return 'invalid_image';
       }
+      $imageName = $folder . '_' . time() . '.' . $extension;
+      $destinationPath = public_path($folder . '/');
+      $image->move($destinationPath, $imageName);
+      return $imageName;
+    } else {
+      return 'upload_failed';
+    }
   }
 }
+if (!function_exists('generateAccountNumber')) {
+  function generateAccountNumber()
+  {
+    do {
+      $accountNumber = random_int(1000000000, 9999999999);
+      $exists = User::where('account_id', $accountNumber)->exists();
+    } while ($exists);
 
+    return $accountNumber;
+  }
+}

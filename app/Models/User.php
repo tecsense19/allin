@@ -22,7 +22,9 @@ class User extends Authenticatable implements  JWTSubject
      * @var array<int, string>
      */
     protected $fillable = [
-        'name',
+        'c',
+        'first_name',
+        'last_name',
         'email',
         'email_verified_at',
         'country_code',
@@ -30,6 +32,11 @@ class User extends Authenticatable implements  JWTSubject
         'password',
         'profile',
         'cover_image',
+        'instagram_profile_url',
+        'facebook_profile_url',
+        'twitter_profile_url',
+        'youtube_profile_url',
+        'linkedin_profile_url',
         'role',
         'status',
         'remember_token',

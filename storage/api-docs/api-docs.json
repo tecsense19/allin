@@ -116,6 +116,27 @@
                 }
             }
         },
+        "/api/v1/refresh-token": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Refresh Token",
+                "description": "Refresh Token",
+                "operationId": "refreshToken",
+                "responses": {
+                    "200": {
+                        "description": "json schema",
+                        "content": {
+                            "application/json": {}
+                        }
+                    },
+                    "404": {
+                        "description": "Invalid Request"
+                    }
+                }
+            }
+        },
         "/api/v1/check-mobile-exists": {
             "post": {
                 "tags": [
@@ -285,6 +306,70 @@
                 "summary": "User Mobile Numbers",
                 "description": "User Mobile Numbers",
                 "operationId": "userMobileNumbers",
+                "responses": {
+                    "200": {
+                        "description": "json schema",
+                        "content": {
+                            "application/json": {}
+                        }
+                    },
+                    "404": {
+                        "description": "Invalid Request"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/user-list": {
+            "post": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "User List",
+                "description": "User List",
+                "operationId": "userList",
+                "responses": {
+                    "200": {
+                        "description": "json schema",
+                        "content": {
+                            "application/json": {}
+                        }
+                    },
+                    "404": {
+                        "description": "Invalid Request"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/user-details": {
+            "post": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "User Details",
+                "description": "User Details",
+                "operationId": "userDetails",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "description": "Enter userId",
+                        "required": true,
+                        "schema": {
+                            "type": "number"
+                        },
+                        "example": "2"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "json schema",

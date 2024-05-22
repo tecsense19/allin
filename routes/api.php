@@ -26,6 +26,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
     Route::controller(OtpController::class)->group(function () {
         Route::post('/send-otp', 'sendOtp');
         Route::post('/verify-otp', 'verifyOtp');
+        Route::post('/refresh-token', 'refreshToken');
     });
     Route::controller(UserController::class)->group(function () {
         Route::post('/check-mobile-exists', 'checkMobileExists');
@@ -35,6 +36,8 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
         Route::controller(UserController::class)->group(function () {
             Route::post('/logout', 'logout');
             Route::post('/users-mobile-numbers', 'userMobileNumbers');
+            Route::post('/user-list', 'userList');
+            Route::post('/user-details', 'userDetails');
         });
     });
 });
