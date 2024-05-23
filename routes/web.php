@@ -44,6 +44,8 @@ Route::group(['middleware' => ['XssSanitization']], function () {
         Route::controller(UserController::class)->group(function () {
             Route::get('user-list', 'index')->name('userList');
             Route::post('user-list-post', 'indexPost')->name('userListPost');
+            Route::post('delete-user', 'deleteUser')->name('delete_user');
+            Route::get('user-view/{id}', 'view')->name('userView');
         });
     });
 });

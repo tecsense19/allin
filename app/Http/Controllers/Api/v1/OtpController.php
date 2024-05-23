@@ -9,6 +9,7 @@ use App\Models\UserOtp;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Validator;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 use PHPOpenSourceSaver\JWTAuth\Exceptions\JWTException;
@@ -270,7 +271,8 @@ class OtpController extends Controller
                 if ($request->country_code == '+91' && $request->mobile == '9876543210' && $request->otp == '123456') {
                     $token = JWTAuth::fromUser($user);
                     $this->saveUserDeviceToken($user->id, $request->device_token);
-
+                    $user->profile = @$user->profile ? URL::to('public/user-profile/'.$user->profile) : URL::to('public/assets/media/avatars/blank.png');
+                    $user->cover_image = @$user->cover_image ? URL::to('public/user-profile-cover-image/'.$user->cover_image) : URL::to('public/assets/media/misc/image.png');
                     $authData['userDetails'] = $user;
                     $authData['token'] = $token;
                     $authData['token_type'] = 'bearer';
@@ -324,7 +326,8 @@ class OtpController extends Controller
             if ($verification_check->status == 'approved') {
                 $token = JWTAuth::fromUser($user);
                 $this->saveUserDeviceToken($user->id, $request->device_token);
-
+                $user->profile = @$user->profile ? URL::to('public/user-profile/'.$user->profile) : URL::to('public/assets/media/avatars/blank.png');
+                $user->cover_image = @$user->cover_image ? URL::to('public/user-profile-cover-image/'.$user->cover_image) : URL::to('public/assets/media/misc/image.png');
                 $authData['userDetails'] = $user;
                 $authData['token'] = $token;
                 $authData['token_type'] = 'bearer';

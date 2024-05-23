@@ -3,6 +3,8 @@
 @section('title', 'AllIn | User List')
 @section('header')
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.6/css/jquery.dataTables.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 @endsection
 
 @section('content')
@@ -14,7 +16,8 @@
                 <!--begin::Page title-->
                 <div class="page-title d-flex flex-column justify-content-center flex-wrap me-3">
                     <!--begin::Title-->
-                    <h1 class="page-heading d-flex text-dark fw-bold fs-3 flex-column justify-content-center my-0">Users List
+                    <h1 class="page-heading d-flex text-dark fw-bold fs-3 flex-column justify-content-center my-0">Users
+                        List
                     </h1>
                     <!--end::Title-->
                     <!--begin::Breadcrumb-->
@@ -135,10 +138,92 @@
                 autoWidth: true
             });
             $('#global-search').on('keyup', function() {
-                if(this.value.length >= 3){
+                if (this.value.length >= 3) {
                     table.search(this.value).draw();
                 }
             });
         });
+
+        function deleteUser(id) {
+            // Show SweetAlert confirmation popup
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "You won't be able to revert this!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // If user confirms, send AJAX request to delete user
+                    try {
+                        $.ajax({
+                            url: '{{ route('delete_user') }}',
+                            type: 'POST',
+                            data: {
+                                id: id,
+                                _token: '{{ csrf_token() }}'
+                            },
+                            success: function(response) {
+                                try {
+                                    if (response.success) {
+                                        Swal.fire({
+                                            title: 'Deleted!',
+                                            text: 'The user has been deleted.',
+                                            icon: 'success',
+                                            confirmButtonText: 'OK'
+                                        }).then((result) => {
+                                            if (result.isConfirmed) {
+                                                location.reload();
+                                            }
+                                        });
+
+                                    } else {
+                                        Swal.fire(
+                                            'Error!',
+                                            response.message ||
+                                            'An error occurred while deleting the user.',
+                                            'error'
+                                        );
+                                    }
+                                } catch (e) {
+                                    Swal.fire(
+                                        'Error!',
+                                        'An unexpected error occurred.',
+                                        'error'
+                                    );
+                                    console.error('Error in success callback:', e);
+                                }
+                            },
+                            error: function(xhr, status, error) {
+                                try {
+                                    Swal.fire(
+                                        'Error!',
+                                        'An error occurred while deleting the user.',
+                                        'error'
+                                    );
+                                    console.error('AJAX error:', error);
+                                } catch (e) {
+                                    Swal.fire(
+                                        'Error!',
+                                        'An unexpected error occurred.',
+                                        'error'
+                                    );
+                                    console.error('Error in error callback:', e);
+                                }
+                            }
+                        });
+                    } catch (e) {
+                        Swal.fire(
+                            'Error!',
+                            'An unexpected error occurred while sending the request.',
+                            'error'
+                        );
+                        console.error('Error in AJAX request:', e);
+                    }
+                }
+            });
+        }
     </script>
 @endsection

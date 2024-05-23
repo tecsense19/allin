@@ -5,17 +5,19 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
 use Yajra\DataTables\Facades\DataTables;
 
 class UserController extends Controller
 {
-    public function index(){
+    public function index()
+    {
         return view('Admin.User.list');
     }
     public function indexPost(Request $request)
     {
-        $query = User::where('role','User');
+        $query = User::where('role', 'User');
         $totalCount = $query->count();
         if ($request->has('order')) {
             foreach ($request->order as $order) {
@@ -24,16 +26,16 @@ class UserController extends Controller
                 //$query->orderBy($column, $dir);
                 $query->orderBy('id', 'desc');
             }
-        }else{
+        } else {
             $query->orderBy('id', 'desc');
         }
         if ($request->has('search') && !is_null($request->search['value'])) {
             $search = $request->search['value'];
             $query->where(function ($q) use ($search) {
                 $q->where('first_name', 'LIKE', "%{$search}%")
-                  ->orWhere('last_name', 'LIKE', "%{$search}%")
-                  ->orWhere('email', 'LIKE', "%{$search}%")
-                  ->orWhere('mobile', 'LIKE', "%{$search}%");
+                    ->orWhere('last_name', 'LIKE', "%{$search}%")
+                    ->orWhere('email', 'LIKE', "%{$search}%")
+                    ->orWhere('mobile', 'LIKE', "%{$search}%");
             });
         }
         $filterCount = $query->count();
@@ -44,7 +46,7 @@ class UserController extends Controller
             ->editColumn('first_name', function ($user) {
                 $first_name = $user->first_name ? $user->first_name : '';
                 $last_name = $user->last_name ? $user->last_name : '';
-                return $first_name.' '.$last_name   ;
+                return $first_name . ' ' . $last_name;
             })
             ->editColumn('email', function ($user) {
                 return $user->email ?? '-';
@@ -54,19 +56,48 @@ class UserController extends Controller
             })
             ->editColumn('profile', function ($user) {
                 $userImage = URL::to('public/assets/media/avatars/blank.png');
-                if(!empty($user->profile)){
-                    $userImage = URL::to('public/user-profile/'.$user->profile);
+                if (!empty($user->profile)) {
+                    $userImage = URL::to('public/user-profile/' . $user->profile);
                 }
-                $html =  '<img class="img rounded-circle" height="65" width="65" src="'.$userImage.'" />';
+                $html =  '<img class="img rounded-circle" height="65" width="65" src="' . $userImage . '" />';
                 return $html;
             })
             ->editColumn('action', function ($user) {
-                $html =  '<div class="row"><div class="col-12"><a href="#" class="" title="Edit"><i class="fas fa-pen"></i></a> <a href="#" class="mx-md-3" title="View"><i class="fas fa-eye"></i></a> <a href="#" class="" title="Delete"><i class="fas fa-trash"></i></a></div></div>';
+                $userView = route('userView',$user->id);
+                $html =  '<div class="row"><div class="col-12"><a href="'.$userView.'" class="mx-md-3" title="View"><i class="fas fa-eye"></i></a> <a href="javascript:void(0);" class="" title="Delete" onclick="deleteUser(' . $user->id . ')"><i class="fas fa-trash"></i></a></div></div>';
                 return $html;
             })
-            ->rawColumns(['profile','cover_image', 'action'])
+            ->rawColumns(['profile', 'cover_image', 'action'])
             ->with('recordsTotal', $totalCount)
             ->with('recordsFiltered', $filterCount)
             ->make(true);
+    }
+
+    public function deleteUser(Request $request)
+    {
+        try {
+            $id = $request->id;
+            $user = User::find($id);
+
+            if ($user) {
+                DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+                $user->forceDelete();
+                DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+                return response()->json(['success' => true]);
+            } else {
+                return response()->json(['success' => false, 'message' => 'User not found.']);
+            }
+        } catch (\Exception $e) {
+            // Log the exception for debugging purposes
+            \Log::error('Error deleting user: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'An error occurred while deleting the user.']);
+        }
+    }
+
+    public function view($id){
+        $data['user'] = User::find($id);
+        $data['user']->profile = @$data['user']->profile ? URL::to('public/user-profile/' . $data['user']->profile) : URL::to('public/assets/media/avatars/blank.png');
+        $data['user']->cover_image = @$data['user']->cover_image ? URL::to('public/user-profile-cover-image/'.$data['user']->cover_image) : URL::to('public/assets/media/misc/image.png');
+        return view('Admin.User.view',$data);
     }
 }

@@ -316,7 +316,8 @@ class UserController extends Controller
                     $userDeviceToken->user_id = $user->id;
                     $userDeviceToken->token = $request->device_token;
                     $userDeviceToken->save();
-
+                    $user->profile = @$user->profile ? URL::to('public/user-profile/'.$user->profile) : URL::to('public/assets/media/avatars/blank.png');
+                    $user->cover_image = @$user->cover_image ? URL::to('public/user-profile-cover-image/'.$user->cover_image) : URL::to('public/assets/media/misc/image.png');
                     $authData['userDetails'] = $user;
                     $authData['token'] = $token;
                     $authData['token_type'] = 'bearer';
@@ -381,7 +382,8 @@ class UserController extends Controller
                     $userDeviceToken->user_id = $user->id;
                     $userDeviceToken->token = $request->device_token;
                     $userDeviceToken->save();
-
+                    $user->profile = @$user->profile ? URL::to('public/user-profile/'.$user->profile) : URL::to('public/assets/media/avatars/blank.png');
+                    $user->cover_image = @$user->cover_image ? URL::to('public/user-profile-cover-image/'.$user->cover_image) : URL::to('public/assets/media/misc/image.png');
                     $authData['userDetails'] = $user;
                     $authData['token'] = $token;
                     $authData['token_type'] = 'bearer';
@@ -653,6 +655,8 @@ class UserController extends Controller
             }
             $user = new User();
             $userData = $user->find($request->id);
+            $userData->profile = @$userData->profile ? URL::to('public/user-profile/'.$userData->profile) : URL::to('public/assets/media/avatars/blank.png');
+            $userData->cover_image = @$userData->cover_image ? URL::to('public/user-profile-cover-image/'.$userData->cover_image) : URL::to('public/assets/media/misc/image.png');
             $data = [
                 'status_code' => 200,
                 'message' => "Get Data Successfully!",
