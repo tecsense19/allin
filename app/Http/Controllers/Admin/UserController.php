@@ -38,11 +38,13 @@ class UserController extends Controller
         }
         $filterCount = $query->count();
         return DataTables::of($query)
-            ->editColumn('first_name', function ($user) {
-                return $user->first_name ?? '-';
+            ->editColumn('account_id', function ($user) {
+                return $user->account_id ?? '-';
             })
-            ->editColumn('last_name', function ($user) {
-                return $user->last_name ?? '-';
+            ->editColumn('first_name', function ($user) {
+                $first_name = $user->first_name ? $user->first_name : '';
+                $last_name = $user->last_name ? $user->last_name : '';
+                return $first_name.' '.$last_name   ;
             })
             ->editColumn('email', function ($user) {
                 return $user->email ?? '-';
@@ -55,18 +57,14 @@ class UserController extends Controller
                 if(!empty($user->profile)){
                     $userImage = URL::to('public/user-profile/'.$user->profile);
                 }
-                $html =  '<img class="img img-fluid" height="65" width="65" src="'.$userImage.'" />';
+                $html =  '<img class="img rounded-circle" height="65" width="65" src="'.$userImage.'" />';
                 return $html;
             })
-            ->editColumn('cover_image', function ($user) {
-                $coverImage = URL::to('public\assets\media\misc\image.png');
-                if(!empty($user->cover_image)){
-                    $coverImage = URL::to('public/user-profile-cover-image/'.$user->cover_image);
-                }
-                $html =  '<img class="img img-fluid" height="65" width="65" src="'.$coverImage.'" />';
+            ->editColumn('action', function ($user) {
+                $html =  '<div class="row"><div class="col-12"><a href="#" class="" title="Edit"><i class="fas fa-pen"></i></a> <a href="#" class="mx-md-3" title="View"><i class="fas fa-eye"></i></a> <a href="#" class="" title="Delete"><i class="fas fa-trash"></i></a></div></div>';
                 return $html;
             })
-            ->rawColumns(['profile','cover_image'])
+            ->rawColumns(['profile','cover_image', 'action'])
             ->with('recordsTotal', $totalCount)
             ->with('recordsFiltered', $filterCount)
             ->make(true);

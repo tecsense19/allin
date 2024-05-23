@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\userDeviceToken;
 use App\Models\UserOtp;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Validator;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 use PHPOpenSourceSaver\JWTAuth\Exceptions\JWTException;
@@ -567,7 +568,11 @@ class UserController extends Controller
     public function userList(Request $request)
     {
         try {
-            $userList = User::where('role', 'User')->where('status', 'Active')->get();
+            $userList = User::where('role', 'User')->where('status', 'Active')->where('id','!=',auth()->user()->id)->get();
+            $userList = $userList->map(function ($user) {
+                $user->profile = @$user->profile ? URL::to('public/user-profile'.$user->profile) : URL::to('public/assets/media/avatars/blank.png');
+                return $user;
+            });
             $data = [
                 'status_code' => 200,
                 'message' => "Get Data Successfully.",

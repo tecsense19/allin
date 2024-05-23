@@ -47,7 +47,7 @@
             </div>
         </div>
         <!--begin::Javascript-->
-		<script>var hostUrl = "assets/";</script>
+		<script>var hostUrl = "{{URL::to('public/assets/')}}";</script>
 		<script src="{{ URL::to('public/assets/plugins/global/plugins.bundle.js') }}"></script>
 		<script src="{{ URL::to('public/assets/js/scripts.bundle.js') }}"></script>
 		<script src="{{ URL::to('public/assets/plugins/custom/fullcalendar/fullcalendar.bundle.js') }}"></script>

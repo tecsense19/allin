@@ -57,12 +57,12 @@
                                 <table class="table table-row-bordered table-row-gray-300 gy-7" id="datatable">
                                     <thead>
                                         <tr class="fw-bold fs-6 text-gray-800">
-                                            <th>First Name</th>
-                                            <th>Last Name</th>
+                                            <th>Profile</th>
+                                            <th>Account Number</th>
+                                            <th>Name</th>
                                             <th>Email</th>
                                             <th>Mobile</th>
-                                            <th>Profile</th>
-                                            <th>Cover Image</th>
+                                            <th>Action</th>
                                         </tr>
                                     </thead>
                                 </table>
@@ -94,14 +94,20 @@
                     }
                 },
                 columns: [{
-                        data: 'first_name',
-                        name: 'first_name',
+                        data: 'profile',
+                        name: 'profile',
+                        orderable: false,
+                        searchable: false
+                    },
+                    {
+                        data: 'account_id',
+                        name: 'account_id',
                         orderable: true,
                         searchable: true
                     },
                     {
-                        data: 'last_name',
-                        name: 'last_name',
+                        data: 'first_name',
+                        name: 'first_name',
                         orderable: true,
                         searchable: true
                     },
@@ -118,23 +124,15 @@
                         searchable: true
                     },
                     {
-                        data: 'profile',
-                        name: 'profile',
-                        orderable: false,
-                        searchable: false
-                    },
-                    {
-                        data: 'cover_image',
-                        name: 'cover_image',
-                        orderable: false,
-                        searchable: false
+                        data: 'action',
+                        name: 'action',
+                        orderable: true,
+                        searchable: true
                     }
                 ],
-                order: [
-                    [0, 'asc']
-                ], // default ordering
-                pageLength: 10, // default page length
-                autoWidth: false // do not adjust column widths automatically
+                order: [],
+                pageLength: 10,
+                autoWidth: true
             });
             $('#global-search').on('keyup', function() {
                 if(this.value.length >= 3){
