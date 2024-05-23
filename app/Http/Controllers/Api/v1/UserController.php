@@ -570,7 +570,7 @@ class UserController extends Controller
         try {
             $userList = User::where('role', 'User')->where('status', 'Active')->where('id','!=',auth()->user()->id)->get();
             $userList = $userList->map(function ($user) {
-                $user->profile = @$user->profile ? URL::to('public/user-profile'.$user->profile) : URL::to('public/assets/media/avatars/blank.png');
+                $user->profile = @$user->profile ? URL::to('public/user-profile/'.$user->profile) : URL::to('public/assets/media/avatars/blank.png');
                 return $user;
             });
             $data = [
