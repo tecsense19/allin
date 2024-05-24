@@ -232,7 +232,7 @@ class OtpController extends Controller
         try {
             $rules = [
                 'country_code' => 'required|string|max:255|regex:/^\+\d{1,4}$/',
-                'mobile' => 'required|string|regex:/^\d{10,}$/',
+                'mobile' => 'required|string|regex:/^\d{6,14}$/',
                 'otp' => 'required|numeric|min:000000|max:999999',
             ];
 
