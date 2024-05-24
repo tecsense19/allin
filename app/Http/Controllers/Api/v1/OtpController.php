@@ -295,7 +295,12 @@ class OtpController extends Controller
                     ];
                     return $this->sendJsonResponse($data);
                 } else {
-                    $this->handleInvalidOtp();
+                    $data = [
+                        'status_code' => 400,
+                        'message' => 'Invalid OTP',
+                        'data' => ""
+                    ];
+                    return $this->sendJsonResponse($data);
                 }
             } elseif($request->country_code == '+91' && $request->mobile == '8469464311') {
                 $this->verifyWithTwilio($user, $request);
@@ -317,7 +322,12 @@ class OtpController extends Controller
                     ];
                     return $this->sendJsonResponse($data);
                 } else {
-                    $this->handleInvalidOtp();
+                    $data = [
+                        'status_code' => 400,
+                        'message' => 'Invalid OTP',
+                        'data' => ""
+                    ];
+                    return $this->sendJsonResponse($data);
                 }
             }
         } catch (\Twilio\Exceptions\TwilioException $e) {
@@ -370,7 +380,12 @@ class OtpController extends Controller
                 ];
                 return $this->sendJsonResponse($data);
             } else {
-                $this->handleInvalidOtp();
+                $data = [
+                    'status_code' => 400,
+                    'message' => 'Invalid OTP',
+                    'data' => ""
+                ];
+                return $this->sendJsonResponse($data);
             }
         } catch (\Twilio\Exceptions\TwilioException $e) {
             throw $e;
@@ -384,7 +399,7 @@ class OtpController extends Controller
             'message' => 'Invalid OTP',
             'data' => ""
         ];
-        return $this->sendJsonResponse($data);
+        return $data;
     }
 
     private function saveUserDeviceToken($userId, $deviceToken)
