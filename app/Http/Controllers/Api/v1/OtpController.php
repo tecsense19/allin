@@ -77,8 +77,8 @@ class OtpController extends Controller
     {
         try {
             $rules = [
-                'country_code' => 'required|string|max:255|regex:/^\+\d{1,3}$/',
-                'mobile' => 'required|string|max:10|regex:/^\d{6,14}$/',
+                'country_code' => 'required|string|max:255|regex:/^\+\d{1,4}$/',
+                'mobile' => 'required|string|regex:/^\d{6,14}$/',
             ];
 
             $message = [
@@ -88,7 +88,6 @@ class OtpController extends Controller
                 'country_code.regex' => 'Invalid country code format. It should start with "+" followed by one to three digits.',
                 'mobile.required' => 'Mobile number is required.',
                 'mobile.string' => 'Mobile number must be a string.',
-                'mobile.max' => 'Mobile number must not exceed 10 characters.',
                 'mobile.regex' => 'Invalid mobile number format. It should be numeric and at least 10 digits long.',
             ];
 
@@ -232,8 +231,8 @@ class OtpController extends Controller
     {
         try {
             $rules = [
-                'country_code' => 'required|string|max:255|regex:/^\+\d{1,3}$/',
-                'mobile' => 'required|string|max:10|regex:/^\d{10,}$/',
+                'country_code' => 'required|string|max:255|regex:/^\+\d{1,4}$/',
+                'mobile' => 'required|string|regex:/^\d{10,}$/',
                 'otp' => 'required|numeric|min:000000|max:999999',
             ];
 
@@ -244,7 +243,6 @@ class OtpController extends Controller
                 'country_code.regex' => 'Invalid country code format. It should start with "+" followed by one to three digits.',
                 'mobile.required' => 'Mobile number is required.',
                 'mobile.string' => 'Mobile number must be a string.',
-                'mobile.max' => 'Mobile number must not exceed 10 characters.',
                 'mobile.regex' => 'Invalid mobile number format. It should be numeric and at least 10 digits long.',
                 'otp.required' => 'OTP is required.',
                 'otp.numeric' => 'OTP must be a numeric value.',
