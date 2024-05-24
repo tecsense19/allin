@@ -392,16 +392,6 @@ class OtpController extends Controller
         }
     }
 
-    private function handleInvalidOtp()
-    {
-        $data = [
-            'status_code' => 400,
-            'message' => 'Invalid OTP',
-            'data' => ""
-        ];
-        return $data;
-    }
-
     private function saveUserDeviceToken($userId, $deviceToken)
     {
         $userDeviceToken = new userDeviceToken();
