@@ -10,6 +10,243 @@
         }
     ],
     "paths": {
+        "/api/v1/text-message": {
+            "post": {
+                "tags": [
+                    "Messages"
+                ],
+                "summary": "Add a new message",
+                "description": "Create a new message along with its sender/receiver, attachments, tasks, locations, and meetings.",
+                "operationId": "textMessage",
+                "requestBody": {
+                    "description": "Add Message Request",
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "message_type",
+                                    "receiver_id",
+                                    "message"
+                                ],
+                                "properties": {
+                                    "message_type": {
+                                        "description": "Type of the message",
+                                        "type": "string",
+                                        "example": "text"
+                                    },
+                                    "message": {
+                                        "description": "Content of the message",
+                                        "type": "string",
+                                        "example": "This is a test message.",
+                                        "nullable": true
+                                    },
+                                    "receiver_id": {
+                                        "description": "ID of the receiver",
+                                        "type": "string",
+                                        "example": "2"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "json schema",
+                        "content": {
+                            "application/json": {}
+                        }
+                    },
+                    "404": {
+                        "description": "Invalid Request"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/file-upload-message": {
+            "post": {
+                "tags": [
+                    "Messages"
+                ],
+                "summary": "Add a new message",
+                "description": "Create a new message along with its sender/receiver, attachments, tasks, locations, and meetings.",
+                "operationId": "fileUploadMessage",
+                "requestBody": {
+                    "description": "Add Message Request",
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "message_type",
+                                    "receiver_id",
+                                    "attachment",
+                                    "attachment_type"
+                                ],
+                                "properties": {
+                                    "message_type": {
+                                        "description": "Type of the message",
+                                        "type": "string",
+                                        "example": "text"
+                                    },
+                                    "receiver_id": {
+                                        "description": "ID of the receiver",
+                                        "type": "string",
+                                        "example": "2"
+                                    },
+                                    "attachment_type": {
+                                        "description": "Like(Image, Audio, Video, Docs, Excel..)",
+                                        "type": "string",
+                                        "example": "Image"
+                                    },
+                                    "attachment": {
+                                        "description": "Uploaded Attachment name",
+                                        "type": "string",
+                                        "example": "test.png",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "json schema",
+                        "content": {
+                            "application/json": {}
+                        }
+                    },
+                    "404": {
+                        "description": "Invalid Request"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/message-task": {
+            "post": {
+                "tags": [
+                    "Messages"
+                ],
+                "summary": "Add a new Task message",
+                "description": "Create a new message along with its sender/receiver, attachments, tasks, locations, and meetings.",
+                "operationId": "messageTask",
+                "requestBody": {
+                    "description": "Add Message Request",
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "message_type",
+                                    "receiver_id",
+                                    "task_name"
+                                ],
+                                "properties": {
+                                    "message_type": {
+                                        "description": "Type of the message",
+                                        "type": "string",
+                                        "example": "text"
+                                    },
+                                    "receiver_id": {
+                                        "description": "Comma-separated IDs of the receiver",
+                                        "type": "string",
+                                        "example": "1,2,3,4"
+                                    },
+                                    "task_name": {
+                                        "description": "Task Name",
+                                        "type": "string",
+                                        "example": "CRUD Module"
+                                    },
+                                    "task_description": {
+                                        "description": "Task Description",
+                                        "type": "string",
+                                        "example": ""
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "json schema",
+                        "content": {
+                            "application/json": {}
+                        }
+                    },
+                    "404": {
+                        "description": "Invalid Request"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/file-upload": {
+            "post": {
+                "tags": [
+                    "Files"
+                ],
+                "summary": "Upload a file",
+                "description": "Upload a file and store its information.",
+                "operationId": "uploadFile",
+                "requestBody": {
+                    "description": "Upload File Request",
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "file"
+                                ],
+                                "properties": {
+                                    "file": {
+                                        "description": "File to upload",
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "json schema",
+                        "content": {
+                            "application/json": {}
+                        }
+                    },
+                    "404": {
+                        "description": "Invalid Request"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/v1/send-otp": {
             "post": {
                 "tags": [

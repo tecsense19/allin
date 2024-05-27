@@ -12,8 +12,9 @@
         "laravel/sanctum": "^3.3",
         "laravel/tinker": "^2.8",
         "php-open-source-saver/jwt-auth": "^2.1",
-        "yajra/laravel-datatables-oracle": "^10.11",
-        "twilio/sdk": "*"
+        "spatie/laravel-image-optimizer": "^1.8",
+        "twilio/sdk": "*",
+        "yajra/laravel-datatables-oracle": "^10.11"
     },
     "require-dev": {
         "fakerphp/faker": "^1.9.1",

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\v1\ChatController;
 use App\Http\Controllers\Api\v1\OtpController;
 use App\Http\Controllers\Api\v1\UserController;
 use Illuminate\Http\Request;
@@ -39,6 +40,12 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
             Route::post('/user-list', 'userList');
             Route::post('/user-details', 'userDetails');
             Route::post('/edit-profile', 'editProfile');
+        });
+        Route::controller(ChatController::class)->group(function () {
+            Route::post('/text-message', 'textMessage');
+            Route::post('/file-upload-message', 'fileUploadMessage');
+            Route::post('/message-task', 'messageTask');
+            Route::post('/file-upload', 'fileUpload');
         });
     });
 });

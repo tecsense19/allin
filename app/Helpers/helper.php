@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use Illuminate\Support\Facades\Facade;
+use Spatie\ImageOptimizer\OptimizerChainFactory;
 
 if (!function_exists('create_slug')) {
   function create_slug($string)
@@ -47,13 +48,19 @@ if (!function_exists('imageUpload')) {
   {
     if ($image->isValid()) {
       $extension = strtolower($image->getClientOriginalExtension());
-      $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'svg', 'heif'];
+      $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'svg'];
       if (!in_array($extension, $allowedExtensions)) {
         return 'invalid_image';
       }
       $imageName = $folder . '_' . time() . '.' . $extension;
       $destinationPath = public_path($folder . '/');
+      if (!file_exists($destinationPath)) {
+        mkdir($destinationPath, 0777, true);
+      }
       $image->move($destinationPath, $imageName);
+
+      $optimizerChain = OptimizerChainFactory::create();
+      $optimizerChain->optimize($destinationPath.$imageName);
       return $imageName;
     } else {
       return 'upload_failed';
