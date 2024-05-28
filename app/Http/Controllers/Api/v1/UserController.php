@@ -634,17 +634,21 @@ class UserController extends Controller
     {
         try {
             $latestMessagesSubquery = DB::table('message_sender_receiver')
-                ->select('message_sender_receiver.sender_id as user_id', DB::raw('MAX(message.created_at) as last_message_date'))
-                ->leftJoin('message', 'message_sender_receiver.message_id', '=', 'message.id')
-                ->where('message.status', 'Unread')
-                ->groupBy('message_sender_receiver.sender_id')
-                ->union(
-                    DB::table('message_sender_receiver')
-                        ->select('message_sender_receiver.receiver_id as user_id', DB::raw('MAX(message.created_at) as last_message_date'))
-                        ->leftJoin('message', 'message_sender_receiver.message_id', '=', 'message.id')
-                        ->where('message.status', 'Unread')
-                        ->groupBy('message_sender_receiver.receiver_id')
-                );
+    ->select('user_id', DB::raw('MAX(last_message_date) as last_message_date'))
+    ->from(function ($query) {
+        $query->select('message_sender_receiver.sender_id as user_id', 'message.created_at as last_message_date')
+            ->from('message_sender_receiver')
+            ->leftJoin('message', 'message_sender_receiver.message_id', '=', 'message.id')
+            ->where('message.status', 'Unread')
+            ->union(
+                DB::table('message_sender_receiver')
+                    ->select('message_sender_receiver.receiver_id as user_id', 'message.created_at as last_message_date')
+                    ->from('message_sender_receiver')
+                    ->leftJoin('message', 'message_sender_receiver.message_id', '=', 'message.id')
+                    ->where('message.status', 'Unread')
+            );
+    }, 'latest_message_union')
+    ->groupBy('user_id');
             $latestMessages = DB::table(DB::raw("({$latestMessagesSubquery->toSql()}) as latest_messages"))
                 ->mergeBindings($latestMessagesSubquery)
                 ->select('latest_messages.user_id', 'message.message', 'message.message_type', 'latest_messages.last_message_date')
