@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\userDeviceToken;
 use App\Models\UserOtp;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Validator;
@@ -314,8 +315,8 @@ class UserController extends Controller
                     $userDeviceToken->user_id = $user->id;
                     $userDeviceToken->token = $request->device_token;
                     $userDeviceToken->save();
-                    $user->profile = @$user->profile ? URL::to('public/user-profile/'.$user->profile) : URL::to('public/assets/media/avatars/blank.png');
-                    $user->cover_image = @$user->cover_image ? URL::to('public/user-profile-cover-image/'.$user->cover_image) : URL::to('public/assets/media/misc/image.png');
+                    $user->profile = @$user->profile ? URL::to('public/user-profile/' . $user->profile) : URL::to('public/assets/media/avatars/blank.png');
+                    $user->cover_image = @$user->cover_image ? URL::to('public/user-profile-cover-image/' . $user->cover_image) : URL::to('public/assets/media/misc/image.png');
                     $authData['userDetails'] = $user;
                     $authData['token'] = $token;
                     $authData['token_type'] = 'bearer';
@@ -334,7 +335,7 @@ class UserController extends Controller
                     ];
                     return $this->sendJsonResponse($data);
                 }
-            } elseif($request->country_code == '+91' && $request->mobile == '8469464311') {
+            } elseif ($request->country_code == '+91' && $request->mobile == '8469464311') {
                 $verification_check = $this->twilio->verify->v2->services($this->twilio_verify_sid)->verificationChecks->create(["to" => $request->country_code . $request->mobile, "code" => $request->otp]);
 
                 if ($verification_check->status == 'approved') {
@@ -380,8 +381,8 @@ class UserController extends Controller
                     $userDeviceToken->user_id = $user->id;
                     $userDeviceToken->token = $request->device_token;
                     $userDeviceToken->save();
-                    $user->profile = @$user->profile ? URL::to('public/user-profile/'.$user->profile) : URL::to('public/assets/media/avatars/blank.png');
-                    $user->cover_image = @$user->cover_image ? URL::to('public/user-profile-cover-image/'.$user->cover_image) : URL::to('public/assets/media/misc/image.png');
+                    $user->profile = @$user->profile ? URL::to('public/user-profile/' . $user->profile) : URL::to('public/assets/media/avatars/blank.png');
+                    $user->cover_image = @$user->cover_image ? URL::to('public/user-profile-cover-image/' . $user->cover_image) : URL::to('public/assets/media/misc/image.png');
                     $authData['userDetails'] = $user;
                     $authData['token'] = $token;
                     $authData['token_type'] = 'bearer';
@@ -444,8 +445,8 @@ class UserController extends Controller
                     $userDeviceToken->user_id = $user->id;
                     $userDeviceToken->token = $request->device_token;
                     $userDeviceToken->save();
-                    $user->profile = @$user->profile ? URL::to('public/user-profile/'.$user->profile) : URL::to('public/assets/media/avatars/blank.png');
-                    $user->cover_image = @$user->cover_image ? URL::to('public/user-profile-cover-image/'.$user->cover_image) : URL::to('public/assets/media/misc/image.png');
+                    $user->profile = @$user->profile ? URL::to('public/user-profile/' . $user->profile) : URL::to('public/assets/media/avatars/blank.png');
+                    $user->cover_image = @$user->cover_image ? URL::to('public/user-profile-cover-image/' . $user->cover_image) : URL::to('public/assets/media/misc/image.png');
                     $authData['userDetails'] = $user;
                     $authData['token'] = $token;
                     $authData['token_type'] = 'bearer';
@@ -632,9 +633,52 @@ class UserController extends Controller
     public function userList(Request $request)
     {
         try {
-            $userList = User::where('role', 'User')->where('status', 'Active')->where('id','!=',auth()->user()->id)->get();
+            $latestMessagesSubquery = DB::table('message_sender_receiver')
+                ->select('message_sender_receiver.sender_id as user_id', DB::raw('MAX(message.created_at) as last_message_date'))
+                ->leftJoin('message', 'message_sender_receiver.message_id', '=', 'message.id')
+                ->where('message.status', 'Unread')
+                ->groupBy('message_sender_receiver.sender_id')
+                ->union(
+                    DB::table('message_sender_receiver')
+                        ->select('message_sender_receiver.receiver_id as user_id', DB::raw('MAX(message.created_at) as last_message_date'))
+                        ->leftJoin('message', 'message_sender_receiver.message_id', '=', 'message.id')
+                        ->where('message.status', 'Unread')
+                        ->groupBy('message_sender_receiver.receiver_id')
+                );
+            $latestMessages = DB::table(DB::raw("({$latestMessagesSubquery->toSql()}) as latest_messages"))
+                ->mergeBindings($latestMessagesSubquery)
+                ->select('latest_messages.user_id', 'message.message', 'message.message_type', 'latest_messages.last_message_date')
+                ->leftJoin('message', function ($join) {
+                    $join->on('latest_messages.last_message_date', '=', 'message.created_at')
+                        ->where('message.status', 'Unread');
+                });
+            $unreadMessagesCountSubquery = DB::table('message_sender_receiver')
+                ->select('message_sender_receiver.sender_id as user_id', DB::raw('COUNT(message.id) as unread_count'))
+                ->leftJoin('message', 'message_sender_receiver.message_id', '=', 'message.id')
+                ->where('message.status', 'Unread')
+                ->groupBy('message_sender_receiver.sender_id')
+                ->union(
+                    DB::table('message_sender_receiver')
+                        ->select('message_sender_receiver.receiver_id as user_id', DB::raw('COUNT(message.id) as unread_count'))
+                        ->leftJoin('message', 'message_sender_receiver.message_id', '=', 'message.id')
+                        ->where('message.status', 'Unread')
+                        ->groupBy('message_sender_receiver.receiver_id')
+                );
+            $userList = User::leftJoinSub($latestMessages, 'latest_message', function ($join) {
+                $join->on('users.id', '=', 'latest_message.user_id');
+            })
+                ->leftJoinSub($unreadMessagesCountSubquery, 'unread_messages', function ($join) {
+                    $join->on('users.id', '=', 'unread_messages.user_id');
+                })
+                ->where('users.role', 'User')
+                ->where('users.status', 'Active')
+                ->where('users.id', '!=', auth()->user()->id)
+                ->select('users.id', 'users.first_name', 'users.last_name', 'users.profile', 'latest_message.last_message_date', DB::raw('COALESCE(latest_message.message, latest_message.message_type) as last_message'), DB::raw('COALESCE(unread_messages.unread_count, 0) as unread_message_count'))
+                ->orderByDesc('latest_message.last_message_date')
+                ->get();
+
             $userList = $userList->map(function ($user) {
-                $user->profile = @$user->profile ? URL::to('public/user-profile/'.$user->profile) : URL::to('public/assets/media/avatars/blank.png');
+                $user->profile = $user->profile ? URL::to('public/user-profile/' . $user->profile) : URL::to('public/assets/media/avatars/blank.png');
                 return $user;
             });
             $data = [
@@ -717,8 +761,8 @@ class UserController extends Controller
             }
             $user = new User();
             $userData = $user->find($request->id);
-            $userData->profile = @$userData->profile ? URL::to('public/user-profile/'.$userData->profile) : URL::to('public/assets/media/avatars/blank.png');
-            $userData->cover_image = @$userData->cover_image ? URL::to('public/user-profile-cover-image/'.$userData->cover_image) : URL::to('public/assets/media/misc/image.png');
+            $userData->profile = @$userData->profile ? URL::to('public/user-profile/' . $userData->profile) : URL::to('public/assets/media/avatars/blank.png');
+            $userData->cover_image = @$userData->cover_image ? URL::to('public/user-profile-cover-image/' . $userData->cover_image) : URL::to('public/assets/media/misc/image.png');
             $data = [
                 'status_code' => 200,
                 'message' => "Get Data Successfully!",
@@ -918,6 +962,9 @@ class UserController extends Controller
             $user->youtube_profile_url = @$request->youtube_profile_url ? $request->youtube_profile_url : NULL;
             $user->linkedin_profile_url = @$request->linkedin_profile_url ? $request->linkedin_profile_url : NULL;
             $user->save();
+
+            $user->profile = @$user->profile ? URL::to('public/user-profile' . $user->profile) : NULL;
+            $user->cover_image = @$user->cover_image ? URL::to('public/user-profile-cover-image' . $user->cover_image) : NULL;
             $data = [
                 'status_code' => 200,
                 'message' => "User Updated Successfully!",

@@ -99,4 +99,14 @@ class User extends Authenticatable implements  JWTSubject
                     ->first();
         return $query;
     }
+
+    public function senderMessages()
+    {
+        return $this->hasMany(MessageSenderReceiver::class, 'sender_id');
+    }
+
+    public function receiverMessages()
+    {
+        return $this->hasMany(MessageSenderReceiver::class, 'receiver_id');
+    }
 }
