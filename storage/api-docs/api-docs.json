@@ -790,6 +790,18 @@
                 "summary": "User List",
                 "description": "User List",
                 "operationId": "userList",
+                "parameters": [
+                    {
+                        "name": "timezone",
+                        "in": "query",
+                        "description": "Enter Timezone",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": ""
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "json schema",

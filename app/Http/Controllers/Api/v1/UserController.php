@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\userDeviceToken;
 use App\Models\UserOtp;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
@@ -617,6 +618,16 @@ class UserController extends Controller
      *     description="User List",
      *     operationId="userList",
      *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="timezone",
+     *         in="query",
+     *         example="",
+     *         description="Enter Timezone",
+     *         required=false,
+     *         @OA\Schema(
+     *             type="string",
+     *         )
+     *     ),
      *      @OA\Response(
      *         response=200,
      *         description="json schema",
@@ -634,27 +645,24 @@ class UserController extends Controller
     {
         try {
             $latestMessagesSubquery = DB::table('message_sender_receiver')
-    ->select('user_id', DB::raw('MAX(last_message_date) as last_message_date'))
-    ->from(function ($query) {
-        $query->select('message_sender_receiver.sender_id as user_id', 'message.created_at as last_message_date')
-            ->from('message_sender_receiver')
-            ->leftJoin('message', 'message_sender_receiver.message_id', '=', 'message.id')
-            ->where('message.status', 'Unread')
-            ->union(
-                DB::table('message_sender_receiver')
-                    ->select('message_sender_receiver.receiver_id as user_id', 'message.created_at as last_message_date')
-                    ->from('message_sender_receiver')
-                    ->leftJoin('message', 'message_sender_receiver.message_id', '=', 'message.id')
-                    ->where('message.status', 'Unread')
-            );
-    }, 'latest_message_union')
-    ->groupBy('user_id');
+                ->select('user_id', DB::raw('MAX(last_message_date) as last_message_date'))
+                ->from(function ($query) {
+                    $query->select('message_sender_receiver.sender_id as user_id', 'message.created_at as last_message_date')
+                        ->from('message_sender_receiver')
+                        ->leftJoin('message', 'message_sender_receiver.message_id', '=', 'message.id')
+                        ->union(
+                            DB::table('message_sender_receiver')
+                                ->select('message_sender_receiver.receiver_id as user_id', 'message.created_at as last_message_date')
+                                ->from('message_sender_receiver')
+                                ->leftJoin('message', 'message_sender_receiver.message_id', '=', 'message.id')
+                        );
+                }, 'latest_message_union')
+                ->groupBy('user_id');
             $latestMessages = DB::table(DB::raw("({$latestMessagesSubquery->toSql()}) as latest_messages"))
                 ->mergeBindings($latestMessagesSubquery)
                 ->select('latest_messages.user_id', 'message.message', 'message.message_type', 'latest_messages.last_message_date')
                 ->leftJoin('message', function ($join) {
-                    $join->on('latest_messages.last_message_date', '=', 'message.created_at')
-                        ->where('message.status', 'Unread');
+                    $join->on('latest_messages.last_message_date', '=', 'message.created_at');
                 });
             $unreadMessagesCountSubquery = DB::table('message_sender_receiver')
                 ->select('message_sender_receiver.sender_id as user_id', DB::raw('COUNT(message.id) as unread_count'))
@@ -680,11 +688,10 @@ class UserController extends Controller
                 ->select('users.id', 'users.first_name', 'users.last_name', 'users.profile', 'latest_message.last_message_date', DB::raw('COALESCE(latest_message.message, latest_message.message_type) as last_message'), DB::raw('COALESCE(unread_messages.unread_count, 0) as unread_message_count'))
                 ->orderByDesc('latest_message.last_message_date')
                 ->get();
-
-            $userList = $userList->map(function ($user) {
+            foreach($userList as $user){
                 $user->profile = $user->profile ? URL::to('public/user-profile/' . $user->profile) : URL::to('public/assets/media/avatars/blank.png');
-                return $user;
-            });
+                $user->last_message_date = @$request->timezone ? Carbon::parse($user->last_message_date)->setTimezone( $request->timezone )->format('Y-m-d H:i:s') : $user->last_message_date;
+            }
             $data = [
                 'status_code' => 200,
                 'message' => "Get Data Successfully.",
