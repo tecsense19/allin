@@ -967,8 +967,8 @@ class UserController extends Controller
             $user->linkedin_profile_url = @$request->linkedin_profile_url ? $request->linkedin_profile_url : NULL;
             $user->save();
 
-            $user->profile = @$user->profile ? URL::to('public/user-profile' . $user->profile) : NULL;
-            $user->cover_image = @$user->cover_image ? URL::to('public/user-profile-cover-image' . $user->cover_image) : NULL;
+            $user->profile = @$user->profile ? URL::to('public/user-profile/' . $user->profile) : NULL;
+            $user->cover_image = @$user->cover_image ? URL::to('public/user-profile-cover-image/' . $user->cover_image) : NULL;
             $data = [
                 'status_code' => 200,
                 'message' => "User Updated Successfully!",
