@@ -882,6 +882,11 @@
                                         "type": "number",
                                         "example": "9876543210"
                                     },
+                                    "email": {
+                                        "description": "Enter Email Address",
+                                        "type": "string",
+                                        "example": "test@yopmail.com"
+                                    },
                                     "title": {
                                         "description": "Enter title",
                                         "type": "string",

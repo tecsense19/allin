@@ -783,6 +783,12 @@ class UserController extends Controller
      *                     description="Enter Mobile Number"
      *                 ),
      *                 @OA\Property(
+     *                     property="email",
+     *                     type="string",
+     *                     example="test@yopmail.com",
+     *                     description="Enter Email Address"
+     *                 ),
+     *                 @OA\Property(
      *                     property="title",
      *                     type="string",
      *                     example="",
@@ -901,6 +907,7 @@ class UserController extends Controller
             $user->last_name = @$request->last_name ? $request->last_name : $user->last_name;
             $user->country_code = @$request->country_code ? $request->country_code : $user->country_code;
             $user->mobile = @$request->mobile ? $request->mobile : $user->mobile;
+            $user->email = @$request->email ? $request->email : $user->email;
             $user->profile = $profileImageName;
             $user->cover_image = $coverImageName;
             $user->title = @$request->title ? $request->title : NULL;
