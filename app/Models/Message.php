@@ -11,7 +11,7 @@ class Message extends Model
 {
     use HasFactory, CreatedUpdatedBy, SoftDeletes;
 
-    protected $table = 'user_device_tokens';
+    protected $table = 'message';
 
     protected $fillable = [
         'message_type',

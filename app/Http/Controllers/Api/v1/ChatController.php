@@ -5,8 +5,12 @@ namespace App\Http\Controllers\Api\v1;
 use App\Http\Controllers\Controller;
 use App\Models\Message;
 use App\Models\MessageAttachment;
+use App\Models\MessageLocation;
+use App\Models\MessageMeeting;
 use App\Models\MessageSenderReceiver;
 use App\Models\MessageTask;
+use App\Models\MessageTaskChat;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
@@ -362,6 +366,442 @@ class ChatController extends Controller
             $messageTask->task_description = @$request->task_description ? $request->task_description : NULL;
             $messageTask->users = $mergedIds;
             $messageTask->save();
+
+            $data = [
+                'status_code' => 200,
+                'message' => 'Message Sent Successfully!',
+                'data' => ""
+            ];
+            return $this->sendJsonResponse($data);
+        } catch (\Exception $e) {
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => now()->format("Y-m-d H:i:s")
+            ]);
+            return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/v1/message-task-chat",
+     *     summary="Add a new Task Chat message",
+     *     tags={"Messages"},
+     *     description="Create a new message along with its sender/receiver, attachments, tasks, locations, and meetings.",
+     *     operationId="messageTaskChat",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Add Message Request",
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"message_type","task_id"},
+     *                 @OA\Property(
+     *                     property="message_type",
+     *                     type="string",
+     *                     example="text",
+     *                     description="Type of the message"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="task_id",
+     *                     type="string",
+     *                     example="1",
+     *                     description="Enter taskId"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="message",
+     *                     type="string",
+     *                     example="",
+     *                     description="Task Message"
+     *                 ),
+     *             )
+     *         )
+     *     ),
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+
+    public function messageTaskChat(Request $request)
+    {
+        try {
+            $rules = [
+                'message_type' => 'required|string',
+                'task_id' => 'required|string',
+                'message' => 'required|string',
+            ];
+
+            $message = [
+                'message_type.required' => 'The message type is required.',
+                'message_type.string' => 'The message type must be a string.',
+                'task_id.required' => 'The receiver ID is required.',
+                'task_id.string' => 'The receiver ID must be an string.',
+                'message.required' => 'The receiver ID is required.',
+                'message.string' => 'The receiver ID must be an string.',
+            ];
+
+            $validator = Validator::make($request->all(), $rules, $message);
+            if ($validator->fails()) {
+                $data = [
+                    'status_code' => 400,
+                    'message' => $validator->errors()->first(),
+                    'data' => ""
+                ];
+                return $this->sendJsonResponse($data);
+            }
+
+            $msg = new Message();
+            $msg->message_type = $request->message_type;
+            $msg->status = "Unread";
+            $msg->save();
+
+            $task_user = MessageTask::where('id', $request->task_id)->first()->users;
+            $exloded_task_user = explode(",", $task_user);
+            $userId = [auth()->user()->id];
+            $notInArray = array_diff($exloded_task_user, $userId);
+            if (count($notInArray) > 0) {
+                foreach ($notInArray as $singleUser) {
+                    MessageSenderReceiver::create([
+                        'message_id' => $msg->id,
+                        'sender_id' => auth()->user()->id,
+                        'receiver_id' => $singleUser,
+                    ]);
+                }
+            }
+            $messageTaskChat = new MessageTaskChat();
+            $messageTaskChat->message_id = $msg->id;
+            $messageTaskChat->task_id = $request->task_id;
+            $messageTaskChat->save();
+            $data = [
+                'status_code' => 200,
+                'message' => 'Message Sent Successfully!',
+                'data' => ""
+            ];
+            return $this->sendJsonResponse($data);
+        } catch (\Exception $e) {
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => now()->format("Y-m-d H:i:s")
+            ]);
+            return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/v1/message-location",
+     *     summary="Add a new message to send location",
+     *     tags={"Messages"},
+     *     description="Create a new message along with its sender/receiver, attachments, tasks, locations, and meetings.",
+     *     operationId="messageLocation",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Add Message Request",
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"message_type","receiver_id","latitude","longitude"},
+     *                 @OA\Property(
+     *                     property="message_type",
+     *                     type="string",
+     *                     example="text",
+     *                     description="Type of the message"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="receiver_id",
+     *                     type="string",
+     *                     example="1",
+     *                     description="Enter ReceiverId"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="latitude",
+     *                     type="string",
+     *                     example="123.123.1",
+     *                     description="Enter latitude"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="longitude",
+     *                     type="string",
+     *                     example="445.123.0",
+     *                     description="Enter longitude"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="location_url",
+     *                     type="string",
+     *                     example="",
+     *                     description="Enter location url"
+     *                 ),
+     *             )
+     *         )
+     *     ),
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+
+    public function messageLocation(Request $request)
+    {
+        try {
+            $rules = [
+                'message_type' => 'required|string',
+                'receiver_id' => 'required|string',
+                'latitude' => 'required|string',
+                'longitude' => 'required|string',
+            ];
+
+            $message = [
+                'message_type.required' => 'The message type is required.',
+                'message_type.string' => 'The message type must be a string.',
+                'receiver_id.required' => 'The Receiver Id is required.',
+                'receiver_id.string' => 'The Receiver Id must be a string.',
+                'latitude.required' => 'The latitude is required.',
+                'latitude.string' => 'The latitude must be an string.',
+                'longitude.required' => 'The longitude is required.',
+                'longitude.string' => 'The longitude must be an string.',
+            ];
+
+            $validator = Validator::make($request->all(), $rules, $message);
+            if ($validator->fails()) {
+                $data = [
+                    'status_code' => 400,
+                    'message' => $validator->errors()->first(),
+                    'data' => ""
+                ];
+                return $this->sendJsonResponse($data);
+            }
+
+            $msg = new Message();
+            $msg->message_type = $request->message_type;
+            $msg->status = "Unread";
+            $msg->save();
+
+            $messageSenderReceiver = new MessageSenderReceiver();
+            $messageSenderReceiver->message_id = $msg->id;
+            $messageSenderReceiver->sender_id = auth()->user()->id;
+            $messageSenderReceiver->receiver_id = $request->receiver_id;
+            $messageSenderReceiver->save();
+
+            $messageLocation = new MessageLocation();
+            $messageLocation->message_id = $msg->id;
+            $messageLocation->latitude = $request->latitude;
+            $messageLocation->longitude = $request->longitude;
+            $messageLocation->location_url = $request->location_url;
+            $messageLocation->save();
+
+            $data = [
+                'status_code' => 200,
+                'message' => 'Message Sent Successfully!',
+                'data' => ""
+            ];
+            return $this->sendJsonResponse($data);
+        } catch (\Exception $e) {
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => now()->format("Y-m-d H:i:s")
+            ]);
+            return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/v1/message-meeting",
+     *     summary="Add a new message for meeting",
+     *     tags={"Messages"},
+     *     description="Create a new message along with its sender/receiver, attachments, tasks, locations, and meetings.",
+     *     operationId="messageMeeting",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Add Message Request",
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"message_type","receiver_id","mode","title","date","start_time","end_time"},
+     *                 @OA\Property(
+     *                     property="message_type",
+     *                     type="string",
+     *                     example="text",
+     *                     description="Type of the message"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="receiver_id",
+     *                     type="string",
+     *                     example="1,2,3,4",
+     *                     description="Comma-separated IDs of the receiver"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="mode",
+     *                     type="string",
+     *                     example="Online",
+     *                     description="Enter Mode of the meeting. (Online  / Offline)"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="title",
+     *                     type="string",
+     *                     example="",
+     *                     description="Meeting Title"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="description",
+     *                     type="string",
+     *                     example="",
+     *                     description="meeting Description"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="date",
+     *                     type="string",
+     *                     example="",
+     *                     description="Meeting date"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="start_time",
+     *                     type="string",
+     *                     example="",
+     *                     description="Meeting Start Time"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="end_time",
+     *                     type="string",
+     *                     example="",
+     *                     description="Meeting End Time"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="meeting_url",
+     *                     type="string",
+     *                     example="",
+     *                     description="Meeting URL"
+     *                 ),
+     *             )
+     *         )
+     *     ),
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+
+    public function messageMeeting(Request $request)
+    {
+        try {
+            $rules = [
+                'message_type' => 'required|string',
+                'receiver_id' => 'required|string|regex:/^(\d+,)*\d+$/',
+                'mode' => 'required|string|in:Online,Offline',
+                'title' => 'required|string',
+                'description' => 'nullable|string',
+                'date' => 'required|date',
+                'start_time' => 'required|date_format:H:i:s',
+                'end_time' => 'required|date_format:H:i:s',
+                'meeting_url' => 'required_if:mode,Online|nullable|url',
+            ];
+
+            $message = [
+                'message_type.required' => 'The message type is required.',
+                'message_type.string' => 'The message type must be a string.',
+                'receiver_id.required' => 'The receiver ID is required.',
+                'receiver_id.string' => 'The receiver ID must be a string.',
+                'receiver_id.regex' => 'The receiver ID must be a comma-separated string of integers.',
+                'mode.required' => 'The mode is required.',
+                'mode.string' => 'The mode must be a string.',
+                'mode.in' => 'The mode must be either Online or Offline.',
+                'title.required' => 'The title is required.',
+                'title.string' => 'The title must be a string.',
+                'description.string' => 'The description must be a string.',
+                'date.required' => 'The date is required.',
+                'date.date' => 'The date must be a valid date.',
+                'start_time.required' => 'The start time is required.',
+                'start_time.date_format' => 'The start time must be in the format H:i:s.',
+                'end_time.required' => 'The end time is required.',
+                'end_time.date_format' => 'The end time must be in the format H:i:s.',
+                'meeting_url.required_if' => 'The meeting URL is required when the mode is Online.',
+                'meeting_url.url' => 'The meeting URL must be a valid URL.',
+            ];
+
+            $validator = Validator::make($request->all(), $rules, $message);
+            if ($validator->fails()) {
+                $data = [
+                    'status_code' => 400,
+                    'message' => $validator->errors()->first(),
+                    'data' => ""
+                ];
+                return $this->sendJsonResponse($data);
+            }
+
+            $msg = new Message();
+            $msg->message_type = $request->message_type;
+            $msg->status = "Unread";
+            $msg->save();
+
+            $receiverIdsArray = explode(',', $request->receiver_id);
+            $senderId = auth()->user()->id;
+
+            foreach ($receiverIdsArray as $receiverId) {
+                $messageSenderReceiver = new MessageSenderReceiver();
+                $messageSenderReceiver->message_id = $msg->id;
+                $messageSenderReceiver->sender_id = $senderId;
+                $messageSenderReceiver->receiver_id = $receiverId;
+                $messageSenderReceiver->save();
+            }
+
+            $receiverIdsArray[] = $senderId;
+            $uniqueIdsArray = array_unique($receiverIdsArray);
+            $mergedIds = implode(',', $uniqueIdsArray);
+
+            $messageMeeting = new MessageMeeting();
+            $messageMeeting->message_id = $msg->id;
+            $messageMeeting->mode = $request->mode;
+            $messageMeeting->title = $request->title;
+            $messageMeeting->description = @$request->description ? $request->description : NULL;
+            $messageMeeting->date = @$request->date ? Carbon::parse($request->date)->format('Y-m-d') : NULL;
+            $messageMeeting->start_time = @$request->start_time ? Carbon::parse($request->start_time)->format('H:i:s') : NULL;
+            $messageMeeting->end_time = @$request->end_time ? Carbon::parse($request->end_time)->format('H:i:s') : NULL;
+            $messageMeeting->meeting_url = @$request->meeting_url ? $request->meeting_url : NULL;
+            $messageMeeting->users = $mergedIds;
+            $messageMeeting->save();
 
             $data = [
                 'status_code' => 200,

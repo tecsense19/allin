@@ -200,6 +200,227 @@
                 ]
             }
         },
+        "/api/v1/message-task-chat": {
+            "post": {
+                "tags": [
+                    "Messages"
+                ],
+                "summary": "Add a new Task Chat message",
+                "description": "Create a new message along with its sender/receiver, attachments, tasks, locations, and meetings.",
+                "operationId": "messageTaskChat",
+                "requestBody": {
+                    "description": "Add Message Request",
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "message_type",
+                                    "task_id"
+                                ],
+                                "properties": {
+                                    "message_type": {
+                                        "description": "Type of the message",
+                                        "type": "string",
+                                        "example": "text"
+                                    },
+                                    "task_id": {
+                                        "description": "Enter taskId",
+                                        "type": "string",
+                                        "example": "1"
+                                    },
+                                    "message": {
+                                        "description": "Task Message",
+                                        "type": "string",
+                                        "example": ""
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "json schema",
+                        "content": {
+                            "application/json": {}
+                        }
+                    },
+                    "404": {
+                        "description": "Invalid Request"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/message-location": {
+            "post": {
+                "tags": [
+                    "Messages"
+                ],
+                "summary": "Add a new message to send location",
+                "description": "Create a new message along with its sender/receiver, attachments, tasks, locations, and meetings.",
+                "operationId": "messageLocation",
+                "requestBody": {
+                    "description": "Add Message Request",
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "message_type",
+                                    "receiver_id",
+                                    "latitude",
+                                    "longitude"
+                                ],
+                                "properties": {
+                                    "message_type": {
+                                        "description": "Type of the message",
+                                        "type": "string",
+                                        "example": "text"
+                                    },
+                                    "receiver_id": {
+                                        "description": "Enter ReceiverId",
+                                        "type": "string",
+                                        "example": "1"
+                                    },
+                                    "latitude": {
+                                        "description": "Enter latitude",
+                                        "type": "string",
+                                        "example": "123.123.1"
+                                    },
+                                    "longitude": {
+                                        "description": "Enter longitude",
+                                        "type": "string",
+                                        "example": "445.123.0"
+                                    },
+                                    "location_url": {
+                                        "description": "Enter location url",
+                                        "type": "string",
+                                        "example": ""
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "json schema",
+                        "content": {
+                            "application/json": {}
+                        }
+                    },
+                    "404": {
+                        "description": "Invalid Request"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/message-meeting": {
+            "post": {
+                "tags": [
+                    "Messages"
+                ],
+                "summary": "Add a new message for meeting",
+                "description": "Create a new message along with its sender/receiver, attachments, tasks, locations, and meetings.",
+                "operationId": "messageMeeting",
+                "requestBody": {
+                    "description": "Add Message Request",
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "message_type",
+                                    "receiver_id",
+                                    "mode",
+                                    "title",
+                                    "date",
+                                    "start_time",
+                                    "end_time"
+                                ],
+                                "properties": {
+                                    "message_type": {
+                                        "description": "Type of the message",
+                                        "type": "string",
+                                        "example": "text"
+                                    },
+                                    "receiver_id": {
+                                        "description": "Comma-separated IDs of the receiver",
+                                        "type": "string",
+                                        "example": "1,2,3,4"
+                                    },
+                                    "mode": {
+                                        "description": "Enter Mode of the meeting. (Online  / Offline)",
+                                        "type": "string",
+                                        "example": "Online"
+                                    },
+                                    "title": {
+                                        "description": "Meeting Title",
+                                        "type": "string",
+                                        "example": ""
+                                    },
+                                    "description": {
+                                        "description": "meeting Description",
+                                        "type": "string",
+                                        "example": ""
+                                    },
+                                    "date": {
+                                        "description": "Meeting date",
+                                        "type": "string",
+                                        "example": ""
+                                    },
+                                    "start_time": {
+                                        "description": "Meeting Start Time",
+                                        "type": "string",
+                                        "example": ""
+                                    },
+                                    "end_time": {
+                                        "description": "Meeting End Time",
+                                        "type": "string",
+                                        "example": ""
+                                    },
+                                    "meeting_url": {
+                                        "description": "Meeting URL",
+                                        "type": "string",
+                                        "example": ""
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "json schema",
+                        "content": {
+                            "application/json": {}
+                        }
+                    },
+                    "404": {
+                        "description": "Invalid Request"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/v1/file-upload": {
             "post": {
                 "tags": [
@@ -660,6 +881,11 @@
                                         "description": "Enter Mobile Number",
                                         "type": "number",
                                         "example": "9876543210"
+                                    },
+                                    "title": {
+                                        "description": "Enter title",
+                                        "type": "string",
+                                        "example": ""
                                     },
                                     "description": {
                                         "description": "Enter Description",

@@ -22,6 +22,7 @@ class MessageMeeting extends Model
         'start_time',
         'end_time',
         'meeting_url',
+        'users',
         'created_by',
         'updated_by',
         'deleted_by',

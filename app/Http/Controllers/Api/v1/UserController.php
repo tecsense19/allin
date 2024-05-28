@@ -783,6 +783,12 @@ class UserController extends Controller
      *                     description="Enter Mobile Number"
      *                 ),
      *                 @OA\Property(
+     *                     property="title",
+     *                     type="string",
+     *                     example="",
+     *                     description="Enter title"
+     *                 ),
+     *                 @OA\Property(
      *                     property="description",
      *                     type="string",
      *                     example="",
@@ -897,6 +903,7 @@ class UserController extends Controller
             $user->mobile = @$request->mobile ? $request->mobile : $user->mobile;
             $user->profile = $profileImageName;
             $user->cover_image = $coverImageName;
+            $user->title = @$request->title ? $request->title : NULL;
             $user->description = @$request->description ? $request->description : NULL;
             $user->instagram_profile_url = @$request->instagram_profile_url ? $request->instagram_profile_url : NULL;
             $user->facebook_profile_url = @$request->facebook_profile_url ? $request->facebook_profile_url : NULL;

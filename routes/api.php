@@ -45,6 +45,9 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
             Route::post('/text-message', 'textMessage');
             Route::post('/file-upload-message', 'fileUploadMessage');
             Route::post('/message-task', 'messageTask');
+            Route::post('/message-task-chat', 'messageTaskChat');
+            Route::post('/message-location', 'messageLocation');
+            Route::post('/message-meeting', 'messageMeeting');
             Route::post('/file-upload', 'fileUpload');
         });
     });
