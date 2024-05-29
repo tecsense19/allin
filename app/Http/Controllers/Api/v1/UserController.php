@@ -662,7 +662,14 @@ class UserController extends Controller
                     $lastMessage = $messages->first();
                     if ($lastMessage && $lastMessage->message) {
                         $lastMessageContent = $lastMessage->message->message ?? $lastMessage->message->message_type ?? null;
-                        $lastMessageDate = $lastMessage->created_at ? Carbon::parse($lastMessage->created_at)->format('Y-m-d H:i:s') : null;
+                        if($lastMessage->created_at && $request->timezone){
+                            $lastMessageDate = Carbon::parse($lastMessage->created_at)->setTimezone( $request->timezone )->format('Y-m-d H:i:s');
+                        }elseif($lastMessage->created_at){
+                            $lastMessageDate = Carbon::parse($lastMessage->created_at)->format('Y-m-d H:i:s');
+                        }else{
+                            $lastMessageDate = null;
+                        }
+                        // $lastMessageDate = $lastMessage->created_at ? Carbon::parse($lastMessage->created_at)->format('Y-m-d H:i:s') : null;
                     } else {
                         $lastMessageContent = null;
                         $lastMessageDate = null;
@@ -687,7 +694,7 @@ class UserController extends Controller
                         'id' => $user->id,
                         'first_name' => $user->first_name,
                         'last_name' => $user->last_name,
-                        'profile' => URL::to('public/user-profile/' . $user->profile),
+                        'profile' => @$user->profile ? URL::to('public/user-profile/' . $user->profile) : URL::to('public/assets/media/avatars/blank.png'),
                         'last_message' => $lastMessageContent,
                         'last_message_date' => $lastMessageDate,
                         'unread_message_count' => $unreadMessageCount,
