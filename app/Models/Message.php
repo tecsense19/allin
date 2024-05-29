@@ -53,4 +53,24 @@ class Message extends Model
     {
         return $this->hasMany(MessageSenderReceiver::class);
     }
+
+    public function attachment()
+    {
+        return $this->hasOne(MessageAttachment::class);
+    }
+
+    public function task()
+    {
+        return $this->hasOne(MessageTask::class);
+    }
+
+    public function location()
+    {
+        return $this->hasOne(MessageLocation::class);
+    }
+
+    public function meeting()
+    {
+        return $this->hasOne(MessageMeeting::class);
+    }
 }

@@ -2,6 +2,10 @@
 
 use App\Models\User;
 use Illuminate\Support\Facades\Facade;
+use Kreait\Firebase\Factory;
+use Kreait\Firebase\Messaging\AndroidConfig;
+use Kreait\Firebase\Messaging\ApnsConfig;
+use Kreait\Firebase\Messaging\Notification;
 use Spatie\ImageOptimizer\OptimizerChainFactory;
 
 if (!function_exists('create_slug')) {
@@ -60,7 +64,7 @@ if (!function_exists('imageUpload')) {
       $image->move($destinationPath, $imageName);
 
       $optimizerChain = OptimizerChainFactory::create();
-      $optimizerChain->optimize($destinationPath.$imageName);
+      $optimizerChain->optimize($destinationPath . $imageName);
       return $imageName;
     } else {
       return 'upload_failed';
@@ -113,4 +117,80 @@ if (!function_exists('verifyOtp')) {
       }
     }
   }
+}
+
+if (!function_exists('sendPushNotification')) {
+  function sendPushNotification($device_id, $message, $data)
+  {
+
+    $result = [];
+    $allMessage = [];
+    $path = app_path(config('services.firebase.url'));
+    $factory = (new Factory)
+      ->withServiceAccount($path);
+    $messaging = $factory->createMessaging();
+    //$messaging = app('firebase.messaging');
+    foreach ($device_id as $Device) {
+      $deviceToken = $Device;
+      $title = $message['title'];
+      $body =  $message['body'];
+      $image = $message['image'];
+      $notification = Notification::create($title, $body);
+
+      $androidConfig = AndroidConfig::fromArray([
+        'notification' => [
+          "title" => $title,
+          "body" => $body,
+          "image" => $image
+        ]
+      ]);
+
+      $appleConfig = ApnsConfig::fromArray([
+        'payload' => [
+          'aps' => [
+            "content-available" => 1,
+            "mutable-content" => 1
+          ],
+        ],
+        'fcm_options' => [
+          'image' => $image
+        ]
+      ]);
+      if (!empty($deviceToken)) {
+        $allMessage[] = generateMessage($deviceToken, $notification, $data, $androidConfig, $appleConfig);
+        $validateTokens[] = $messaging->validateRegistrationTokens($deviceToken);
+      }
+    }
+
+    if (count($allMessage) > 0) {
+      $result = $messaging->sendAll($allMessage);
+      // Log::error(['method' => _METHOD_, 'notification_test' => ['message' =>$result,"Validation"=>$validateTokens], 'created_at' => date("Y-m-d H:i:s")]);
+    }
+  }
+}
+
+if (!function_exists('validateToken')) {
+  function validateToken($user_id)
+  {
+    $device_id = UserLogin::where('user_id', $user_id)->pluck('push_notification_id')->toArray();
+    $path = app_path(config('services.firebase.url'));
+    $factory = (new Factory)
+      ->withServiceAccount($path);
+    $messaging = $factory->createMessaging();
+    // $messaging = app('firebase.messaging');
+    foreach ($device_id as $Device) {
+      $validateTokens[] = $messaging->validateRegistrationTokens($Device);
+    }
+    return $validateTokens;
+  }
+}
+
+function generateMessage($deviceToken, $notification, $data, $androidConfig, $appleConfig)
+{
+  return (new \Kreait\Firebase\Messaging\Message())
+    ->withNotification($notification)
+    ->withData($data)
+    ->withAndroidConfig($androidConfig) // Corrected method name
+    ->withApnsConfig($appleConfig) // Corrected method name
+    ->withToken($deviceToken);
 }
