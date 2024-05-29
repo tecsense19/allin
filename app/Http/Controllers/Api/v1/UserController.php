@@ -644,86 +644,81 @@ class UserController extends Controller
      */
     public function userList(Request $request)
     {
-        // try {
-        $login_user_id = auth()->user()->id;
+        try {
+            $login_user_id = auth()->user()->id;
+            $users = User::where('id', '!=', $login_user_id)
+                ->where('role', 'User')
+                ->where('status', 'Active')
+                ->whereNull('deleted_at')
+                ->with(['sentMessages.message' => function ($query) {
+                    $query->whereNull('deleted_at');
+                }, 'receivedMessages.message' => function ($query) {
+                    $query->whereNull('deleted_at');
+                }])
+                ->get()
+                ->map(function ($user) use ($login_user_id, $request) {
+                    $lastMessage = null;
+                    $messages = $user->sentMessages->merge($user->receivedMessages)->sortByDesc('created_at');
+                    $lastMessage = $messages->first();
+                    if ($lastMessage && $lastMessage->message) {
+                        $lastMessageContent = $lastMessage->message->message ?? $lastMessage->message->message_type ?? null;
+                        $lastMessageDate = $lastMessage->created_at ? Carbon::parse($lastMessage->created_at)->format('Y-m-d H:i:s') : null;
+                    } else {
+                        $lastMessageContent = null;
+                        $lastMessageDate = null;
+                    }
 
-        // Fetch users with their last message and required fields
-        $users = User::where('id', '!=', $login_user_id)
-            ->where('role', 'User')
-            ->where('status', 'Active')
-            ->whereNull('deleted_at')
-            ->with(['sentMessages.message' => function ($query) {
-                $query->whereNull('deleted_at'); // Exclude deleted messages
-            }, 'receivedMessages.message' => function ($query) {
-                $query->whereNull('deleted_at'); // Exclude deleted messages
-            }])
-            ->get()
-            ->map(function ($user) use ($login_user_id, $request) {
-                $lastMessage = null;
+                    // Count unread messages, excluding deleted messages
+                    $unreadMessageCount = MessageSenderReceiver::where(function ($query) use ($user, $login_user_id) {
+                        $query->where('sender_id', $user->id)
+                            ->where('receiver_id', $login_user_id);
+                    })
+                        ->orWhere(function ($query) use ($user, $login_user_id) {
+                            $query->where('sender_id', $login_user_id)
+                                ->where('receiver_id', $user->id);
+                        })
+                        ->whereHas('message', function ($q) {
+                            $q->where('status', 'Unread')
+                                ->whereNull('deleted_at'); // Exclude deleted messages
+                        })
+                        ->count();
 
-                // Combine sent and received messages and get the last one
-                $messages = $user->sentMessages->merge($user->receivedMessages)->sortByDesc('created_at');
-                $lastMessage = $messages->first();
-
-                // Check for existence of last message and handle null values
-                if ($lastMessage && $lastMessage->message) {
-                    $lastMessageContent = $lastMessage->message->message ?? $lastMessage->message->message_type ?? null;
-                    $lastMessageDate = $lastMessage->created_at ? Carbon::parse($lastMessage->created_at)->format('Y-m-d H:i:s') : null;
-                } else {
-                    $lastMessageContent = null;
-                    $lastMessageDate = null;
-                }
-
-                // Count unread messages, excluding deleted messages
-                $unreadMessageCount = MessageSenderReceiver::where(function ($query) use ($user, $login_user_id) {
-                    $query->where('sender_id', $user->id)
-                        ->where('receiver_id', $login_user_id);
+                    return [
+                        'id' => $user->id,
+                        'first_name' => $user->first_name,
+                        'last_name' => $user->last_name,
+                        'profile' => URL::to('public/user-profile/' . $user->profile),
+                        'last_message' => $lastMessageContent,
+                        'last_message_date' => $lastMessageDate,
+                        'unread_message_count' => $unreadMessageCount,
+                    ];
                 })
-                    ->orWhere(function ($query) use ($user, $login_user_id) {
-                        $query->where('sender_id', $login_user_id)
-                            ->where('receiver_id', $user->id);
-                    })
-                    ->whereHas('message', function ($q) {
-                        $q->where('status', 'Unread')
-                            ->whereNull('deleted_at'); // Exclude deleted messages
-                    })
-                    ->count();
-
-                return [
-                    'id' => $user->id,
-                    'name' => $user->first_name . ' ' . $user->last_name,
-                    'profile' => URL::to('public/user-profile/' . $user->profile),
-                    'last_message' => $lastMessageContent,
-                    'last_message_date' => $lastMessageDate,
-                    'unread_message_count' => $unreadMessageCount,
-                ];
-            })
-            ->sortByDesc('last_message_date')
-            ->values();
+                ->sortByDesc('last_message_date')
+                ->values();
 
 
-        $data = [
-            'status_code' => 200,
-            'message' => "Get Data Successfully.",
-            'data' => [
-                'userList' => $users
-            ]
-        ];
-        return $this->sendJsonResponse($data);
-        // } catch (\Exception $e) {
-        //     Log::error(
-        //         [
-        //             'method' => __METHOD__,
-        //             'error' => [
-        //                 'file' => $e->getFile(),
-        //                 'line' => $e->getLine(),
-        //                 'message' => $e->getMessage()
-        //             ],
-        //             'created_at' => date("Y-m-d H:i:s")
-        //         ]
-        //     );
-        //     return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
-        // }
+            $data = [
+                'status_code' => 200,
+                'message' => "Get Data Successfully.",
+                'data' => [
+                    'userList' => $users
+                ]
+            ];
+            return $this->sendJsonResponse($data);
+        } catch (\Exception $e) {
+            Log::error(
+                [
+                    'method' => __METHOD__,
+                    'error' => [
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'message' => $e->getMessage()
+                    ],
+                    'created_at' => date("Y-m-d H:i:s")
+                ]
+            );
+            return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
+        }
     }
 
     /**
