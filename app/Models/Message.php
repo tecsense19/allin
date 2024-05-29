@@ -29,11 +29,6 @@ class Message extends Model
         'deleted'
     ];
 
-    public function senderReceivers()
-    {
-        return $this->hasMany(MessageSenderReceiver::class);
-    }
-
     public function attachments()
     {
         return $this->hasMany(MessageAttachment::class);
@@ -52,5 +47,10 @@ class Message extends Model
     public function meetings()
     {
         return $this->hasMany(MessageMeeting::class);
+    }
+
+    public function senderReceiver()
+    {
+        return $this->hasMany(MessageSenderReceiver::class);
     }
 }

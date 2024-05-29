@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\v1;
 
 use App\Http\Controllers\Controller;
+use App\Models\MessageSenderReceiver;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\userDeviceToken;
@@ -643,77 +644,86 @@ class UserController extends Controller
      */
     public function userList(Request $request)
     {
-        try {
-            $latestMessagesSubquery = DB::table('message_sender_receiver')
-                ->select('user_id', DB::raw('MAX(last_message_date) as last_message_date'))
-                ->from(function ($query) {
-                    $query->select('message_sender_receiver.sender_id as user_id', 'message.created_at as last_message_date')
-                        ->from('message_sender_receiver')
-                        ->leftJoin('message', 'message_sender_receiver.message_id', '=', 'message.id')
-                        ->union(
-                            DB::table('message_sender_receiver')
-                                ->select('message_sender_receiver.receiver_id as user_id', 'message.created_at as last_message_date')
-                                ->from('message_sender_receiver')
-                                ->leftJoin('message', 'message_sender_receiver.message_id', '=', 'message.id')
-                        );
-                }, 'latest_message_union')
-                ->groupBy('user_id');
-            $latestMessages = DB::table(DB::raw("({$latestMessagesSubquery->toSql()}) as latest_messages"))
-                ->mergeBindings($latestMessagesSubquery)
-                ->select('latest_messages.user_id', 'message.message', 'message.message_type', 'latest_messages.last_message_date')
-                ->leftJoin('message', function ($join) {
-                    $join->on('latest_messages.last_message_date', '=', 'message.created_at');
-                });
-            $unreadMessagesCountSubquery = DB::table('message_sender_receiver')
-                ->select('message_sender_receiver.sender_id as user_id', DB::raw('COUNT(message.id) as unread_count'))
-                ->leftJoin('message', 'message_sender_receiver.message_id', '=', 'message.id')
-                ->where('message.status', 'Unread')
-                ->groupBy('message_sender_receiver.sender_id')
-                ->union(
-                    DB::table('message_sender_receiver')
-                        ->select('message_sender_receiver.receiver_id as user_id', DB::raw('COUNT(message.id) as unread_count'))
-                        ->leftJoin('message', 'message_sender_receiver.message_id', '=', 'message.id')
-                        ->where('message.status', 'Unread')
-                        ->groupBy('message_sender_receiver.receiver_id')
-                );
-            $userList = User::leftJoinSub($latestMessages, 'latest_message', function ($join) {
-                $join->on('users.id', '=', 'latest_message.user_id');
-            })
-                ->leftJoinSub($unreadMessagesCountSubquery, 'unread_messages', function ($join) {
-                    $join->on('users.id', '=', 'unread_messages.user_id');
+        // try {
+        $login_user_id = auth()->user()->id;
+
+        // Fetch users with their last message and required fields
+        $users = User::where('id', '!=', $login_user_id)
+            ->where('role', 'User')
+            ->where('status', 'Active')
+            ->whereNull('deleted_at')
+            ->with(['sentMessages.message' => function ($query) {
+                $query->whereNull('deleted_at'); // Exclude deleted messages
+            }, 'receivedMessages.message' => function ($query) {
+                $query->whereNull('deleted_at'); // Exclude deleted messages
+            }])
+            ->get()
+            ->map(function ($user) use ($login_user_id, $request) {
+                $lastMessage = null;
+
+                // Combine sent and received messages and get the last one
+                $messages = $user->sentMessages->merge($user->receivedMessages)->sortByDesc('created_at');
+                $lastMessage = $messages->first();
+
+                // Check for existence of last message and handle null values
+                if ($lastMessage && $lastMessage->message) {
+                    $lastMessageContent = $lastMessage->message->message ?? $lastMessage->message->message_type ?? null;
+                    $lastMessageDate = $lastMessage->created_at ? Carbon::parse($lastMessage->created_at)->format('Y-m-d H:i:s') : null;
+                } else {
+                    $lastMessageContent = null;
+                    $lastMessageDate = null;
+                }
+
+                // Count unread messages, excluding deleted messages
+                $unreadMessageCount = MessageSenderReceiver::where(function ($query) use ($user, $login_user_id) {
+                    $query->where('sender_id', $user->id)
+                        ->where('receiver_id', $login_user_id);
                 })
-                ->where('users.role', 'User')
-                ->where('users.status', 'Active')
-                ->where('users.id', '!=', auth()->user()->id)
-                ->select('users.id', 'users.first_name', 'users.last_name', 'users.profile', 'latest_message.last_message_date', DB::raw('COALESCE(latest_message.message, latest_message.message_type) as last_message'), DB::raw('COALESCE(unread_messages.unread_count, 0) as unread_message_count'))
-                ->orderByDesc('latest_message.last_message_date')
-                ->get();
-            foreach($userList as $user){
-                $user->profile = $user->profile ? URL::to('public/user-profile/' . $user->profile) : URL::to('public/assets/media/avatars/blank.png');
-                $user->last_message_date = @$request->timezone ? Carbon::parse($user->last_message_date)->setTimezone( $request->timezone )->format('Y-m-d H:i:s') : $user->last_message_date;
-            }
-            $data = [
-                'status_code' => 200,
-                'message' => "Get Data Successfully.",
-                'data' => [
-                    'userList' => $userList
-                ]
-            ];
-            return $this->sendJsonResponse($data);
-        } catch (\Exception $e) {
-            Log::error(
-                [
-                    'method' => __METHOD__,
-                    'error' => [
-                        'file' => $e->getFile(),
-                        'line' => $e->getLine(),
-                        'message' => $e->getMessage()
-                    ],
-                    'created_at' => date("Y-m-d H:i:s")
-                ]
-            );
-            return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
-        }
+                    ->orWhere(function ($query) use ($user, $login_user_id) {
+                        $query->where('sender_id', $login_user_id)
+                            ->where('receiver_id', $user->id);
+                    })
+                    ->whereHas('message', function ($q) {
+                        $q->where('status', 'Unread')
+                            ->whereNull('deleted_at'); // Exclude deleted messages
+                    })
+                    ->count();
+
+                return [
+                    'id' => $user->id,
+                    'name' => $user->first_name . ' ' . $user->last_name,
+                    'profile' => URL::to('public/user-profile/' . $user->profile),
+                    'last_message' => $lastMessageContent,
+                    'last_message_date' => $lastMessageDate,
+                    'unread_message_count' => $unreadMessageCount,
+                ];
+            })
+            ->sortByDesc('last_message_date')
+            ->values();
+
+
+        $data = [
+            'status_code' => 200,
+            'message' => "Get Data Successfully.",
+            'data' => [
+                'userList' => $users
+            ]
+        ];
+        return $this->sendJsonResponse($data);
+        // } catch (\Exception $e) {
+        //     Log::error(
+        //         [
+        //             'method' => __METHOD__,
+        //             'error' => [
+        //                 'file' => $e->getFile(),
+        //                 'line' => $e->getLine(),
+        //                 'message' => $e->getMessage()
+        //             ],
+        //             'created_at' => date("Y-m-d H:i:s")
+        //         ]
+        //     );
+        //     return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
+        // }
     }
 
     /**
