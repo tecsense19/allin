@@ -930,4 +930,196 @@ class ChatController extends Controller
             return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
         }
     }
+
+    /**
+     * @OA\Post(
+     *     path="/api/v1/read-unread-message",
+     *     summary="Add a new message for meeting",
+     *     tags={"Messages"},
+     *     description="Change Message status",
+     *     operationId="changeMessageStatus",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Add Message Request",
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"messageIds","status"},
+     *                 @OA\Property(
+     *                     property="messageIds",
+     *                     type="string",
+     *                     example="1,2,3",
+     *                     description="Comma-Separated messageIds"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="status",
+     *                     type="string",
+     *                     example="Read",
+     *                     description="Enter Status (Read / Unread)"
+     *                 ),
+     *             )
+     *         )
+     *     ),
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+
+    public function changeMessageStatus(Request $request)
+    {
+        try {
+            $rules = [
+                'messageIds' => 'required|string|regex:/^\d+(,\d+)*$/',
+                'status' => 'required|string|in:Read,Unread',
+            ];
+
+            $message = [
+                'messageIds.required' => 'The message IDs are required.',
+                'messageIds.string' => 'The message IDs must be a string.',
+                'messageIds.regex' => 'The message IDs must be a comma-separated list of numeric values.',
+                'status.required' => 'The status is required.',
+                'status.string' => 'The status must be a string.',
+                'status.in' => 'The status must be either "Read" or "Unread".',
+            ];
+
+            $validator = Validator::make($request->all(), $rules, $message);
+            if ($validator->fails()) {
+                $data = [
+                    'status_code' => 400,
+                    'message' => $validator->errors()->first(),
+                    'data' => ""
+                ];
+                return $this->sendJsonResponse($data);
+            }
+
+            $messageIds = explode(',', $request->input('messageIds'));
+            Message::whereIn('id', $messageIds)->update(['status' => $request->status]);
+
+            $data = [
+                'status_code' => 200,
+                'message' => 'Change Status Successfully!',
+                'data' => ""
+            ];
+            return $this->sendJsonResponse($data);
+        } catch (\Exception $e) {
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => now()->format("Y-m-d H:i:s")
+            ]);
+            return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/v1/delete-message",
+     *     summary="Delete Message",
+     *     tags={"Messages"},
+     *     description="Delete Message",
+     *     operationId="deleteMessage",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Add Message Request",
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"message_id"},
+     *                 @OA\Property(
+     *                     property="message_id",
+     *                     type="string",
+     *                     example="1",
+     *                     description="Enter MessageId"
+     *                 ),
+     *             )
+     *         )
+     *     ),
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+
+    public function deleteMessage(Request $request)
+    {
+        try {
+            $rules = [
+                'message_id' => 'required|string|regex:/^\d+$/|exists:message,id',
+            ];
+
+            $message = [
+                'message_id.required' => 'The message ID is required.',
+                'message_id.string' => 'The message ID must be a string.',
+                'message_id.regex' => 'The message ID must only contain digits.',
+                'message_id.exists' => 'The message ID does not exist in the message table.',
+            ];
+
+            $validator = Validator::make($request->all(), $rules, $message);
+            if ($validator->fails()) {
+                $data = [
+                    'status_code' => 400,
+                    'message' => $validator->errors()->first(),
+                    'data' => ""
+                ];
+                return $this->sendJsonResponse($data);
+            }
+
+            $message = Message::find($request->message_id);
+            $type = $message->message_type;
+            MessageSenderReceiver::where('message_id',$request->message_id)->delete();
+            if($type == 'Attachment'){
+                MessageAttachment::where('message_id',$request->message_id)->delete();
+            }elseif($type == 'Location'){
+                MessageLocation::where('message_id',$request->message_id)->delete();
+            }elseif($type == 'Meeting'){
+                MessageMeeting::where('message_id',$request->message_id)->delete();
+            }elseif($type == 'Task'){
+                MessageTask::where('message_id',$request->message_id)->delete();
+            }elseif($type == 'Task Chat'){
+                MessageTaskChat::where('message_id',$request->message_id)->delete();
+            }
+            $message->delete();
+
+            $data = [
+                'status_code' => 200,
+                'message' => 'Delete message Successfully!',
+                'data' => ""
+            ];
+            return $this->sendJsonResponse($data);
+        } catch (\Exception $e) {
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => now()->format("Y-m-d H:i:s")
+            ]);
+            return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
+        }
+    }
 }

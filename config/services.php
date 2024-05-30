@@ -1,5 +1,6 @@
 <?php
-
+$firebaseConfigPath = env('FIREBASE_CONFIG_PATH');
+$firebaseConfig = json_decode(file_get_contents(base_path($firebaseConfigPath)), true);
 return [
 
     /*
@@ -34,6 +35,12 @@ return [
         'TWILIO_ACCOUNT_SID' => env('TWILIO_ACCOUNT_SID'),
         'TWILIO_AUTH_TOKEN' => env('TWILIO_AUTH_TOKEN'),
         'TWILIO_OTP_SERVICE_ID' => env('TWILIO_OTP_SERVICE_ID'),
+    ],
+    'firebase' => [
+        'api_key' => $firebaseConfig['apiKey'] ?? null,
+        'auth_domain' => $firebaseConfig['authDomain'] ?? null,
+        'database_url' => $firebaseConfig['databaseURL'] ?? null,
+        'project_id' => $firebaseConfig['projectId'] ?? null,
     ],
 
 ];

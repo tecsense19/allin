@@ -747,6 +747,26 @@ class UserController extends Controller
      *             type="number",
      *         )
      *     ),
+     *     @OA\Parameter(
+     *         name="start",
+     *         in="query",
+     *         example="0",
+     *         description="Enter Start",
+     *         required=true,
+     *         @OA\Schema(
+     *             type="number",
+     *         )
+     *     ),
+     *     @OA\Parameter(
+     *         name="limit",
+     *         in="query",
+     *         example="10",
+     *         description="Enter Limit",
+     *         required=true,
+     *         @OA\Schema(
+     *             type="number",
+     *         )
+     *     ),
      *      @OA\Response(
      *         response=200,
      *         description="json schema",
@@ -763,123 +783,126 @@ class UserController extends Controller
 
     public function userDetails(Request $request)
     {
-        //try {
-        $rules = [
-            'id' => 'required|integer|exists:users,id',
-        ];
+        try {
+            $rules = [
+                'id' => 'required|integer|exists:users,id',
+            ];
 
-        $message = [
-            'id.required' => 'User ID is required.',
-            'id.integer' => 'User ID must be an integer.',
-            'id.exists' => 'The specified user does not exist.',
-        ];
+            $message = [
+                'id.required' => 'User ID is required.',
+                'id.integer' => 'User ID must be an integer.',
+                'id.exists' => 'The specified user does not exist.',
+            ];
+            $start = @$request->start ? $request->start : 0;
+            $limit = @$request->limit ? $request->limit : 10;
+            $validator = Validator::make($request->all(), $rules, $message);
+            if ($validator->fails()) {
+                $data = [
+                    'status_code' => 400,
+                    'message' => $validator->errors()->first(),
+                    'data' => ""
+                ];
+                return $this->sendJsonResponse($data);
+            }
+            $user = new User();
+            $userData = $user->find($request->id);
+            $userData->profile = @$userData->profile ? URL::to('public/user-profile/' . $userData->profile) : URL::to('public/assets/media/avatars/blank.png');
+            $userData->cover_image = @$userData->cover_image ? URL::to('public/user-profile-cover-image/' . $userData->cover_image) : URL::to('public/assets/media/misc/image.png');
 
-        $validator = Validator::make($request->all(), $rules, $message);
-        if ($validator->fails()) {
+            $loginUser = auth()->user()->id;
+            $userId = $request->id;
+
+            $messages = MessageSenderReceiver::where(function ($query) use ($loginUser, $userId) {
+                $query->where('sender_id', $loginUser)->where('receiver_id', $userId);
+            })->orWhere(function ($query) use ($loginUser, $userId) {
+                $query->where('sender_id', $userId)->where('receiver_id', $loginUser);
+            })
+                ->whereNull('deleted_at')
+                ->with([
+                    'message',
+                    'message.attachment:id,message_id,attachment_name,attachment_path',
+                    'message.task:id,message_id,task_name,task_description',
+                    'message.location:id,message_id,latitude,longitude,location_url',
+                    'message.meeting:id,message_id,mode,title,description,date,start_time,end_time,meeting_url'
+                ])
+                ->orderByDesc('created_at')
+                ->skip($start)
+                ->take($limit)
+                ->get();
+
+            $groupedChat = $messages->map(function ($message) use ($loginUser) {
+                $messageDetails = [];
+                switch ($message->message->message_type) {
+                    case 'Text':
+                        $messageDetails = $message->message->message;
+                        break;
+                    case 'Attachment':
+                        $messageDetails = $message->message->attachment;
+                        break;
+                    case 'Location':
+                        $messageDetails = $message->message->location;
+                        break;
+                    case 'Meeting':
+                        $messageDetails = $message->message->meeting;
+                        break;
+                    case 'Task':
+                        $messageDetails = $message->message->task;
+                        break;
+                }
+
+                return [
+                    'messageId' => $message->message->id,
+                    'messageType' => $message->message->message_type,
+                    'date' => $message->message->created_at->toDateString(),
+                    'time' => $message->message->created_at->toTimeString(),
+                    'sentBy' => ($message->sender_id == $loginUser) ? 'loginUser' : 'User',
+                    'messageDetails' => $messageDetails,
+                ];
+            })->groupBy(function ($message) {
+                $carbonDate = Carbon::parse($message['date']);
+                if ($carbonDate->isToday()) {
+                    return 'Today';
+                } elseif ($carbonDate->isYesterday()) {
+                    return 'Yesterday';
+                } else {
+                    return $carbonDate->format('d-m-Y');
+                }
+            })->map(function ($messages, $date) {
+                return [
+                    $date => $messages->map(function ($message) {
+                        return [
+                            'messageId' => $message['messageId'],
+                            'messageType' => $message['messageType'],
+                            'time' => $message['time'],
+                            'sentBy' => $message['sentBy'],
+                            'messageDetails' => $message['messageDetails'],
+                        ];
+                    })->toArray()
+                ];
+            })->toArray();
             $data = [
-                'status_code' => 400,
-                'message' => $validator->errors()->first(),
-                'data' => ""
+                'status_code' => 200,
+                'message' => "Get Data Successfully!",
+                'data' => [
+                    'userData' => $userData,
+                    'chat' => $groupedChat,
+                ]
             ];
             return $this->sendJsonResponse($data);
+        } catch (\Exception $e) {
+            Log::error(
+                [
+                    'method' => __METHOD__,
+                    'error' => [
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'message' => $e->getMessage()
+                    ],
+                    'created_at' => date("Y-m-d H:i:s")
+                ]
+            );
+            return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
         }
-        $user = new User();
-        $userData = $user->find($request->id);
-        $userData->profile = @$userData->profile ? URL::to('public/user-profile/' . $userData->profile) : URL::to('public/assets/media/avatars/blank.png');
-        $userData->cover_image = @$userData->cover_image ? URL::to('public/user-profile-cover-image/' . $userData->cover_image) : URL::to('public/assets/media/misc/image.png');
-
-        $loginUser = auth()->user()->id;
-        $userId = $request->id;
-
-        $messages = MessageSenderReceiver::where(function ($query) use ($loginUser, $userId) {
-            $query->where('sender_id', $loginUser)->where('receiver_id', $userId);
-        })->orWhere(function ($query) use ($loginUser, $userId) {
-            $query->where('sender_id', $userId)->where('receiver_id', $loginUser);
-        })
-            ->whereNull('deleted_at')
-            ->with([
-                'message',
-                'message.attachment:id,message_id,attachment_name,attachment_path',
-                'message.task:id,message_id,task_name,task_description',
-                'message.location:id,message_id,latitude,longitude,location_url',
-                'message.meeting:id,message_id,mode,title,description,date,start_time,end_time,meeting_url'
-            ])
-            ->orderByDesc('created_at')
-            ->get();
-
-        $groupedChat = $messages->map(function ($message) use ($loginUser) {
-            $messageDetails = [];
-            switch ($message->message->message_type) {
-                case 'Text':
-                    $messageDetails = $message->message->message;
-                    break;
-                case 'Attachment':
-                    $messageDetails = $message->message->attachment;
-                    break;
-                case 'Location':
-                    $messageDetails = $message->message->location;
-                    break;
-                case 'Meeting':
-                    $messageDetails = $message->message->meeting;
-                    break;
-                case 'Task':
-                    $messageDetails = $message->message->task;
-                    break;
-            }
-
-            return [
-                'messageId' => $message->message->id,
-                'messageType' => $message->message->message_type,
-                'date' => $message->message->created_at->toDateString(),
-                'time' => $message->message->created_at->toTimeString(),
-                'sentBy' => ($message->sender_id == $loginUser) ? 'loginUser' : 'User',
-                'messageDetails' => $messageDetails,
-            ];
-        })->groupBy(function ($message) {
-            $carbonDate = Carbon::parse($message['date']);
-            if ($carbonDate->isToday()) {
-                return 'Today';
-            } elseif ($carbonDate->isYesterday()) {
-                return 'Yesterday';
-            } else {
-                return $carbonDate->format('d-m-Y');
-            }
-        })->map(function ($messages, $date) {
-            return [
-                $date => $messages->map(function ($message) {
-                    return [
-                        'messageId' => $message['messageId'],
-                        'messageType' => $message['messageType'],
-                        'time' => $message['time'],
-                        'sentBy' => $message['sentBy'],
-                        'messageDetails' => $message['messageDetails'],
-                    ];
-                })->toArray()
-            ];
-        })->toArray();
-        $data = [
-            'status_code' => 200,
-            'message' => "Get Data Successfully!",
-            'data' => [
-                'userData' => $userData,
-                'chat' => $groupedChat,
-            ]
-        ];
-        return $this->sendJsonResponse($data);
-        // } catch (\Exception $e) {
-        //     Log::error(
-        //         [
-        //             'method' => __METHOD__,
-        //             'error' => [
-        //                 'file' => $e->getFile(),
-        //                 'line' => $e->getLine(),
-        //                 'message' => $e->getMessage()
-        //             ],
-        //             'created_at' => date("Y-m-d H:i:s")
-        //         ]
-        //     );
-        //     return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
-        // }
     }
 
     /**
@@ -1084,3 +1107,5 @@ class UserController extends Controller
         }
     }
 }
+
+
