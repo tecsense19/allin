@@ -678,8 +678,8 @@ class UserController extends Controller
 
                     // Count unread messages, excluding deleted messages
                     $unreadMessageCount = MessageSenderReceiver::where(function ($query) use ($user, $login_user_id) {
-                        $query->where('sender_id', $login_user_id)
-                            ->where('receiver_id', $user->id);
+                        $query->where('sender_id', $user->id)
+                            ->where('receiver_id', $login_user_id);
                     })
 
                         ->whereHas('message', function ($q) {
