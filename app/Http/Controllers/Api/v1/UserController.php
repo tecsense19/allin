@@ -839,7 +839,7 @@ class UserController extends Controller
                 ->take($limit)
                 ->get();
 
-            $groupedChat = $messages->map(function ($message) use ($loginUser) {
+            $groupedChat = $messages->map(function ($message) use ($loginUser,$request) {
                 $messageDetails = [];
                 switch ($message->message->message_type) {
                     case 'Text':
@@ -862,19 +862,19 @@ class UserController extends Controller
                 return [
                     'messageId' => $message->message->id,
                     'messageType' => $message->message->message_type,
-                    'date' => $message->message->created_at->toDateString(),
-                    'time' => $message->message->created_at->toTimeString(),
+                    'date' => @$request->timezone ? Carbon::parse($message->message->created_at)->setTimezone($request->timezone)->format('Y-m-d H:i:s') : Carbon::parse($message->message->created_at)->format('Y-m-d H:i:s'),
+                    'time' => @$request->timezone ? Carbon::parse($message->message->created_at)->setTimezone($request->timezone)->format('H:i a') : Carbon::parse($message->message->created_at)->format('H:i a'),
                     'sentBy' => ($message->sender_id == $loginUser) ? 'loginUser' : 'User',
                     'messageDetails' => $messageDetails,
                 ];
-            })->groupBy(function ($message,$request) {
-                $carbonDate = Carbon::parse($message['date'])->setTimezone($request->timezone);
+            })->groupBy(function ($message) {
+                $carbonDate = Carbon::parse($message['date']);
                 if ($carbonDate->isToday()) {
                     return 'Today';
                 } elseif ($carbonDate->isYesterday()) {
                     return 'Yesterday';
                 } else {
-                    return $carbonDate->format('d-m-Y');
+                    return $carbonDate->format('d M Y');
                 }
             })->map(function ($messages, $date) {
                 return [
