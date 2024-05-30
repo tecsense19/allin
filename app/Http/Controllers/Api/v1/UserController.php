@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\userDeviceToken;
 use App\Models\UserOtp;
 use Carbon\Carbon;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
@@ -686,7 +687,7 @@ class UserController extends Controller
                         })
                         ->whereHas('message', function ($q) {
                             $q->where('status', 'Unread')
-                                ->whereNull('deleted_at'); // Exclude deleted messages
+                                ->whereNull('deleted_at');
                         })
                         ->count();
 
@@ -894,7 +895,7 @@ class UserController extends Controller
                 'message' => "Get Data Successfully!",
                 'data' => [
                     'userData' => $userData,
-                    'chat' => $groupedChat,
+                    'chat' => array_reverse($groupedChat),
                 ]
             ];
             return $this->sendJsonResponse($data);
