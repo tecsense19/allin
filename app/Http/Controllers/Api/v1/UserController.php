@@ -678,13 +678,10 @@ class UserController extends Controller
 
                     // Count unread messages, excluding deleted messages
                     $unreadMessageCount = MessageSenderReceiver::where(function ($query) use ($user, $login_user_id) {
-                        $query->where('sender_id', $user->id)
-                            ->where('receiver_id', $login_user_id);
+                        $query->where('sender_id', $login_user_id)
+                            ->where('receiver_id', $user->id);
                     })
-                        ->orWhere(function ($query) use ($user, $login_user_id) {
-                            $query->where('sender_id', $login_user_id)
-                                ->where('receiver_id', $user->id);
-                        })
+
                         ->whereHas('message', function ($q) {
                             $q->where('status', 'Unread')
                                 ->whereNull('deleted_at');
@@ -840,7 +837,7 @@ class UserController extends Controller
                 ->take($limit)
                 ->get();
 
-            $groupedChat = $messages->map(function ($message) use ($loginUser,$request) {
+            $groupedChat = $messages->map(function ($message) use ($loginUser, $request) {
                 $messageDetails = [];
                 switch ($message->message->message_type) {
                     case 'Text':
@@ -867,6 +864,7 @@ class UserController extends Controller
                     'time' => @$request->timezone ? Carbon::parse($message->message->created_at)->setTimezone($request->timezone)->format('H:i a') : Carbon::parse($message->message->created_at)->format('H:i a'),
                     'sentBy' => ($message->sender_id == $loginUser) ? 'loginUser' : 'User',
                     'messageDetails' => $messageDetails,
+                    //'timestamp' => Carbon::parse($message->message->created_at)->timestamp,
                 ];
             })->groupBy(function ($message) {
                 $carbonDate = Carbon::parse($message['date']);
@@ -878,25 +876,29 @@ class UserController extends Controller
                     return $carbonDate->format('d M Y');
                 }
             })->map(function ($messages, $date) {
-                return [
-                    $date => $messages->map(function ($message) {
-                        return [
-                            'messageId' => $message['messageId'],
-                            'messageType' => $message['messageType'],
-                            'time' => $message['time'],
-                            'sentBy' => $message['sentBy'],
-                            'messageDetails' => $message['messageDetails'],
-                        ];
-                    })->toArray()
-                ];
+                $sortedMessages = $messages->sort(function ($a, $b) {
+                    if ($a['time'] == $b['time']) {
+                        return $b['messageId'] <=> $a['messageId']; // Sort by descending messageId
+                    }
+                    return $a['time'] <=> $b['time']; // Sort by ascending time
+                })->values();  // Use values() to avoid numeric keys
+
+                return [$date => $sortedMessages];
             });
             $reversedGroupedChat = array_reverse($groupedChat->toArray());
+
+            $chat = [];
+            foreach ($reversedGroupedChat as $item) {
+                foreach ($item as $date => $messages) {
+                    $chat[$date] = $messages;
+                }
+            }
             $data = [
                 'status_code' => 200,
                 'message' => "Get Data Successfully!",
                 'data' => [
                     'userData' => $userData,
-                    'chat' => $reversedGroupedChat,
+                    'chat' => $chat,
                 ]
             ];
             return $this->sendJsonResponse($data);
@@ -1118,5 +1120,3 @@ class UserController extends Controller
         }
     }
 }
-
-

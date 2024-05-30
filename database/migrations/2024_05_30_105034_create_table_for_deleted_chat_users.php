@@ -13,7 +13,13 @@ return new class extends Migration
     {
         Schema::create('table_for_deleted_chat_users', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('user_id',10)->nullable()->unsigned()->constrained('users');
+            $table->integer('deleted_user_id')->nullable();
+            $table->integer('created_by')->nullable();
+            $table->integer('updated_by')->nullable();
+            $table->integer('deleted_by')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 
