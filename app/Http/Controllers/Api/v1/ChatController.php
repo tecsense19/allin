@@ -1002,7 +1002,7 @@ class ChatController extends Controller
                 return $this->sendJsonResponse($data);
             }
 
-            $messageIds = explode(',', $request->input('messageIds'));
+            $messageIds = explode(',', $request->messageIds);
             Message::whereIn('id', $messageIds)->update(['status' => $request->status]);
 
             $data = [
