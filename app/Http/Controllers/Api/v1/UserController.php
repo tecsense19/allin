@@ -670,7 +670,6 @@ class UserController extends Controller
                         } else {
                             $lastMessageDate = null;
                         }
-                        // $lastMessageDate = $lastMessage->created_at ? Carbon::parse($lastMessage->created_at)->format('Y-m-d H:i:s') : null;
                     } else {
                         $lastMessageContent = null;
                         $lastMessageDate = null;
@@ -767,6 +766,16 @@ class UserController extends Controller
      *             type="number",
      *         )
      *     ),
+     *     @OA\Parameter(
+     *         name="timezone",
+     *         in="query",
+     *         example="",
+     *         description="Enter Timezone",
+     *         required=false,
+     *         @OA\Schema(
+     *             type="string",
+     *         )
+     *     ),
      *      @OA\Response(
      *         response=200,
      *         description="json schema",
@@ -858,8 +867,8 @@ class UserController extends Controller
                     'sentBy' => ($message->sender_id == $loginUser) ? 'loginUser' : 'User',
                     'messageDetails' => $messageDetails,
                 ];
-            })->groupBy(function ($message) {
-                $carbonDate = Carbon::parse($message['date']);
+            })->groupBy(function ($message,$request) {
+                $carbonDate = Carbon::parse($message['date'])->setTimezone($request->timezone);
                 if ($carbonDate->isToday()) {
                     return 'Today';
                 } elseif ($carbonDate->isYesterday()) {

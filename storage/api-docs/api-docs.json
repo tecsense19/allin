@@ -468,6 +468,106 @@
                 ]
             }
         },
+        "/api/v1/read-unread-message": {
+            "post": {
+                "tags": [
+                    "Messages"
+                ],
+                "summary": "Add a new message for meeting",
+                "description": "Change Message status",
+                "operationId": "changeMessageStatus",
+                "requestBody": {
+                    "description": "Add Message Request",
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "messageIds",
+                                    "status"
+                                ],
+                                "properties": {
+                                    "messageIds": {
+                                        "description": "Comma-Separated messageIds",
+                                        "type": "string",
+                                        "example": "1,2,3"
+                                    },
+                                    "status": {
+                                        "description": "Enter Status (Read / Unread)",
+                                        "type": "string",
+                                        "example": "Read"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "json schema",
+                        "content": {
+                            "application/json": {}
+                        }
+                    },
+                    "404": {
+                        "description": "Invalid Request"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/delete-message": {
+            "post": {
+                "tags": [
+                    "Messages"
+                ],
+                "summary": "Delete Message",
+                "description": "Delete Message",
+                "operationId": "deleteMessage",
+                "requestBody": {
+                    "description": "Add Message Request",
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "message_id"
+                                ],
+                                "properties": {
+                                    "message_id": {
+                                        "description": "Enter MessageId",
+                                        "type": "string",
+                                        "example": "1"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "json schema",
+                        "content": {
+                            "application/json": {}
+                        }
+                    },
+                    "404": {
+                        "description": "Invalid Request"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/v1/send-otp": {
             "post": {
                 "tags": [
@@ -838,6 +938,36 @@
                             "type": "number"
                         },
                         "example": "2"
+                    },
+                    {
+                        "name": "start",
+                        "in": "query",
+                        "description": "Enter Start",
+                        "required": true,
+                        "schema": {
+                            "type": "number"
+                        },
+                        "example": "0"
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "Enter Limit",
+                        "required": true,
+                        "schema": {
+                            "type": "number"
+                        },
+                        "example": "10"
+                    },
+                    {
+                        "name": "timezone",
+                        "in": "query",
+                        "description": "Enter Timezone",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": ""
                     }
                 ],
                 "responses": {
