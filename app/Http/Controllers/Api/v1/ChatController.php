@@ -1024,7 +1024,6 @@ class ChatController extends Controller
             return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
         }
     }
-
     /**
      * @OA\Post(
      *     path="/api/v1/delete-message",
@@ -1089,17 +1088,17 @@ class ChatController extends Controller
 
             $message = Message::find($request->message_id);
             $type = $message->message_type;
-            MessageSenderReceiver::where('message_id',$request->message_id)->delete();
-            if($type == 'Attachment'){
-                MessageAttachment::where('message_id',$request->message_id)->delete();
-            }elseif($type == 'Location'){
-                MessageLocation::where('message_id',$request->message_id)->delete();
-            }elseif($type == 'Meeting'){
-                MessageMeeting::where('message_id',$request->message_id)->delete();
-            }elseif($type == 'Task'){
-                MessageTask::where('message_id',$request->message_id)->delete();
-            }elseif($type == 'Task Chat'){
-                MessageTaskChat::where('message_id',$request->message_id)->delete();
+            MessageSenderReceiver::where('message_id', $request->message_id)->delete();
+            if ($type == 'Attachment') {
+                MessageAttachment::where('message_id', $request->message_id)->delete();
+            } elseif ($type == 'Location') {
+                MessageLocation::where('message_id', $request->message_id)->delete();
+            } elseif ($type == 'Meeting') {
+                MessageMeeting::where('message_id', $request->message_id)->delete();
+            } elseif ($type == 'Task') {
+                MessageTask::where('message_id', $request->message_id)->delete();
+            } elseif ($type == 'Task Chat') {
+                MessageTaskChat::where('message_id', $request->message_id)->delete();
             }
             $message->delete();
 
