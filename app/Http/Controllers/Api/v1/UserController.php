@@ -804,7 +804,7 @@ class UserController extends Controller
                 'id.exists' => 'The specified user does not exist.',
             ];
             $start = @$request->start ? $request->start : 0;
-            $limit = @$request->limit ? $request->limit : 10;
+            $limit = @$request->limit ? $request->limit : 15;
             $validator = Validator::make($request->all(), $rules, $message);
             if ($validator->fails()) {
                 $data = [
@@ -889,13 +889,14 @@ class UserController extends Controller
                         ];
                     })->toArray()
                 ];
-            })->toArray();
+            });
+            $reversedGroupedChat = array_reverse($groupedChat->toArray());
             $data = [
                 'status_code' => 200,
                 'message' => "Get Data Successfully!",
                 'data' => [
                     'userData' => $userData,
-                    'chat' => array_reverse($groupedChat),
+                    'chat' => $reversedGroupedChat,
                 ]
             ];
             return $this->sendJsonResponse($data);
