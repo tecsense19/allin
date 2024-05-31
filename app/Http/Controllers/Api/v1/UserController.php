@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\v1;
 
 use App\Http\Controllers\Controller;
+use App\Models\deleteChatUsers;
 use App\Models\Message;
 use App\Models\MessageSenderReceiver;
 use Illuminate\Http\Request;
@@ -648,9 +649,11 @@ class UserController extends Controller
     {
         try {
             $login_user_id = auth()->user()->id;
+            $deletedUsers = deleteChatUsers::where('user_id',$login_user_id)->pluck('deleted_user_id');
             $users = User::where('id', '!=', $login_user_id)
                 ->where('role', 'User')
                 ->where('status', 'Active')
+                ->whereNotIn('id',$deletedUsers)
                 ->whereNull('deleted_at')
                 ->with(['sentMessages.message' => function ($query) {
                     $query->whereNull('deleted_at');
@@ -759,7 +762,7 @@ class UserController extends Controller
      *         in="query",
      *         example="10",
      *         description="Enter Limit",
-     *         required=true,
+     *         required=false,
      *         @OA\Schema(
      *             type="number",
      *         )
@@ -861,7 +864,7 @@ class UserController extends Controller
                     'messageId' => $message->message->id,
                     'messageType' => $message->message->message_type,
                     'date' => @$request->timezone ? Carbon::parse($message->message->created_at)->setTimezone($request->timezone)->format('Y-m-d H:i:s') : Carbon::parse($message->message->created_at)->format('Y-m-d H:i:s'),
-                    'time' => @$request->timezone ? Carbon::parse($message->message->created_at)->setTimezone($request->timezone)->format('H:i a') : Carbon::parse($message->message->created_at)->format('H:i a'),
+                    'time' => @$request->timezone ? Carbon::parse($message->message->created_at)->setTimezone($request->timezone)->format('h:i a') : Carbon::parse($message->message->created_at)->format('h:i a'),
                     'sentBy' => ($message->sender_id == $loginUser) ? 'loginUser' : 'User',
                     'messageDetails' => $messageDetails,
                     //'timestamp' => Carbon::parse($message->message->created_at)->timestamp,
@@ -877,12 +880,16 @@ class UserController extends Controller
                 }
             })->map(function ($messages, $date) {
                 $sortedMessages = $messages->sort(function ($a, $b) {
-                    if ($a['time'] == $b['time']) {
-                        return $b['messageId'] <=> $a['messageId']; // Sort by descending messageId
+                    $timeA = strtotime($a['time']);
+                    $timeB = strtotime($b['time']);
+            
+                    if ($timeA == $timeB) {
+                        return $b['messageId'] <=> $a['messageId']; // Sort by descending messageId if time is same
                     }
-                    return $a['time'] <=> $b['time']; // Sort by ascending time
-                })->values();  // Use values() to avoid numeric keys
-
+            
+                    return $timeB <=> $timeA; // Sort by ascending time
+                })->values(); // Use values() to avoid numeric keys
+            
                 return [$date => $sortedMessages];
             });
             $reversedGroupedChat = array_reverse($groupedChat->toArray());
@@ -1101,6 +1108,88 @@ class UserController extends Controller
                 'message' => "User Updated Successfully!",
                 'data' => [
                     'userData' => $user
+                ]
+            ];
+            return $this->sendJsonResponse($data);
+        } catch (\Exception $e) {
+            Log::error(
+                [
+                    'method' => __METHOD__,
+                    'error' => [
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'message' => $e->getMessage()
+                    ],
+                    'created_at' => date("Y-m-d H:i:s")
+                ]
+            );
+            return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/v1/delete-chat-user",
+     *     summary="Delete Chat Users",
+     *     tags={"User"},
+     *     description="Delete Chat Users",
+     *     operationId="deleteChatUser",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="query",
+     *         example="2",
+     *         description="Enter userId",
+     *         required=true,
+     *         @OA\Schema(
+     *             type="number",
+     *         )
+     *     ),
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+
+    public function deleteChatUsers(Request $request)
+    {
+        try {
+            $rules = [
+                'id' => 'required|integer|exists:users,id',
+            ];
+
+            $message = [
+                'id.required' => 'User ID is required.',
+                'id.integer' => 'User ID must be an integer.',
+                'id.exists' => 'The specified user does not exist.',
+            ];
+            $validator = Validator::make($request->all(), $rules, $message);
+            if ($validator->fails()) {
+                $data = [
+                    'status_code' => 400,
+                    'message' => $validator->errors()->first(),
+                    'data' => ""
+                ];
+                return $this->sendJsonResponse($data);
+            }
+            $deleteChatUser = new deleteChatUsers();
+            $deleteChatUser->user_id = auth()->user()->id;
+            $deleteChatUser->deleted_user_id = $request->id;
+            $deleteChatUser->save();
+            
+            $data = [
+                'status_code' => 200,
+                'message' => "User Deleted Successfully!",
+                'data' => [
+                    'userData' => $deleteChatUser,
                 ]
             ];
             return $this->sendJsonResponse($data);

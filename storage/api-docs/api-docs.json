@@ -953,7 +953,7 @@
                         "name": "limit",
                         "in": "query",
                         "description": "Enter Limit",
-                        "required": true,
+                        "required": false,
                         "schema": {
                             "type": "number"
                         },
@@ -1083,6 +1083,44 @@
                         }
                     }
                 },
+                "responses": {
+                    "200": {
+                        "description": "json schema",
+                        "content": {
+                            "application/json": {}
+                        }
+                    },
+                    "404": {
+                        "description": "Invalid Request"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/delete-chat-user": {
+            "post": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Delete Chat Users",
+                "description": "Delete Chat Users",
+                "operationId": "deleteChatUser",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "description": "Enter userId",
+                        "required": true,
+                        "schema": {
+                            "type": "number"
+                        },
+                        "example": "2"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "json schema",

@@ -1066,7 +1066,7 @@ class ChatController extends Controller
     {
         try {
             $rules = [
-                'message_id' => 'required|string|regex:/^\d+$/|exists:message,id',
+                'message_id' => 'required|string|regex:/^\d+(,\d+)*$/',
             ];
 
             $message = [
@@ -1086,21 +1086,25 @@ class ChatController extends Controller
                 return $this->sendJsonResponse($data);
             }
 
-            $message = Message::find($request->message_id);
-            $type = $message->message_type;
-            MessageSenderReceiver::where('message_id', $request->message_id)->delete();
-            if ($type == 'Attachment') {
-                MessageAttachment::where('message_id', $request->message_id)->delete();
-            } elseif ($type == 'Location') {
-                MessageLocation::where('message_id', $request->message_id)->delete();
-            } elseif ($type == 'Meeting') {
-                MessageMeeting::where('message_id', $request->message_id)->delete();
-            } elseif ($type == 'Task') {
-                MessageTask::where('message_id', $request->message_id)->delete();
-            } elseif ($type == 'Task Chat') {
-                MessageTaskChat::where('message_id', $request->message_id)->delete();
+            $explodedMessage = explode(',', $request->message_id);
+            $data = Message::whereIn('id', $explodedMessage);
+            $messages = $data->get(['id', 'message_type']);
+            foreach ($messages as $message) {
+                $type = $message->message_type;
+                MessageSenderReceiver::where('message_id', $message->id)->delete();
+                if ($type == 'Attachment') {
+                    MessageAttachment::where('message_id', $message->id)->delete();
+                } elseif ($type == 'Location') {
+                    MessageLocation::where('message_id', $message->id)->delete();
+                } elseif ($type == 'Meeting') {
+                    MessageMeeting::where('message_id', $message->id)->delete();
+                } elseif ($type == 'Task') {
+                    MessageTask::where('message_id', $message->id)->delete();
+                } elseif ($type == 'Task Chat') {
+                    MessageTaskChat::where('message_id', $message->id)->delete();
+                }
             }
-            $message->delete();
+            $data->delete();
 
             $data = [
                 'status_code' => 200,

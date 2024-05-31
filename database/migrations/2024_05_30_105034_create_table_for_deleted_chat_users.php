@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('table_for_deleted_chat_users', function (Blueprint $table) {
+        Schema::create('deleted_chat_users', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id',10)->nullable()->unsigned()->constrained('users');
             $table->integer('deleted_user_id')->nullable();
@@ -28,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('table_for_deleted_chat_users');
+        Schema::dropIfExists('deleted_chat_users');
     }
 };

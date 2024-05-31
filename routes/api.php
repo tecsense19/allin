@@ -40,6 +40,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
             Route::post('/user-list', 'userList');
             Route::post('/user-details', 'userDetails');
             Route::post('/edit-profile', 'editProfile');
+            Route::post('/delete-chat-user', 'deleteChatUsers');
         });
         Route::controller(ChatController::class)->group(function () {
             Route::post('/text-message', 'textMessage');

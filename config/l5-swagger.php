@@ -153,12 +153,6 @@ return [
         */
         'securityDefinitions' => [
             'securitySchemes' => [
-                'Bearer' => [
-                    'type' => 'apiKey',
-                    'description' => 'Enter JWT token',
-                    'name' => 'Authorization',
-                    'in' => 'header',
-                ],
                 /*
                  * Examples of Security schemes
                 */
@@ -206,9 +200,6 @@ return [
                 */
             ],
             'security' => [
-                [
-                    'Bearer' => [],
-                ],
                 /*
                  * Examples of Securities
                 */
