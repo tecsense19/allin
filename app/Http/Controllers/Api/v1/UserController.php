@@ -884,11 +884,11 @@ class UserController extends Controller
                     $timeB = strtotime($b['time']);
             
                     if ($timeA == $timeB) {
-                        return $b['messageId'] <=> $a['messageId']; // Sort by descending messageId if time is same
+                        return $a['messageId'] <=> $b['messageId'];
                     }
             
-                    return $timeB <=> $timeA; // Sort by ascending time
-                })->values(); // Use values() to avoid numeric keys
+                    return $timeA <=> $timeB;
+                })->values();
             
                 return [$date => $sortedMessages];
             });
