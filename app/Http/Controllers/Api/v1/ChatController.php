@@ -1125,4 +1125,92 @@ class ChatController extends Controller
             return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
         }
     }
+
+    /**
+     * @OA\Post(
+     *     path="/api/v1/clear-message",
+     *     summary="Clear Message",
+     *     tags={"Messages"},
+     *     description="Clear Message",
+     *     operationId="clearMessage",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Add Message Request",
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"user_id"},
+     *                 @OA\Property(
+     *                     property="user_id",
+     *                     type="string",
+     *                     example="1",
+     *                     description="Enter userId"
+     *                 ),
+     *             )
+     *         )
+     *     ),
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+
+    public function clearMessage(Request $request)
+    {
+        try {
+            $rules = [
+                'user_id' => 'required|string',
+            ];
+
+            $message = [
+                'user_id.required' => 'The message ID is required.',
+                'user_id.string' => 'The message ID must be a string.'
+            ];
+
+            $validator = Validator::make($request->all(), $rules, $message);
+            if ($validator->fails()) {
+                $data = [
+                    'status_code' => 400,
+                    'message' => $validator->errors()->first(),
+                    'data' => ""
+                ];
+                return $this->sendJsonResponse($data);
+            }
+            $loginUser = auth()->user()->id;
+            $userId = $request->user_id;
+            $messages = MessageSenderReceiver::where(function ($query) use ($loginUser, $userId) {
+                            $query->where('sender_id', $loginUser)->where('receiver_id', $userId);
+                            })->orWhere(function ($query) use ($loginUser, $userId) {
+                                $query->where('sender_id', $userId)->where('receiver_id', $loginUser);
+                            });
+            $messages->delete();
+
+            $data = [
+                'status_code' => 200,
+                'message' => 'Clear message Successfully!',
+                'data' => ""
+            ];
+            return $this->sendJsonResponse($data);
+        } catch (\Exception $e) {
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => now()->format("Y-m-d H:i:s")
+            ]);
+            return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
+        }
+    }
 }

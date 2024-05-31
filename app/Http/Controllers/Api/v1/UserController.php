@@ -289,6 +289,13 @@ class UserController extends Controller
                                 'data' => ""
                             ];
                             return $this->sendJsonResponse($data);
+                        }elseif($profileImageName == 'invalid_image'){
+                            $data = [
+                                'status_code' => 400,
+                                'message' => 'Please Select jpg, jpeg, png, webp, svg File',
+                                'data' => ""
+                            ];
+                            return $this->sendJsonResponse($data);
                         }
                     }
                     $coverImageName = NULL;
@@ -299,6 +306,13 @@ class UserController extends Controller
                             $data = [
                                 'status_code' => 400,
                                 'message' => 'Cover Image Upload faild',
+                                'data' => ""
+                            ];
+                            return $this->sendJsonResponse($data);
+                        }elseif($coverImageName == 'invalid_image'){
+                            $data = [
+                                'status_code' => 400,
+                                'message' => 'Please Select jpg, jpeg, png, webp, svg File',
                                 'data' => ""
                             ];
                             return $this->sendJsonResponse($data);
@@ -355,6 +369,13 @@ class UserController extends Controller
                                 'data' => ""
                             ];
                             return $this->sendJsonResponse($data);
+                        }elseif($profileImageName == 'invalid_image'){
+                            $data = [
+                                'status_code' => 400,
+                                'message' => 'Please Select jpg, jpeg, png, webp, svg File',
+                                'data' => ""
+                            ];
+                            return $this->sendJsonResponse($data);
                         }
                     }
                     $coverImageName = NULL;
@@ -365,6 +386,13 @@ class UserController extends Controller
                             $data = [
                                 'status_code' => 400,
                                 'message' => 'Cover Image Upload faild',
+                                'data' => ""
+                            ];
+                            return $this->sendJsonResponse($data);
+                        }elseif($coverImageName == 'invalid_image'){
+                            $data = [
+                                'status_code' => 400,
+                                'message' => 'Please Select jpg, jpeg, png, webp, svg File',
                                 'data' => ""
                             ];
                             return $this->sendJsonResponse($data);
@@ -419,6 +447,13 @@ class UserController extends Controller
                                 'data' => ""
                             ];
                             return $this->sendJsonResponse($data);
+                        }elseif($profileImageName == 'invalid_image'){
+                            $data = [
+                                'status_code' => 400,
+                                'message' => 'Please Select jpg, jpeg, png, webp, svg File',
+                                'data' => ""
+                            ];
+                            return $this->sendJsonResponse($data);
                         }
                     }
                     $coverImageName = NULL;
@@ -429,6 +464,13 @@ class UserController extends Controller
                             $data = [
                                 'status_code' => 400,
                                 'message' => 'Cover Image Upload faild',
+                                'data' => ""
+                            ];
+                            return $this->sendJsonResponse($data);
+                        }elseif($coverImageName == 'invalid_image'){
+                            $data = [
+                                'status_code' => 400,
+                                'message' => 'Please Select jpg, jpeg, png, webp, svg File',
                                 'data' => ""
                             ];
                             return $this->sendJsonResponse($data);
@@ -867,7 +909,6 @@ class UserController extends Controller
                     'time' => @$request->timezone ? Carbon::parse($message->message->created_at)->setTimezone($request->timezone)->format('h:i a') : Carbon::parse($message->message->created_at)->format('h:i a'),
                     'sentBy' => ($message->sender_id == $loginUser) ? 'loginUser' : 'User',
                     'messageDetails' => $messageDetails,
-                    //'timestamp' => Carbon::parse($message->message->created_at)->timestamp,
                 ];
             })->groupBy(function ($message) {
                 $carbonDate = Carbon::parse($message['date']);
@@ -1070,6 +1111,13 @@ class UserController extends Controller
                         'data' => ""
                     ];
                     return $this->sendJsonResponse($data);
+                }elseif($profileImageName == 'invalid_image'){
+                    $data = [
+                        'status_code' => 400,
+                        'message' => 'Please Select jpg, jpeg, png, webp, svg File',
+                        'data' => ""
+                    ];
+                    return $this->sendJsonResponse($data);
                 }
             }
             $coverImageName = $user->cover_image;
@@ -1080,6 +1128,13 @@ class UserController extends Controller
                     $data = [
                         'status_code' => 400,
                         'message' => 'Cover Image Upload faild',
+                        'data' => ""
+                    ];
+                    return $this->sendJsonResponse($data);
+                }elseif($coverImageName == 'invalid_image'){
+                    $data = [
+                        'status_code' => 400,
+                        'message' => 'Please Select jpg, jpeg, png, webp, svg File',
                         'data' => ""
                     ];
                     return $this->sendJsonResponse($data);

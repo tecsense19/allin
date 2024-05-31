@@ -52,6 +52,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
             Route::post('/file-upload', 'fileUpload');
             Route::post('/read-unread-message', 'changeMessageStatus');
             Route::post('/delete-message', 'deleteMessage');
+            Route::post('/clear-message', 'clearMessage');
         });
     });
 });
