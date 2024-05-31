@@ -615,6 +615,58 @@
                 ]
             }
         },
+        "/api/v1/export-chat": {
+            "post": {
+                "tags": [
+                    "Messages"
+                ],
+                "summary": "Export Chat",
+                "description": "Export Chat",
+                "operationId": "exportChat",
+                "requestBody": {
+                    "description": "Add Message Request",
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "user_id"
+                                ],
+                                "properties": {
+                                    "user_id": {
+                                        "description": "Enter userId",
+                                        "type": "string",
+                                        "example": "1"
+                                    },
+                                    "timezone": {
+                                        "description": "Enter Timezone",
+                                        "type": "string",
+                                        "example": ""
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "json schema",
+                        "content": {
+                            "application/json": {}
+                        }
+                    },
+                    "404": {
+                        "description": "Invalid Request"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/v1/send-otp": {
             "post": {
                 "tags": [

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\v1;
 
+use App\Exports\ChatExport;
 use App\Http\Controllers\Controller;
 use App\Models\Message;
 use App\Models\MessageAttachment;
@@ -15,7 +16,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Validator;
+use Maatwebsite\Excel\Facades\Excel;
 use Spatie\ImageOptimizer\OptimizerChainFactory;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 
 class ChatController extends Controller
 {
@@ -1188,10 +1192,10 @@ class ChatController extends Controller
             $loginUser = auth()->user()->id;
             $userId = $request->user_id;
             $messages = MessageSenderReceiver::where(function ($query) use ($loginUser, $userId) {
-                            $query->where('sender_id', $loginUser)->where('receiver_id', $userId);
-                            })->orWhere(function ($query) use ($loginUser, $userId) {
-                                $query->where('sender_id', $userId)->where('receiver_id', $loginUser);
-                            });
+                $query->where('sender_id', $loginUser)->where('receiver_id', $userId);
+            })->orWhere(function ($query) use ($loginUser, $userId) {
+                $query->where('sender_id', $userId)->where('receiver_id', $loginUser);
+            });
             $messages->delete();
 
             $data = [
@@ -1212,5 +1216,103 @@ class ChatController extends Controller
             ]);
             return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
         }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/v1/export-chat",
+     *     summary="Export Chat",
+     *     tags={"Messages"},
+     *     description="Export Chat",
+     *     operationId="exportChat",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Add Message Request",
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"user_id"},
+     *                 @OA\Property(
+     *                     property="user_id",
+     *                     type="string",
+     *                     example="1",
+     *                     description="Enter userId"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="timezone",
+     *                     type="string",
+     *                     example="",
+     *                     description="Enter Timezone"
+     *                 ),
+     *             )
+     *         )
+     *     ),
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+
+    public function exportChat(Request $request)
+    {
+        //try {
+        $rules = [
+            'user_id' => 'required|string',
+        ];
+
+        $message = [
+            'user_id.required' => 'The message ID is required.',
+            'user_id.string' => 'The message ID must be a string.'
+        ];
+
+        $validator = Validator::make($request->all(), $rules, $message);
+        if ($validator->fails()) {
+            $data = [
+                'status_code' => 400,
+                'message' => $validator->errors()->first(),
+                'data' => ""
+            ];
+            return $this->sendJsonResponse($data);
+        }
+        $loginUser = auth()->user()->id;
+        $userId = $request->user_id;
+        $timezone = @$request->timezone ? $request->timezone : '';
+        $uniqueName = auth()->user()->account_id;
+        $timestamp = Carbon::now()->timestamp;
+        $fileName = "chat_messages_{$uniqueName}_{$timestamp}.csv";
+        Excel::store( new ChatExport($loginUser, $userId, $timezone), $fileName, 'export' );
+
+        // Generate the file URL using the asset() helper function
+        $fileUrl = URL::to('public/exported-chat/'.$fileName);
+
+        $data = [
+            'status_code' => 200,
+            'message' => 'Message Exported Successfully!',
+            'data' => [
+                'fileUrl' => $fileUrl
+            ]
+        ];
+        return $this->sendJsonResponse($data);
+        // } catch (\Exception $e) {
+        //     Log::error([
+        //         'method' => __METHOD__,
+        //         'error' => [
+        //             'file' => $e->getFile(),
+        //             'line' => $e->getLine(),
+        //             'message' => $e->getMessage()
+        //         ],
+        //         'created_at' => now()->format("Y-m-d H:i:s")
+        //     ]);
+        //     return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
+        // }
     }
 }
