@@ -289,7 +289,7 @@ class UserController extends Controller
                                 'data' => ""
                             ];
                             return $this->sendJsonResponse($data);
-                        }elseif($profileImageName == 'invalid_image'){
+                        } elseif ($profileImageName == 'invalid_image') {
                             $data = [
                                 'status_code' => 400,
                                 'message' => 'Please Select jpg, jpeg, png, webp, svg File',
@@ -309,7 +309,7 @@ class UserController extends Controller
                                 'data' => ""
                             ];
                             return $this->sendJsonResponse($data);
-                        }elseif($coverImageName == 'invalid_image'){
+                        } elseif ($coverImageName == 'invalid_image') {
                             $data = [
                                 'status_code' => 400,
                                 'message' => 'Please Select jpg, jpeg, png, webp, svg File',
@@ -369,7 +369,7 @@ class UserController extends Controller
                                 'data' => ""
                             ];
                             return $this->sendJsonResponse($data);
-                        }elseif($profileImageName == 'invalid_image'){
+                        } elseif ($profileImageName == 'invalid_image') {
                             $data = [
                                 'status_code' => 400,
                                 'message' => 'Please Select jpg, jpeg, png, webp, svg File',
@@ -389,7 +389,7 @@ class UserController extends Controller
                                 'data' => ""
                             ];
                             return $this->sendJsonResponse($data);
-                        }elseif($coverImageName == 'invalid_image'){
+                        } elseif ($coverImageName == 'invalid_image') {
                             $data = [
                                 'status_code' => 400,
                                 'message' => 'Please Select jpg, jpeg, png, webp, svg File',
@@ -447,7 +447,7 @@ class UserController extends Controller
                                 'data' => ""
                             ];
                             return $this->sendJsonResponse($data);
-                        }elseif($profileImageName == 'invalid_image'){
+                        } elseif ($profileImageName == 'invalid_image') {
                             $data = [
                                 'status_code' => 400,
                                 'message' => 'Please Select jpg, jpeg, png, webp, svg File',
@@ -467,7 +467,7 @@ class UserController extends Controller
                                 'data' => ""
                             ];
                             return $this->sendJsonResponse($data);
-                        }elseif($coverImageName == 'invalid_image'){
+                        } elseif ($coverImageName == 'invalid_image') {
                             $data = [
                                 'status_code' => 400,
                                 'message' => 'Please Select jpg, jpeg, png, webp, svg File',
@@ -691,16 +691,18 @@ class UserController extends Controller
     {
         try {
             $login_user_id = auth()->user()->id;
-            $deletedUsers = deleteChatUsers::where('user_id',$login_user_id)->pluck('deleted_user_id');
+            $deletedUsers = deleteChatUsers::where('user_id', $login_user_id)->pluck('deleted_user_id');
             $users = User::where('id', '!=', $login_user_id)
                 ->where('role', 'User')
                 ->where('status', 'Active')
-                ->whereNotIn('id',$deletedUsers)
+                ->whereNotIn('id', $deletedUsers)
                 ->whereNull('deleted_at')
-                ->with(['sentMessages.message' => function ($query) {
-                    $query->whereNull('deleted_at');
-                }, 'receivedMessages.message' => function ($query) {
-                    $query->whereNull('deleted_at');
+                ->with(['sentMessages' => function ($query) use ($login_user_id) {
+                    $query->where('receiver_id', $login_user_id)
+                          ->whereNull('deleted_at');
+                }, 'receivedMessages' => function ($query) use ($login_user_id) {
+                    $query->where('sender_id', $login_user_id)
+                          ->whereNull('deleted_at');
                 }])
                 ->get()
                 ->map(function ($user) use ($login_user_id, $request) {
@@ -923,14 +925,14 @@ class UserController extends Controller
                 $sortedMessages = $messages->sort(function ($a, $b) {
                     $timeA = strtotime($a['time']);
                     $timeB = strtotime($b['time']);
-            
+
                     if ($timeA == $timeB) {
                         return $a['messageId'] <=> $b['messageId'];
                     }
-            
+
                     return $timeA <=> $timeB;
                 })->values();
-            
+
                 return [$date => $sortedMessages];
             });
             $reversedGroupedChat = array_reverse($groupedChat->toArray());
@@ -1111,7 +1113,7 @@ class UserController extends Controller
                         'data' => ""
                     ];
                     return $this->sendJsonResponse($data);
-                }elseif($profileImageName == 'invalid_image'){
+                } elseif ($profileImageName == 'invalid_image') {
                     $data = [
                         'status_code' => 400,
                         'message' => 'Please Select jpg, jpeg, png, webp, svg File',
@@ -1131,7 +1133,7 @@ class UserController extends Controller
                         'data' => ""
                     ];
                     return $this->sendJsonResponse($data);
-                }elseif($coverImageName == 'invalid_image'){
+                } elseif ($coverImageName == 'invalid_image') {
                     $data = [
                         'status_code' => 400,
                         'message' => 'Please Select jpg, jpeg, png, webp, svg File',
@@ -1239,7 +1241,7 @@ class UserController extends Controller
             $deleteChatUser->user_id = auth()->user()->id;
             $deleteChatUser->deleted_user_id = $request->id;
             $deleteChatUser->save();
-            
+
             $data = [
                 'status_code' => 200,
                 'message' => "User Deleted Successfully!",
