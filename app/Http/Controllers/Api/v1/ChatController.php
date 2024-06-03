@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Api\v1;
 
-use App\Exports\ChatExport;
+use App\Exports\chatExport;
 use App\Http\Controllers\Controller;
 use App\Models\Message;
 use App\Models\MessageAttachment;
@@ -1289,7 +1289,7 @@ class ChatController extends Controller
             $uniqueName = auth()->user()->account_id;
             $timestamp = Carbon::now()->timestamp;
             $fileName = "chat_messages_{$uniqueName}_{$timestamp}.csv";
-            Excel::store(new ChatExport($loginUser, $userId, $timezone), $fileName, 'export');
+            Excel::store(new chatExport($loginUser, $userId, $timezone), $fileName, 'export');
 
             // Generate the file URL using the asset() helper function
             $fileUrl = URL::to('public/exported-chat/' . $fileName);

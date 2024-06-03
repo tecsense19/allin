@@ -12,7 +12,7 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Illuminate\Support\Collection;
 
 
-class ChatExport implements FromCollection, WithHeadings
+class chatExport implements FromCollection, WithHeadings
 {
     protected $login_user_id;
     protected $id;
