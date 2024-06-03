@@ -19,5 +19,11 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
 });
 
 Broadcast::channel('allin_app', function ($user) {
-    return auth()->user();
+    $authenticatedUser = auth()->user();
+    if ($authenticatedUser) {
+        $userId = $authenticatedUser->id;
+        $userName = $authenticatedUser->name;
+        return true;
+    }
+    return false;
 });

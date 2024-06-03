@@ -35,4 +35,9 @@ class MessageSent
             new PrivateChannel('allin_app'),
         ];
     }
+
+    public function broadcastAs()
+    {
+        return 'allin_app';
+    }
 }
