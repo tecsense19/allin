@@ -1264,55 +1264,55 @@ class ChatController extends Controller
 
     public function exportChat(Request $request)
     {
-        //try {
-        $rules = [
-            'user_id' => 'required|string',
-        ];
+        try {
+            $rules = [
+                'user_id' => 'required|string',
+            ];
 
-        $message = [
-            'user_id.required' => 'The message ID is required.',
-            'user_id.string' => 'The message ID must be a string.'
-        ];
+            $message = [
+                'user_id.required' => 'The message ID is required.',
+                'user_id.string' => 'The message ID must be a string.'
+            ];
 
-        $validator = Validator::make($request->all(), $rules, $message);
-        if ($validator->fails()) {
+            $validator = Validator::make($request->all(), $rules, $message);
+            if ($validator->fails()) {
+                $data = [
+                    'status_code' => 400,
+                    'message' => $validator->errors()->first(),
+                    'data' => ""
+                ];
+                return $this->sendJsonResponse($data);
+            }
+            $loginUser = auth()->user()->id;
+            $userId = $request->user_id;
+            $timezone = @$request->timezone ? $request->timezone : '';
+            $uniqueName = auth()->user()->account_id;
+            $timestamp = Carbon::now()->timestamp;
+            $fileName = "chat_messages_{$uniqueName}_{$timestamp}.csv";
+            Excel::store(new ChatExport($loginUser, $userId, $timezone), $fileName, 'export');
+
+            // Generate the file URL using the asset() helper function
+            $fileUrl = URL::to('public/exported-chat/' . $fileName);
+
             $data = [
-                'status_code' => 400,
-                'message' => $validator->errors()->first(),
-                'data' => ""
+                'status_code' => 200,
+                'message' => 'Message Exported Successfully!',
+                'data' => [
+                    'fileUrl' => $fileUrl
+                ]
             ];
             return $this->sendJsonResponse($data);
+        } catch (\Exception $e) {
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => now()->format("Y-m-d H:i:s")
+            ]);
+            return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
         }
-        $loginUser = auth()->user()->id;
-        $userId = $request->user_id;
-        $timezone = @$request->timezone ? $request->timezone : '';
-        $uniqueName = auth()->user()->account_id;
-        $timestamp = Carbon::now()->timestamp;
-        $fileName = "chat_messages_{$uniqueName}_{$timestamp}.csv";
-        Excel::store( new ChatExport($loginUser, $userId, $timezone), $fileName, 'export' );
-
-        // Generate the file URL using the asset() helper function
-        $fileUrl = URL::to('public/exported-chat/'.$fileName);
-
-        $data = [
-            'status_code' => 200,
-            'message' => 'Message Exported Successfully!',
-            'data' => [
-                'fileUrl' => $fileUrl
-            ]
-        ];
-        return $this->sendJsonResponse($data);
-        // } catch (\Exception $e) {
-        //     Log::error([
-        //         'method' => __METHOD__,
-        //         'error' => [
-        //             'file' => $e->getFile(),
-        //             'line' => $e->getLine(),
-        //             'message' => $e->getMessage()
-        //         ],
-        //         'created_at' => now()->format("Y-m-d H:i:s")
-        //     ]);
-        //     return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
-        // }
     }
 }
