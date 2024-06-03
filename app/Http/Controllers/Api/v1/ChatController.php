@@ -949,6 +949,7 @@ class ChatController extends Controller
                 $extension = strtolower($file->getClientOriginalExtension());
                 $originalNameWithExt = $file->getClientOriginalName();
                 $originalName = pathinfo($originalNameWithExt, PATHINFO_FILENAME);
+                $originalName = create_slug($originalName);
                 $imageName = $originalName . '_' . time() . '.' . $extension;
                 $destinationPath = public_path('chat-file/');
                 if (!file_exists($destinationPath)) {
@@ -960,12 +961,12 @@ class ChatController extends Controller
                     $optimizerChain = OptimizerChainFactory::create();
                     $optimizerChain->optimize($destinationPath . $imageName);
                 }
-
                 $data = [
                     'status_code' => 200,
                     'message' => 'File Uploaded Successfully!',
                     'data' => [
                         'image_name' => $imageName,
+                        'file_type' => $extension,
                         'image_path' => URL::to('public/chat-file/' . $imageName)
                     ]
                 ];
