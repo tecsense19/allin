@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\v1;
 
+use App\Events\MessageSent;
 use App\Exports\chatExport;
 use App\Http\Controllers\Controller;
 use App\Models\Message;
@@ -113,6 +114,16 @@ class ChatController extends Controller
             $messageSenderReceiver->sender_id = auth()->user()->id;
             $messageSenderReceiver->receiver_id = $request->receiver_id;
             $messageSenderReceiver->save();
+
+            $message = [
+                'id' => $msg->id,
+                'sender' => auth()->user()->id,
+                'receiver' => $request->receiver_id,
+                'message_type' => $request->message_type,
+                'message' => $request->message,
+            ];
+
+            broadcast(new MessageSent($message))->toOthers();
 
             $data = [
                 'status_code' => 200,
@@ -239,6 +250,18 @@ class ChatController extends Controller
             $messageAttachment->attachment_name = $request->attachment;
             $messageAttachment->attachment_path = URL::to('public/chat-file/' . $request->attachment);
             $messageAttachment->save();
+
+            $message = [
+                'id' => $msg->id,
+                'sender' => auth()->user()->id,
+                'receiver' => $request->receiver_id,
+                'message_type' => $request->message_type,
+                'attachment_type' => $request->attachment_type,
+                'attachment_name' => $request->attachment,
+                'attachment_path' => URL::to('public/chat-file/' . $request->attachment),
+            ];
+
+            broadcast(new MessageSent($message))->toOthers();
 
             $data = [
                 'status_code' => 200,
@@ -371,6 +394,17 @@ class ChatController extends Controller
             $messageTask->users = $mergedIds;
             $messageTask->save();
 
+            $message = [
+                'id' => $msg->id,
+                'sender' => auth()->user()->id,
+                'receiver' => $request->receiver_id,
+                'message_type' => $request->message_type,
+                'task_name' => $request->task_name,
+                'task_description' => @$request->task_description ? $request->task_description : NULL,
+            ];
+
+            broadcast(new MessageSent($message))->toOthers();
+
             $data = [
                 'status_code' => 200,
                 'message' => 'Message Sent Successfully!',
@@ -471,6 +505,7 @@ class ChatController extends Controller
 
             $msg = new Message();
             $msg->message_type = $request->message_type;
+            $msg->message = $request->message;
             $msg->status = "Unread";
             $msg->save();
 
@@ -491,6 +526,16 @@ class ChatController extends Controller
             $messageTaskChat->message_id = $msg->id;
             $messageTaskChat->task_id = $request->task_id;
             $messageTaskChat->save();
+
+            $message = [
+                'id' => $msg->id,
+                'sender' => auth()->user()->id,
+                'receiver' => $notInArray,
+                'message_type' => $request->message_type,
+                'message' => $request->message
+            ];
+
+            broadcast(new MessageSent($message))->toOthers();
             $data = [
                 'status_code' => 200,
                 'message' => 'Message Sent Successfully!',
@@ -619,8 +664,20 @@ class ChatController extends Controller
             $messageLocation->message_id = $msg->id;
             $messageLocation->latitude = $request->latitude;
             $messageLocation->longitude = $request->longitude;
-            $messageLocation->location_url = $request->location_url;
+            $messageLocation->location_url = @$request->location_url ? $request->location_url : NULL;
             $messageLocation->save();
+
+            $message = [
+                'id' => $msg->id,
+                'sender' => auth()->user()->id,
+                'receiver' => $request->receiver_id,
+                'message_type' => $request->message_type,
+                'latitude' => $request->latitude,
+                'latitude' => $request->latitude,
+                'location_url' => @$request->location_url ? $request->location_url : NULL
+            ];
+
+            broadcast(new MessageSent($message))->toOthers();
 
             $data = [
                 'status_code' => 200,
@@ -1315,4 +1372,6 @@ class ChatController extends Controller
             return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
         }
     }
+
+    
 }

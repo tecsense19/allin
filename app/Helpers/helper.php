@@ -1,12 +1,14 @@
 <?php
 
 use App\Models\User;
+use App\Models\userDeviceToken;
 use Illuminate\Support\Facades\Facade;
 use Kreait\Firebase\Factory;
 use Kreait\Firebase\Messaging\AndroidConfig;
 use Kreait\Firebase\Messaging\ApnsConfig;
 use Kreait\Firebase\Messaging\Notification;
 use Spatie\ImageOptimizer\OptimizerChainFactory;
+use Kreait\Firebase\Messaging\Message;
 
 if (!function_exists('create_slug')) {
   function create_slug($string)
@@ -172,7 +174,7 @@ if (!function_exists('sendPushNotification')) {
 if (!function_exists('validateToken')) {
   function validateToken($user_id)
   {
-    $device_id = UserLogin::where('user_id', $user_id)->pluck('push_notification_id')->toArray();
+    $device_id = userDeviceToken::where('user_id', $user_id)->pluck('token')->toArray();
     $path = app_path(config('services.firebase.url'));
     $factory = (new Factory)
       ->withServiceAccount($path);
@@ -187,10 +189,10 @@ if (!function_exists('validateToken')) {
 
 function generateMessage($deviceToken, $notification, $data, $androidConfig, $appleConfig)
 {
-  return (new \Kreait\Firebase\Messaging\Message())
+  return (new Message())
     ->withNotification($notification)
     ->withData($data)
-    ->withAndroidConfig($androidConfig) // Corrected method name
-    ->withApnsConfig($appleConfig) // Corrected method name
+    ->withAndroidConfig($androidConfig)
+    ->withApnsConfig($appleConfig)
     ->withToken($deviceToken);
 }
