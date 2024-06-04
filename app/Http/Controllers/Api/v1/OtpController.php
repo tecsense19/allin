@@ -115,49 +115,6 @@ class OtpController extends Controller
             }
             $user = User::where('country_code', $request->country_code)->where('mobile', $request->mobile)->first();
             if ($request->type == 'Register') {
-                $rules = [
-                    'first_name' => 'required|string|regex:/^[a-zA-Z\s]+$/|max:255',
-                    'last_name' => 'nullable|string|regex:/^[a-zA-Z\s]+$/|max:255',
-                    'country_code' => 'required|string|max:255|regex:/^\+\d{1,4}$/',
-                    'mobile' => 'required|string|regex:/^\d{6,14}$/',
-                    'profile' => 'nullable|image|mimes:jpeg,jpg,png,webp,svg|max:2048',
-                    'cover_image' => 'nullable|image|mimes:jpeg,jpg,png,webp,svg|max:2048',
-                    'device_token' => 'required|string'
-                ];
-
-                $message = [
-                    'first_name.required' => 'First name is required.',
-                    'first_name.string' => 'First name must be a string.',
-                    'first_name.regex' => 'First name must contain only alphabets and spaces.',
-                    'first_name.max' => 'First name must not exceed 255 characters.',
-                    'last_name.string' => 'Last name must be a string.',
-                    'last_name.regex' => 'Last name must contain only alphabets and spaces.',
-                    'last_name.max' => 'Last name must not exceed 255 characters.',
-                    'country_code.required' => 'Country code is required.',
-                    'country_code.string' => 'Country code must be a string.',
-                    'country_code.max' => 'Country code must not exceed 255 characters.',
-                    'country_code.regex' => 'Invalid country code format. It should start with "+" followed by one to three digits.',
-                    'mobile.required' => 'Mobile number is required.',
-                    'mobile.string' => 'Mobile number must be a string.',
-                    'mobile.regex' => 'Invalid mobile number format. It should be numeric and at least 10 digits long.',
-                    'profile.image' => 'Profile image must be an image file.',
-                    'profile.mimes' => 'Profile image must be a JPEG, JPG, PNG,svg, or WebP file.',
-                    'profile.max' => 'Profile image size must not exceed 2MB.',
-                    'cover_image.image' => 'Cover image must be an image file.',
-                    'cover_image.mimes' => 'Cover image must be a JPEG, JPG, PNG,svg, or WebP file.',
-                    'cover_image.max' => 'Cover image size must not exceed 2MB.',
-                    'device_token.required' => 'Device token is required.'
-                ];
-
-                $validator = Validator::make($request->all(), $rules, $message);
-                if ($validator->fails()) {
-                    $data = [
-                        'status_code' => 400,
-                        'message' => $validator->errors()->first(),
-                        'data' => ""
-                    ];
-                    return $this->sendJsonResponse($data);
-                }
                 if ($user) {
                     $data = [
                         'status_code' => 400,
