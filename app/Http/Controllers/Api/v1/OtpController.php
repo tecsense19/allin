@@ -66,7 +66,7 @@ class OtpController extends Controller
      *         description="Enter Type (Login / Register)",
      *         required=true,
      *         @OA\Schema(
-     *             type="number",
+     *             type="string",
      *         )
      *     ),
      *      @OA\Response(
