@@ -59,6 +59,16 @@ class OtpController extends Controller
      *             type="number",
      *         )
      *     ),
+*          @OA\Parameter(
+     *         name="type",
+     *         in="query",
+     *         example="Login",
+     *         description="Enter Type (Login / Register)",
+     *         required=true,
+     *         @OA\Schema(
+     *             type="number",
+     *         )
+     *     ),
      *      @OA\Response(
      *         response=200,
      *         description="json schema",
@@ -79,6 +89,7 @@ class OtpController extends Controller
             $rules = [
                 'country_code' => 'required|string|max:255|regex:/^\+\d{1,4}$/',
                 'mobile' => 'required|string|regex:/^\d{6,14}$/',
+                'type' => 'required|string',
             ];
 
             $message = [
@@ -89,6 +100,8 @@ class OtpController extends Controller
                 'mobile.required' => 'Mobile number is required.',
                 'mobile.string' => 'Mobile number must be a string.',
                 'mobile.regex' => 'Invalid mobile number format. It should be numeric and at least 10 digits long.',
+                'type.required' => 'type is required.',
+                'type.string' => 'type must be a string.',
             ];
 
             $validator = Validator::make($request->all(), $rules, $message);
@@ -99,6 +112,26 @@ class OtpController extends Controller
                     'data' => ""
                 ];
                 return $this->sendJsonResponse($data);
+            }
+            $user = User::where('country_code', $request->country_code)->where('mobile', $request->mobile)->first();
+            if($request->type == 'Register'){
+                if ($user) {
+                    $data = [
+                       'status_code' => 400,
+                       'message' => 'User already exists',
+                        'data' => ""
+                    ];
+                    return $this->sendJsonResponse($data);
+                }
+            }elseif($request->type == 'Login'){
+                if (!$user) {
+                    $data = [
+                       'status_code' => 400,
+                       'message' => 'User does not exists',
+                        'data' => ""
+                    ];
+                    return $this->sendJsonResponse($data);
+                }
             }
             if ($request->country_code == '+91' && $request->mobile == '9876543210') {
                 $data = [
