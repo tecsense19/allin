@@ -674,6 +674,16 @@ class UserController extends Controller
      *             type="string",
      *         )
      *     ),
+     *     @OA\Parameter(
+     *         name="search",
+     *         in="query",
+     *         example="",
+     *         description="Enter Search Value",
+     *         required=false,
+     *         @OA\Schema(
+     *             type="string",
+     *         )
+     *     ),
      *      @OA\Response(
      *         response=200,
      *         description="json schema",
@@ -695,6 +705,16 @@ class UserController extends Controller
             $users = User::where('id', '!=', $login_user_id)
                 ->where('role', 'User')
                 ->where('status', 'Active')
+                ->where(function($q) use($request){
+                    if ($request->search) {
+                        $q->where(function ($query) use ($request) {
+                            $query->where('first_name', 'LIKE', '%'. $request->search. '%')
+                                ->orWhere('last_name', 'LIKE', '%'. $request->search. '%')
+                                ->orWhere('email', 'LIKE', '%'. $request->search. '%')
+                                ->orWhere('mobile', 'LIKE', '%'. $request->search. '%');
+                        });
+                    }
+                })
                 ->whereNotIn('id', $deletedUsers)
                 ->whereNull('deleted_at')
                 ->with(['sentMessages' => function ($query) use ($login_user_id) {
@@ -821,6 +841,16 @@ class UserController extends Controller
      *             type="string",
      *         )
      *     ),
+     *     @OA\Parameter(
+     *         name="filter",
+     *         in="query",
+     *         example="",
+     *         description="Enter Message type",
+     *         required=false,
+     *         @OA\Schema(
+     *             type="string",
+     *         )
+     *     ),
      *      @OA\Response(
      *         response=200,
      *         description="json schema",
@@ -879,6 +909,9 @@ class UserController extends Controller
                     'message.location:id,message_id,latitude,longitude,location_url',
                     'message.meeting:id,message_id,mode,title,description,date,start_time,end_time,meeting_url'
                 ])
+                ->whereHas('message', function ($query) use ($request) {
+                    $query->where('message_type', $request->filter);
+                })
                 ->orderByDesc('created_at')
                 ->skip($start)
                 ->take($limit)

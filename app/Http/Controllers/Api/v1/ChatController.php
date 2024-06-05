@@ -1234,8 +1234,8 @@ class ChatController extends Controller
             ];
 
             $message = [
-                'user_id.required' => 'The message ID is required.',
-                'user_id.string' => 'The message ID must be a string.'
+                'user_id.required' => 'The User ID is required.',
+                'user_id.string' => 'The User ID must be a string.'
             ];
 
             $validator = Validator::make($request->all(), $rules, $message);
