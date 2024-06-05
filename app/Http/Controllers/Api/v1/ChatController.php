@@ -439,11 +439,11 @@ class ChatController extends Controller
      *         @OA\MediaType(
      *             mediaType="multipart/form-data",
      *             @OA\Schema(
-     *                 required={"message_type","task_id"},
+     *                 required={"message_type","task_id","chat_type","message"},
      *                 @OA\Property(
      *                     property="message_type",
      *                     type="string",
-     *                     example="text",
+     *                     example="Task Chat",
      *                     description="Type of the message"
      *                 ),
      *                 @OA\Property(
@@ -457,6 +457,24 @@ class ChatController extends Controller
      *                     type="string",
      *                     example="",
      *                     description="Task Message"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="chat_type",
+     *                     type="string",
+     *                     example="Text",
+     *                     description="Chat Type (Text / Attachment)"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="attachment_type",
+     *                     type="string",
+     *                     example="jpg",
+     *                     description="Attachment Type"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="attachment",
+     *                     type="string",
+     *                     example="abc.jpg",
+     *                     description="Attachment Name"
      *                 ),
      *             )
      *         )
@@ -482,15 +500,18 @@ class ChatController extends Controller
                 'message_type' => 'required|string',
                 'task_id' => 'required|string',
                 'message' => 'required|string',
+                'chat_type' => 'required|string',
             ];
 
             $message = [
                 'message_type.required' => 'The message type is required.',
                 'message_type.string' => 'The message type must be a string.',
-                'task_id.required' => 'The receiver ID is required.',
-                'task_id.string' => 'The receiver ID must be an string.',
-                'message.required' => 'The receiver ID is required.',
-                'message.string' => 'The receiver ID must be an string.',
+                'task_id.required' => 'The task ID is required.',
+                'task_id.string' => 'The task ID must be an string.',
+                'message.required' => 'The Message is required.',
+                'message.string' => 'The Message must be an string.',
+                'chat_type.required' => 'The Chat type is required.',
+                'chat_type.string' => 'The Chat type must be an string.',
             ];
 
             $validator = Validator::make($request->all(), $rules, $message);
@@ -503,11 +524,25 @@ class ChatController extends Controller
                 return $this->sendJsonResponse($data);
             }
 
-            $msg = new Message();
-            $msg->message_type = $request->message_type;
-            $msg->message = $request->message;
-            $msg->status = "Unread";
-            $msg->save();
+            if($request->chat_type == 'Text'){
+                $msg = new Message();
+                $msg->message_type = $request->message_type;
+                $msg->message = $request->message;
+                $msg->status = "Unread";
+                $msg->save();
+            }elseif($request->chat_type == 'Attachment'){
+                $msg = new Message();
+                $msg->message_type = $request->message_type;
+                $msg->attachment_type = $request->attachment_type;
+                $msg->status = "Unread";
+                $msg->save();
+
+                $messageAttachment = new MessageAttachment();
+                $messageAttachment->message_id = $msg->id;
+                $messageAttachment->attachment_name = $request->attachment;
+                $messageAttachment->attachment_path = URL::to('public/chat-file/' . $request->attachment);
+                $messageAttachment->save();
+            }
 
             $task_user = MessageTask::where('id', $request->task_id)->first()->users;
             $exloded_task_user = explode(",", $task_user);

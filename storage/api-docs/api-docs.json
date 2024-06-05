@@ -216,13 +216,15 @@
                             "schema": {
                                 "required": [
                                     "message_type",
-                                    "task_id"
+                                    "task_id",
+                                    "chat_type",
+                                    "message"
                                 ],
                                 "properties": {
                                     "message_type": {
                                         "description": "Type of the message",
                                         "type": "string",
-                                        "example": "text"
+                                        "example": "Task Chat"
                                     },
                                     "task_id": {
                                         "description": "Enter taskId",
@@ -233,6 +235,21 @@
                                         "description": "Task Message",
                                         "type": "string",
                                         "example": ""
+                                    },
+                                    "chat_type": {
+                                        "description": "Chat Type (Text / Attachment)",
+                                        "type": "string",
+                                        "example": "Text"
+                                    },
+                                    "attachment_type": {
+                                        "description": "Attachment Type",
+                                        "type": "string",
+                                        "example": "jpg"
+                                    },
+                                    "attachment": {
+                                        "description": "Attachment Name",
+                                        "type": "string",
+                                        "example": "abc.jpg"
                                     }
                                 },
                                 "type": "object"
@@ -695,6 +712,16 @@
                             "type": "number"
                         },
                         "example": "9876543210"
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "description": "Enter Type (Login / Register)",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "Login"
                     }
                 ],
                 "responses": {
@@ -999,6 +1026,16 @@
                             "type": "string"
                         },
                         "example": ""
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Enter Search Value",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": ""
                     }
                 ],
                 "responses": {
@@ -1062,6 +1099,16 @@
                         "name": "timezone",
                         "in": "query",
                         "description": "Enter Timezone",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": ""
+                    },
+                    {
+                        "name": "filter",
+                        "in": "query",
+                        "description": "Enter Message type",
                         "required": false,
                         "schema": {
                             "type": "string"
