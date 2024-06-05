@@ -1409,5 +1409,7 @@ class ChatController extends Controller
         }
     }
 
-    
+    public function taskChat(Request $request){
+        
+    }
 }

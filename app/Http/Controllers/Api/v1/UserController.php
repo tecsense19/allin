@@ -910,7 +910,9 @@ class UserController extends Controller
                     'message.meeting:id,message_id,mode,title,description,date,start_time,end_time,meeting_url'
                 ])
                 ->whereHas('message', function ($query) use ($request) {
-                    $query->where('message_type', $request->filter);
+                    if(@$request->filter){
+                        $query->where('message_type', $request->filter);
+                    }
                 })
                 ->orderByDesc('created_at')
                 ->skip($start)
