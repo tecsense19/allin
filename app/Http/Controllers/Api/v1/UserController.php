@@ -895,7 +895,11 @@ class UserController extends Controller
 
             $loginUser = auth()->user()->id;
             $userId = $request->id;
-
+            $filter = [
+                'Task',
+                'Meeting',
+                'Reminder'
+            ];
             $messages = MessageSenderReceiver::where(function ($query) use ($loginUser, $userId) {
                 $query->where('sender_id', $loginUser)->where('receiver_id', $userId);
             })->orWhere(function ($query) use ($loginUser, $userId) {
@@ -909,16 +913,9 @@ class UserController extends Controller
                     'message.location:id,message_id,latitude,longitude,location_url',
                     'message.meeting:id,message_id,mode,title,description,date,start_time,end_time,meeting_url'
                 ])
-                ->whereHas('message', function ($query) use ($request) {
-                    if (@$request->filter == 'filter') {
-                        $query->whereIn('message_type', ['Task','Meeting','Reminder']);
-                    }
-                })
                 ->orderByDesc('created_at')
                 ->skip($start)
-                ->take($limit)
-                ->get();
-
+                ->take($limit)->get();
             $groupedChat = $messages->map(function ($message) use ($loginUser, $request) {
                 $messageDetails = [];
                 switch ($message->message->message_type) {
@@ -938,6 +935,7 @@ class UserController extends Controller
                         $messageDetails = $message->message->task;
                         break;
                 }
+
                 return [
                     'messageId' => $message->message->id,
                     'messageType' => $message->message->message_type,
@@ -975,7 +973,15 @@ class UserController extends Controller
             $chat = [];
             foreach ($reversedGroupedChat as $item) {
                 foreach ($item as $date => $messages) {
-                    $chat[$date] = $messages;
+                    if($request->filter == 'filter'){
+                        foreach($messages as $single){
+                            if(in_array($single['messageType'], $filter)){
+                                $chat[$date] = $messages;
+                            }
+                        }
+                    }else{
+                        $chat[$date] = $messages;
+                    }
                 }
             }
             $data = [
