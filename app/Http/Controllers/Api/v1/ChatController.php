@@ -145,7 +145,6 @@ class ChatController extends Controller
             return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
         }
     }
-
     /**
      * @OA\Post(
      *     path="/api/v1/file-upload-message",
@@ -202,7 +201,6 @@ class ChatController extends Controller
      *     ),
      * )
      */
-
     public function fileUploadMessage(Request $request)
     {
         try {
@@ -283,7 +281,6 @@ class ChatController extends Controller
             return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
         }
     }
-
     /**
      * @OA\Post(
      *     path="/api/v1/message-task",
@@ -339,7 +336,6 @@ class ChatController extends Controller
      *     ),
      * )
      */
-
     public function messageTask(Request $request)
     {
         try {
@@ -425,7 +421,6 @@ class ChatController extends Controller
             return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
         }
     }
-
     /**
      * @OA\Post(
      *     path="/api/v1/message-task-chat",
@@ -493,7 +488,6 @@ class ChatController extends Controller
      *     ),
      * )
      */
-
     public function messageTaskChat(Request $request)
     {
         try {
@@ -591,7 +585,6 @@ class ChatController extends Controller
             return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
         }
     }
-
     /**
      * @OA\Post(
      *     path="/api/v1/message-location",
@@ -653,7 +646,6 @@ class ChatController extends Controller
      *     ),
      * )
      */
-
     public function messageLocation(Request $request)
     {
         try {
@@ -734,7 +726,6 @@ class ChatController extends Controller
             return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
         }
     }
-
     /**
      * @OA\Post(
      *     path="/api/v1/message-meeting",
@@ -820,7 +811,6 @@ class ChatController extends Controller
      *     ),
      * )
      */
-
     public function messageMeeting(Request $request)
     {
         try {
@@ -919,7 +909,6 @@ class ChatController extends Controller
             return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
         }
     }
-
     /**
      * @OA\Post(
      *     path="/api/v1/file-upload",
@@ -957,7 +946,6 @@ class ChatController extends Controller
      *     ),
      * )
      */
-
     public function fileUpload(Request $request)
     {
         try {
@@ -1028,7 +1016,6 @@ class ChatController extends Controller
             return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
         }
     }
-
     /**
      * @OA\Post(
      *     path="/api/v1/read-unread-message",
@@ -1159,7 +1146,6 @@ class ChatController extends Controller
      *     ),
      * )
      */
-
     public function deleteMessage(Request $request)
     {
         try {
@@ -1223,7 +1209,6 @@ class ChatController extends Controller
             return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
         }
     }
-
     /**
      * @OA\Post(
      *     path="/api/v1/clear-message",
@@ -1311,7 +1296,6 @@ class ChatController extends Controller
             return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
         }
     }
-
     /**
      * @OA\Post(
      *     path="/api/v1/export-chat",
@@ -1409,7 +1393,6 @@ class ChatController extends Controller
             return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
         }
     }
-
     /**
      * @OA\Post(
      *     path="/api/v1/task-chat",
@@ -1509,14 +1492,7 @@ class ChatController extends Controller
             ->where('task_id', $taskId)
             ->get();
 
-        if ($messages->isEmpty()) {
-            return response()->json([
-                'status_code' => 404,
-                'message' => 'No messages found for this task.',
-                'data' => []
-            ]);
-        }
-
+        
         $mappedMessages = $messages->map(function ($taskChat) use ($loginUserId,$request) {
             $message = $taskChat->message;
             $senderReceiver = $message->senderReceiverOne;
