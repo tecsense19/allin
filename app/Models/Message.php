@@ -73,4 +73,14 @@ class Message extends Model
     {
         return $this->hasOne(MessageMeeting::class);
     }
+
+    public function taskChats()
+    {
+        return $this->hasMany(MessageTaskChat::class);
+    }
+
+    public function senderReceiverOne()
+    {
+        return $this->hasOne(MessageSenderReceiver::class);
+    }
 }

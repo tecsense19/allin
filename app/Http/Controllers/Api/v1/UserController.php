@@ -705,13 +705,13 @@ class UserController extends Controller
             $users = User::where('id', '!=', $login_user_id)
                 ->where('role', 'User')
                 ->where('status', 'Active')
-                ->where(function($q) use($request){
-                    if ($request->search) {
-                        $q->where(function ($query) use ($request) {
-                            $query->where('first_name', 'LIKE', '%'. $request->search. '%')
-                                ->orWhere('last_name', 'LIKE', '%'. $request->search. '%')
-                                ->orWhere('email', 'LIKE', '%'. $request->search. '%')
-                                ->orWhere('mobile', 'LIKE', '%'. $request->search. '%');
+                ->where(function ($q) use ($request) {
+                    if (@$request->search) {
+                        $q->where(function ($qq) use ($request) {
+                            $qq->where('first_name', 'LIKE', '%' . $request->search . '%')
+                                ->orWhere('last_name', 'LIKE', '%' . $request->search . '%')
+                                ->orWhere('email', 'LIKE', '%' . $request->search . '%')
+                                ->orWhere('mobile', 'LIKE', '%' . $request->search . '%');
                         });
                     }
                 })
@@ -719,10 +719,10 @@ class UserController extends Controller
                 ->whereNull('deleted_at')
                 ->with(['sentMessages' => function ($query) use ($login_user_id) {
                     $query->where('receiver_id', $login_user_id)
-                          ->whereNull('deleted_at');
+                        ->whereNull('deleted_at');
                 }, 'receivedMessages' => function ($query) use ($login_user_id) {
                     $query->where('sender_id', $login_user_id)
-                          ->whereNull('deleted_at');
+                        ->whereNull('deleted_at');
                 }])
                 ->get()
                 ->map(function ($user) use ($login_user_id, $request) {
@@ -844,7 +844,7 @@ class UserController extends Controller
      *     @OA\Parameter(
      *         name="filter",
      *         in="query",
-     *         example="",
+     *         example="filter",
      *         description="Enter Message type",
      *         required=false,
      *         @OA\Schema(
@@ -910,8 +910,8 @@ class UserController extends Controller
                     'message.meeting:id,message_id,mode,title,description,date,start_time,end_time,meeting_url'
                 ])
                 ->whereHas('message', function ($query) use ($request) {
-                    if(@$request->filter){
-                        $query->where('message_type', $request->filter);
+                    if (@$request->filter == 'filter') {
+                        $query->whereIn('message_type', ['Task','Meeting','Reminder']);
                     }
                 })
                 ->orderByDesc('created_at')
@@ -937,10 +937,6 @@ class UserController extends Controller
                     case 'Task':
                         $messageDetails = $message->message->task;
                         break;
-                }
-                $attachment_type = "";
-                if($message->message->message_type == 'Attachment'){
-                    $attachment_type = $message->message->attachment_type;
                 }
                 return [
                     'messageId' => $message->message->id,

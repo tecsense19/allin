@@ -12,6 +12,7 @@ use App\Models\MessageMeeting;
 use App\Models\MessageSenderReceiver;
 use App\Models\MessageTask;
 use App\Models\MessageTaskChat;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -524,13 +525,13 @@ class ChatController extends Controller
                 return $this->sendJsonResponse($data);
             }
 
-            if($request->chat_type == 'Text'){
+            if ($request->chat_type == 'Text') {
                 $msg = new Message();
                 $msg->message_type = $request->message_type;
                 $msg->message = $request->message;
                 $msg->status = "Unread";
                 $msg->save();
-            }elseif($request->chat_type == 'Attachment'){
+            } elseif ($request->chat_type == 'Attachment') {
                 $msg = new Message();
                 $msg->message_type = $request->message_type;
                 $msg->attachment_type = $request->attachment_type;
@@ -1409,7 +1410,200 @@ class ChatController extends Controller
         }
     }
 
-    public function taskChat(Request $request){
-        
+    /**
+     * @OA\Post(
+     *     path="/api/v1/task-chat",
+     *     summary="Task Chat",
+     *     tags={"Messages"},
+     *     description="Task Chat",
+     *     operationId="taskChat",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Add Message Request",
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"task_id"},
+     *                 @OA\Property(
+     *                     property="task_id",
+     *                     type="string",
+     *                     example="1",
+     *                     description="Enter taskId"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="timezone",
+     *                     type="string",
+     *                     example="",
+     *                     description="Enter Timezone"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="start",
+     *                     type="number",
+     *                     example="0",
+     *                     description="Enter start"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="limit",
+     *                     type="number",
+     *                     example="",
+     *                     description="Enter limit"
+     *                 ),
+     *             )
+     *         )
+     *     ),
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+    public function taskChat(Request $request)
+    {
+        //try {
+        // Validate the input
+        $rules = [
+            'task_id' => 'required|integer|exists:message_task,id',
+        ];
+
+        $message = [
+            'task_id.required' => 'Task ID is required.',
+            'task_id.integer' => 'Task ID must be an integer.',
+            'task_id.exists' => 'The specified task does not exist.',
+        ];
+
+        $validator = Validator::make($request->all(), $rules, $message);
+        if ($validator->fails()) {
+            return response()->json([
+                'status_code' => 400,
+                'message' => $validator->errors()->first(),
+                'data' => ""
+            ]);
+        }
+
+        $taskId = $request->task_id;
+        $loginUserId = auth()->user()->id;
+
+        // Fetch task details
+        $task = MessageTask::findOrFail($taskId);
+        $userIds = explode(',', $task->users);
+        $userList = User::whereIn('id', $userIds)
+            ->select('id', 'first_name', 'last_name', 'profile')
+            ->get()
+            ->map(function ($user) {
+                return [
+                    'userId' => $user->id,
+                    'name' => "{$user->first_name} {$user->last_name}",
+                    'profilePic' =>@$user->profile ? URL::to('public/user-profile/' . $user->profile) : URL::to('public/assets/media/avatars/blank.png'),
+                ];
+            });
+
+        // Fetch messages related to the task
+        $messages = MessageTaskChat::with(['message.senderReceiverOne.sender', 'message.attachments'])
+            ->where('task_id', $taskId)
+            ->get();
+
+        if ($messages->isEmpty()) {
+            return response()->json([
+                'status_code' => 404,
+                'message' => 'No messages found for this task.',
+                'data' => []
+            ]);
+        }
+
+        $mappedMessages = $messages->map(function ($taskChat) use ($loginUserId,$request) {
+            $message = $taskChat->message;
+            $senderReceiver = $message->senderReceiverOne;
+            $sender = $senderReceiver->sender;
+
+            $messageDetails = $message->message;
+            if ($message->attachment_type !== null) {
+                $attachments = $message->attachments->map(function ($attachment) {
+                    return [
+                        'attachmentName' => $attachment->attachment_name,
+                        'attachmentPath' => $attachment->attachment_path,
+                    ];
+                });
+                $messageDetails = $attachments;
+            }
+
+            return [
+                'messageId' => $message->id,
+                'messageType' => $message->message_type,
+                'attachmentType' => $message->attachment_type,
+                'date' => @$request->timezone ? Carbon::parse($message->created_at)->setTimezone($request->timezone)->format('Y-m-d H:i:s') : Carbon::parse($message->created_at)->format('Y-m-d H:i:s'),
+                'time' => @$request->timezone ? Carbon::parse($message->created_at)->setTimezone($request->timezone)->format('h:i a') : Carbon::parse($message->created_at)->format('h:i a'),
+                'sentBy' => $sender->id == $loginUserId ? 'loginUser' : 'User',
+                'messageDetails' => $messageDetails,
+                'senderId' => $sender->id,
+                'name' => "{$sender->first_name} {$sender->last_name}",
+                'profilePic' => @$sender->profile ? URL::to('public/user-profile/' . $sender->profile) : URL::to('public/assets/media/avatars/blank.png'),
+            ];
+        });
+
+        // Group and format messages
+        $groupedChat = $mappedMessages->groupBy(function ($message) {
+            $carbonDate = Carbon::parse($message['date']);
+            if ($carbonDate->isToday()) {
+                return 'Today';
+            } elseif ($carbonDate->isYesterday()) {
+                return 'Yesterday';
+            } else {
+                return $carbonDate->format('d M Y');
+            }
+        })->map(function ($messages, $date) {
+            $sortedMessages = $messages->sort(function ($a, $b) {
+                $timeA = strtotime($a['time']);
+                $timeB = strtotime($b['time']);
+
+                if ($timeA == $timeB) {
+                    return $a['messageId'] <=> $b['messageId'];
+                }
+
+                return $timeA <=> $timeB;
+            })->values();
+
+            return [$date => $sortedMessages];
+        });
+
+        //$reversedGroupedChat = array_reverse($groupedChat->toArray());
+
+        $chat = [];
+        foreach ($groupedChat as $item) {
+            foreach ($item as $date => $messages) {
+                $chat[$date] = $messages;
+            }
+        }
+        $taskDetails = $task->toArray();
+        $taskDetails['userList'] = $userList;
+        $data = [
+            'status_code' => 200,
+            'message' => "Get Data Successfully!",
+            'data' => [
+                'task' => $taskDetails, // Include task details
+                'chat' => $chat,
+            ]
+        ];
+
+        return response()->json($data);
+        // } catch (\Exception $e) {
+        //     Log::error([
+        //         'method' => __METHOD__,
+        //         'error' => [
+        //             'file' => $e->getFile(),
+        //             'line' => $e->getLine(),
+        //             'message' => $e->getMessage()
+        //         ],
+        //         'created_at' => date("Y-m-d H:i:s")
+        //     ]);
+        //     return response()->json(['status_code' => 500, 'message' => 'Something went wrong']);
+        // }
     }
 }

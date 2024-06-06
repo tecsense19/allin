@@ -684,6 +684,68 @@
                 ]
             }
         },
+        "/api/v1/task-chat": {
+            "post": {
+                "tags": [
+                    "Messages"
+                ],
+                "summary": "Task Chat",
+                "description": "Task Chat",
+                "operationId": "taskChat",
+                "requestBody": {
+                    "description": "Add Message Request",
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "task_id"
+                                ],
+                                "properties": {
+                                    "task_id": {
+                                        "description": "Enter taskId",
+                                        "type": "string",
+                                        "example": "1"
+                                    },
+                                    "timezone": {
+                                        "description": "Enter Timezone",
+                                        "type": "string",
+                                        "example": ""
+                                    },
+                                    "start": {
+                                        "description": "Enter start",
+                                        "type": "number",
+                                        "example": "0"
+                                    },
+                                    "limit": {
+                                        "description": "Enter limit",
+                                        "type": "number",
+                                        "example": ""
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "json schema",
+                        "content": {
+                            "application/json": {}
+                        }
+                    },
+                    "404": {
+                        "description": "Invalid Request"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/v1/send-otp": {
             "post": {
                 "tags": [
