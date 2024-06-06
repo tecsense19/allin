@@ -1467,8 +1467,7 @@ class ChatController extends Controller
      */
     public function taskChat(Request $request)
     {
-        //try {
-        // Validate the input
+        try {
         $rules = [
             'task_id' => 'required|integer|exists:message_task,id',
         ];
@@ -1548,7 +1547,6 @@ class ChatController extends Controller
             ];
         });
 
-        // Group and format messages
         $groupedChat = $mappedMessages->groupBy(function ($message) {
             $carbonDate = Carbon::parse($message['date']);
             if ($carbonDate->isToday()) {
@@ -1587,23 +1585,23 @@ class ChatController extends Controller
             'status_code' => 200,
             'message' => "Get Data Successfully!",
             'data' => [
-                'task' => $taskDetails, // Include task details
+                'task' => $taskDetails,
                 'chat' => $chat,
             ]
         ];
 
         return response()->json($data);
-        // } catch (\Exception $e) {
-        //     Log::error([
-        //         'method' => __METHOD__,
-        //         'error' => [
-        //             'file' => $e->getFile(),
-        //             'line' => $e->getLine(),
-        //             'message' => $e->getMessage()
-        //         ],
-        //         'created_at' => date("Y-m-d H:i:s")
-        //     ]);
-        //     return response()->json(['status_code' => 500, 'message' => 'Something went wrong']);
-        // }
+        } catch (\Exception $e) {
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => date("Y-m-d H:i:s")
+            ]);
+            return response()->json(['status_code' => 500, 'message' => 'Something went wrong']);
+        }
     }
 }
