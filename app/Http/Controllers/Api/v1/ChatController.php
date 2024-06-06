@@ -1485,7 +1485,7 @@ class ChatController extends Controller
             });
 
         // Fetch messages related to the task
-        $messages = MessageTaskChat::with(['message.senderReceiverOne.sender', 'message.attachments'])
+        $messages = MessageTaskChat::with(['message.senderReceiverOne.sender', 'message.attachments:id,message_id,attachment_name,attachment_path'])
             ->where('task_id', $taskId)
             ->get();
 
@@ -1497,7 +1497,7 @@ class ChatController extends Controller
 
             $messageDetails = $message->message;
             if ($message->attachment_type !== null) {
-                $messageDetails = $message->attachments[0]['attachment_path'];
+                $messageDetails = $message->attachments[0];
             }
 
             return [
@@ -1571,4 +1571,6 @@ class ChatController extends Controller
             return response()->json(['status_code' => 500, 'message' => 'Something went wrong']);
         }
     }
+
+    
 }
