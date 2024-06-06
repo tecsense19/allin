@@ -1497,13 +1497,7 @@ class ChatController extends Controller
 
             $messageDetails = $message->message;
             if ($message->attachment_type !== null) {
-                $attachments = $message->attachments->map(function ($attachment) {
-                    return [
-                        'attachmentName' => $attachment->attachment_name,
-                        'attachmentPath' => $attachment->attachment_path,
-                    ];
-                });
-                $messageDetails = $attachments;
+                $messageDetails = $message->attachments[0]['attachment_path'];
             }
 
             return [
