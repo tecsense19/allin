@@ -217,8 +217,7 @@
                                 "required": [
                                     "message_type",
                                     "task_id",
-                                    "chat_type",
-                                    "message"
+                                    "chat_type"
                                 ],
                                 "properties": {
                                     "message_type": {
@@ -1175,7 +1174,7 @@
                         "schema": {
                             "type": "string"
                         },
-                        "example": ""
+                        "example": "filter"
                     }
                 ],
                 "responses": {

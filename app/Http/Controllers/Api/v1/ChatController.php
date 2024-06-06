@@ -435,7 +435,7 @@ class ChatController extends Controller
      *         @OA\MediaType(
      *             mediaType="multipart/form-data",
      *             @OA\Schema(
-     *                 required={"message_type","task_id","chat_type","message"},
+     *                 required={"message_type","task_id","chat_type"},
      *                 @OA\Property(
      *                     property="message_type",
      *                     type="string",
@@ -494,7 +494,6 @@ class ChatController extends Controller
             $rules = [
                 'message_type' => 'required|string',
                 'task_id' => 'required|string',
-                'message' => 'required|string',
                 'chat_type' => 'required|string',
             ];
 
@@ -503,8 +502,6 @@ class ChatController extends Controller
                 'message_type.string' => 'The message type must be a string.',
                 'task_id.required' => 'The task ID is required.',
                 'task_id.string' => 'The task ID must be an string.',
-                'message.required' => 'The Message is required.',
-                'message.string' => 'The Message must be an string.',
                 'chat_type.required' => 'The Chat type is required.',
                 'chat_type.string' => 'The Chat type must be an string.',
             ];
