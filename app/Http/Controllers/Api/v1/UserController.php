@@ -760,6 +760,7 @@ class UserController extends Controller
 
                         ->whereHas('message', function ($q) {
                             $q->where('status', 'Unread')
+                                ->where('message_type', '!=', 'Task Chat')
                                 ->whereNull('deleted_at');
                         })
                         ->count();
