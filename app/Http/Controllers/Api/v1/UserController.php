@@ -730,11 +730,7 @@ class UserController extends Controller
                     $messages = $user->sentMessages->merge($user->receivedMessages)->sortByDesc('created_at');
                     $lastMessage = $messages->first();
                     if ($lastMessage && $lastMessage->message) {
-                        if($lastMessage->message->message_type == 'Task Chat'){
-                            $lastMessageContent = 'Task';
-                        }else{
-                            $lastMessageContent = $lastMessage->message->message ?? $lastMessage->message->message_type ?? null;
-                        }
+                        $lastMessageContent = $lastMessage->message->message ?? $lastMessage->message->message_type ?? null;
                         if ($lastMessage->created_at && $request->timezone) {
                             $lastMessageDate = Carbon::parse($lastMessage->created_at)->setTimezone($request->timezone)->format('Y-m-d H:i:s');
                         } elseif ($lastMessage->created_at) {
@@ -910,6 +906,9 @@ class UserController extends Controller
                 $query->where('sender_id', $userId)->where('receiver_id', $loginUser);
             })
                 ->whereNull('deleted_at')
+                ->whereHas('message', function ($q) {
+                    $q->where('message_type', '!=', 'Task Chat');
+                })
                 ->with([
                     'message',
                     'message.attachment:id,message_id,attachment_name,attachment_path',
@@ -981,13 +980,13 @@ class UserController extends Controller
             $chat = [];
             foreach ($reversedGroupedChat as $item) {
                 foreach ($item as $date => $messages) {
-                    if ($request->filter == 'filter') {
-                        foreach ($messages as $single) {
-                            if (in_array($single['messageType'], $filter)) {
+                    if($request->filter == 'filter'){
+                        foreach($messages as $single){
+                            if(in_array($single['messageType'], $filter)){
                                 $chat[$date] = $messages;
                             }
                         }
-                    } else {
+                    }else{
                         $chat[$date] = $messages;
                     }
                 }
@@ -1296,62 +1295,6 @@ class UserController extends Controller
                 'message' => "User Deleted Successfully!",
                 'data' => [
                     'userData' => $deleteChatUser,
-                ]
-            ];
-            return $this->sendJsonResponse($data);
-        } catch (\Exception $e) {
-            Log::error(
-                [
-                    'method' => __METHOD__,
-                    'error' => [
-                        'file' => $e->getFile(),
-                        'line' => $e->getLine(),
-                        'message' => $e->getMessage()
-                    ],
-                    'created_at' => date("Y-m-d H:i:s")
-                ]
-            );
-            return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
-        }
-    }
-
-    /**
-     * @OA\Post(
-     *     path="/api/v1/deleted-user-list",
-     *     summary="Deleted User List",
-     *     tags={"User"},
-     *     description="Deleted User List",
-     *     operationId="deletedUserList",
-     *     security={{"bearerAuth":{}}},
-     *      @OA\Response(
-     *         response=200,
-     *         description="json schema",
-     *         @OA\MediaType(
-     *             mediaType="application/json",
-     *         ),
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="Invalid Request"
-     *     ),
-     * )
-     */
-
-    public function deletedUserList(Request $request)
-    {
-        try {
-            $loginUser = auth()->user()->id;
-            $deletedUsers = deleteChatUsers::where('user_id', $loginUser)->pluck('deleted_user_id');
-            $deletedUsers = User::whereIn('id', $deletedUsers)->get(['id', 'account_id', 'first_name', 'last_name', 'email', 'country_code', 'mobile', 'profile']);
-            $deletedUsers = $deletedUsers->map(function ($item) {
-                $item->profile = @$item->profile ? URL::to('public/user-profile/' . $item->profile) : URL::to('public/assets/media/avatars/blank.png');
-                return $item;
-            });
-            $data = [
-                'status_code' => 200,
-                'message' => "User Deleted Successfully!",
-                'data' => [
-                    'userList' => $deletedUsers,
                 ]
             ];
             return $this->sendJsonResponse($data);
