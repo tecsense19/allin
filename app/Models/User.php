@@ -109,4 +109,9 @@ class User extends Authenticatable implements  JWTSubject
     {
         return $this->hasMany(MessageSenderReceiver::class, 'receiver_id');
     }
+
+    public function workHours()
+    {
+        return $this->hasMany(WorkingHours::class);
+    }
 }

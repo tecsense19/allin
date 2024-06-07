@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\v1\ChatController;
 use App\Http\Controllers\Api\v1\OtpController;
+use App\Http\Controllers\Api\v1\ProjectManagementController;
 use App\Http\Controllers\Api\v1\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -41,6 +42,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
             Route::post('/user-details', 'userDetails');
             Route::post('/edit-profile', 'editProfile');
             Route::post('/delete-chat-user', 'deleteChatUsers');
+            Route::post('/deleted-user-list', 'deletedUserList');
         });
         Route::controller(ChatController::class)->group(function () {
             Route::post('/text-message', 'textMessage');
@@ -56,6 +58,10 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
             Route::post('/export-chat', 'exportChat');
             Route::post('/task-chat', 'taskChat');
             Route::post('/add-reminder', 'addReminder');
+        });
+        Route::controller(ProjectManagementController::class)->group(function () {
+            Route::post('/add-work-hours', 'addWorkHours');
+            Route::post('/work-hours', 'workHours');
         });
     });
 });
