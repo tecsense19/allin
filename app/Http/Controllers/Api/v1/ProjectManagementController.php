@@ -146,34 +146,35 @@ class ProjectManagementController extends Controller
      * )
      */
 
-     public function workHours(Request $request){
-         try {
-             $workHours = WorkingHours::where('user_id',auth()->user()->id)->get();
-             $format = $workHours->map(function ($workHour) {
+    public function workHours(Request $request)
+    {
+        try {
+            $workHours = WorkingHours::where('user_id', auth()->user()->id)->get();
+            $format = $workHours->map(function ($workHour) {
                 $workHour->start_date_time = Carbon::parse($workHour->start_date_time)->format('Y-m-d H:i:s');
                 $workHour->end_date_time = Carbon::parse($workHour->end_date_time)->format('Y-m-d H:i:s');
                 return $workHour;
             });
-             $data = [
+            $data = [
                 'status_code' => 200,
                 'message' => "Work Hours Successfully get!",
                 'data' => [
                     'workHours' => $format
                 ]
-             ];
+            ];
 
-             return response()->json($data);
-         } catch (\Exception $e) {
-             Log::error([
-                 'method' => __METHOD__,
-                 'error' => [
-                     'file' => $e->getFile(),
-                     'line' => $e->getLine(),
+            return response()->json($data);
+        } catch (\Exception $e) {
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
                     'message' => $e->getMessage()
-                 ],
-                 'created_at' => date("Y-m-d H:i:s")
-             ]);
-             return response()->json(['status_code' => 500,'message' => 'Something went wrong']);
-         }
-     }
+                ],
+                'created_at' => date("Y-m-d H:i:s")
+            ]);
+            return response()->json(['status_code' => 500, 'message' => 'Something went wrong']);
+        }
+    }
 }
