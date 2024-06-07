@@ -48,6 +48,10 @@ class Message extends Model
     {
         return $this->hasMany(MessageMeeting::class);
     }
+    public function reminders()
+    {
+        return $this->hasMany(MessageReminder::class);
+    }
 
     public function senderReceiver()
     {
@@ -72,6 +76,10 @@ class Message extends Model
     public function meeting()
     {
         return $this->hasOne(MessageMeeting::class);
+    }
+    public function reminder()
+    {
+        return $this->hasOne(MessageReminder::class);
     }
 
     public function taskChats()

@@ -7,6 +7,7 @@ use Kreait\Firebase\Factory;
 use Kreait\Firebase\Messaging\AndroidConfig;
 use Kreait\Firebase\Messaging\ApnsConfig;
 use Kreait\Firebase\Messaging\Notification;
+use Kreait\Firebase\Messaging\CloudMessage;
 use Spatie\ImageOptimizer\OptimizerChainFactory;
 use Kreait\Firebase\Messaging\Message;
 
@@ -189,10 +190,10 @@ if (!function_exists('validateToken')) {
 
 function generateMessage($deviceToken, $notification, $data, $androidConfig, $appleConfig)
 {
-  return (new Message())
+  $message = CloudMessage::withTarget('token', $deviceToken)
     ->withNotification($notification)
     ->withData($data)
     ->withAndroidConfig($androidConfig)
-    ->withApnsConfig($appleConfig)
-    ->withToken($deviceToken);
+    ->withApnsConfig($appleConfig);
+  return $message;
 }

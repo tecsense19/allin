@@ -3,19 +3,26 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Message;
+use App\Models\MessageReminder;
+use App\Models\MessageSenderReceiver;
+use App\Models\Reminder;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 
 class LoginController extends Controller
 {
-    public function login(){
+    public function login()
+    {
         if (Auth::check()) {
             return redirect()->back();
         }
         return view('Admin.Auth.login');
     }
-    public function loginPost(Request $request){
+    public function loginPost(Request $request)
+    {
         $rules = [
             'email' => 'required|email:rfc,dns',
             'password' => 'required',

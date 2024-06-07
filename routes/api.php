@@ -55,6 +55,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
             Route::post('/clear-message', 'clearMessage');
             Route::post('/export-chat', 'exportChat');
             Route::post('/task-chat', 'taskChat');
+            Route::post('/add-reminder', 'addReminder');
         });
     });
 });

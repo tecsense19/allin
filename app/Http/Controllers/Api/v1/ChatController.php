@@ -12,6 +12,7 @@ use App\Models\MessageMeeting;
 use App\Models\MessageSenderReceiver;
 use App\Models\MessageTask;
 use App\Models\MessageTaskChat;
+use App\Models\Reminder;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -1448,116 +1449,116 @@ class ChatController extends Controller
     public function taskChat(Request $request)
     {
         try {
-        $rules = [
-            'task_id' => 'required|integer|exists:message_task,id',
-        ];
+            $rules = [
+                'task_id' => 'required|integer|exists:message_task,id',
+            ];
 
-        $message = [
-            'task_id.required' => 'Task ID is required.',
-            'task_id.integer' => 'Task ID must be an integer.',
-            'task_id.exists' => 'The specified task does not exist.',
-        ];
+            $message = [
+                'task_id.required' => 'Task ID is required.',
+                'task_id.integer' => 'Task ID must be an integer.',
+                'task_id.exists' => 'The specified task does not exist.',
+            ];
 
-        $validator = Validator::make($request->all(), $rules, $message);
-        if ($validator->fails()) {
-            return response()->json([
-                'status_code' => 400,
-                'message' => $validator->errors()->first(),
-                'data' => ""
-            ]);
-        }
+            $validator = Validator::make($request->all(), $rules, $message);
+            if ($validator->fails()) {
+                return response()->json([
+                    'status_code' => 400,
+                    'message' => $validator->errors()->first(),
+                    'data' => ""
+                ]);
+            }
 
-        $taskId = $request->task_id;
-        $loginUserId = auth()->user()->id;
+            $taskId = $request->task_id;
+            $loginUserId = auth()->user()->id;
 
-        // Fetch task details
-        $task = MessageTask::findOrFail($taskId);
-        $userIds = explode(',', $task->users);
-        $userList = User::whereIn('id', $userIds)
-            ->select('id', 'first_name', 'last_name', 'profile')
-            ->get()
-            ->map(function ($user) {
+            // Fetch task details
+            $task = MessageTask::findOrFail($taskId);
+            $userIds = explode(',', $task->users);
+            $userList = User::whereIn('id', $userIds)
+                ->select('id', 'first_name', 'last_name', 'profile')
+                ->get()
+                ->map(function ($user) {
+                    return [
+                        'userId' => $user->id,
+                        'name' => "{$user->first_name} {$user->last_name}",
+                        'profilePic' => @$user->profile ? URL::to('public/user-profile/' . $user->profile) : URL::to('public/assets/media/avatars/blank.png'),
+                    ];
+                });
+
+            // Fetch messages related to the task
+            $messages = MessageTaskChat::with(['message.senderReceiverOne.sender', 'message.attachments:id,message_id,attachment_name,attachment_path'])
+                ->where('task_id', $taskId)
+                ->get();
+
+
+            $mappedMessages = $messages->map(function ($taskChat) use ($loginUserId, $request) {
+                $message = $taskChat->message;
+                $senderReceiver = $message->senderReceiverOne;
+                $sender = $senderReceiver->sender;
+
+                $messageDetails = $message->message;
+                if ($message->attachment_type !== null) {
+                    $messageDetails = $message->attachments[0];
+                }
+
                 return [
-                    'userId' => $user->id,
-                    'name' => "{$user->first_name} {$user->last_name}",
-                    'profilePic' =>@$user->profile ? URL::to('public/user-profile/' . $user->profile) : URL::to('public/assets/media/avatars/blank.png'),
+                    'messageId' => $message->id,
+                    'messageType' => $message->message_type,
+                    'attachmentType' => $message->attachment_type,
+                    'date' => @$request->timezone ? Carbon::parse($message->created_at)->setTimezone($request->timezone)->format('Y-m-d H:i:s') : Carbon::parse($message->created_at)->format('Y-m-d H:i:s'),
+                    'time' => @$request->timezone ? Carbon::parse($message->created_at)->setTimezone($request->timezone)->format('h:i a') : Carbon::parse($message->created_at)->format('h:i a'),
+                    'sentBy' => $sender->id == $loginUserId ? 'loginUser' : 'User',
+                    'messageDetails' => $messageDetails,
+                    'senderId' => $sender->id,
+                    'name' => "{$sender->first_name} {$sender->last_name}",
+                    'profilePic' => @$sender->profile ? URL::to('public/user-profile/' . $sender->profile) : URL::to('public/assets/media/avatars/blank.png'),
                 ];
             });
 
-        // Fetch messages related to the task
-        $messages = MessageTaskChat::with(['message.senderReceiverOne.sender', 'message.attachments:id,message_id,attachment_name,attachment_path'])
-            ->where('task_id', $taskId)
-            ->get();
-
-        
-        $mappedMessages = $messages->map(function ($taskChat) use ($loginUserId,$request) {
-            $message = $taskChat->message;
-            $senderReceiver = $message->senderReceiverOne;
-            $sender = $senderReceiver->sender;
-
-            $messageDetails = $message->message;
-            if ($message->attachment_type !== null) {
-                $messageDetails = $message->attachments[0];
-            }
-
-            return [
-                'messageId' => $message->id,
-                'messageType' => $message->message_type,
-                'attachmentType' => $message->attachment_type,
-                'date' => @$request->timezone ? Carbon::parse($message->created_at)->setTimezone($request->timezone)->format('Y-m-d H:i:s') : Carbon::parse($message->created_at)->format('Y-m-d H:i:s'),
-                'time' => @$request->timezone ? Carbon::parse($message->created_at)->setTimezone($request->timezone)->format('h:i a') : Carbon::parse($message->created_at)->format('h:i a'),
-                'sentBy' => $sender->id == $loginUserId ? 'loginUser' : 'User',
-                'messageDetails' => $messageDetails,
-                'senderId' => $sender->id,
-                'name' => "{$sender->first_name} {$sender->last_name}",
-                'profilePic' => @$sender->profile ? URL::to('public/user-profile/' . $sender->profile) : URL::to('public/assets/media/avatars/blank.png'),
-            ];
-        });
-
-        $groupedChat = $mappedMessages->groupBy(function ($message) {
-            $carbonDate = Carbon::parse($message['date']);
-            if ($carbonDate->isToday()) {
-                return 'Today';
-            } elseif ($carbonDate->isYesterday()) {
-                return 'Yesterday';
-            } else {
-                return $carbonDate->format('d M Y');
-            }
-        })->map(function ($messages, $date) {
-            $sortedMessages = $messages->sort(function ($a, $b) {
-                $timeA = strtotime($a['time']);
-                $timeB = strtotime($b['time']);
-
-                if ($timeA == $timeB) {
-                    return $a['messageId'] <=> $b['messageId'];
+            $groupedChat = $mappedMessages->groupBy(function ($message) {
+                $carbonDate = Carbon::parse($message['date']);
+                if ($carbonDate->isToday()) {
+                    return 'Today';
+                } elseif ($carbonDate->isYesterday()) {
+                    return 'Yesterday';
+                } else {
+                    return $carbonDate->format('d M Y');
                 }
+            })->map(function ($messages, $date) {
+                $sortedMessages = $messages->sort(function ($a, $b) {
+                    $timeA = strtotime($a['time']);
+                    $timeB = strtotime($b['time']);
 
-                return $timeA <=> $timeB;
-            })->values();
+                    if ($timeA == $timeB) {
+                        return $a['messageId'] <=> $b['messageId'];
+                    }
 
-            return [$date => $sortedMessages];
-        });
+                    return $timeA <=> $timeB;
+                })->values();
 
-        //$reversedGroupedChat = array_reverse($groupedChat->toArray());
+                return [$date => $sortedMessages];
+            });
 
-        $chat = [];
-        foreach ($groupedChat as $item) {
-            foreach ($item as $date => $messages) {
-                $chat[$date] = $messages;
+            //$reversedGroupedChat = array_reverse($groupedChat->toArray());
+
+            $chat = [];
+            foreach ($groupedChat as $item) {
+                foreach ($item as $date => $messages) {
+                    $chat[$date] = $messages;
+                }
             }
-        }
-        $taskDetails = $task->toArray();
-        $taskDetails['userList'] = $userList;
-        $data = [
-            'status_code' => 200,
-            'message' => "Get Data Successfully!",
-            'data' => [
-                'task' => $taskDetails,
-                'chat' => $chat,
-            ]
-        ];
+            $taskDetails = $task->toArray();
+            $taskDetails['userList'] = $userList;
+            $data = [
+                'status_code' => 200,
+                'message' => "Get Data Successfully!",
+                'data' => [
+                    'task' => $taskDetails,
+                    'chat' => $chat,
+                ]
+            ];
 
-        return response()->json($data);
+            return response()->json($data);
         } catch (\Exception $e) {
             Log::error([
                 'method' => __METHOD__,
@@ -1572,5 +1573,130 @@ class ChatController extends Controller
         }
     }
 
-    
+    /**
+     * @OA\Post(
+     *     path="/api/v1/add-reminder",
+     *     summary="Add a new Reminder",
+     *     tags={"Messages"},
+     *     description="Create a new message along with its sender/receiver, attachments, tasks, locations, and meetings.",
+     *     operationId="addReminder",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Add Message Request",
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"title","date","time"},
+     *                 @OA\Property(
+     *                     property="title",
+     *                     type="string",
+     *                     example="text",
+     *                     description="Enter Reminder Title"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="description",
+     *                     type="string",
+     *                     example="",
+     *                     description="Enter Reminder Description"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="date",
+     *                     type="string",
+     *                     example="2024-06-15",
+     *                     description="Enter Reminder Date"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="time",
+     *                     type="string",
+     *                     example="18:30:00",
+     *                     description="Enter Reminder Time"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="users",
+     *                     type="string",
+     *                     example="1,2,3,4",
+     *                     description="Comma-separated IDs of the user"
+     *                 ),
+     *             )
+     *         )
+     *     ),
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+
+    public function addReminder(Request $request)
+    {
+        try {
+            $rules = [
+                'title' => 'required|string',
+                'description' => 'nullable|string',
+                'date' => 'required|string',
+                'time' => 'required|string',
+                'users' => 'nullable|string',
+            ];
+
+            $message = [
+                'title.required' => 'Title is required.',
+                'title.string' => 'Title must be an String.',
+                'description.string' => 'Description must be an String.',
+                'date.required' => 'Date is required.',
+                'date.string' => 'Date must be an String.',
+                'time.required' => 'Time is required.',
+                'time.string' => 'Time must be an String.',
+                'users.string' => 'users must be an Comma Separated String.',
+            ];
+
+            $validator = Validator::make($request->all(), $rules, $message);
+            if ($validator->fails()) {
+                return response()->json([
+                    'status_code' => 400,
+                    'message' => $validator->errors()->first(),
+                    'data' => ""
+                ]);
+            }
+            $receiverIdsArray = $request->users ? explode(',', $request->users) : [];
+            $senderId = auth()->user()->id;
+            $receiverIdsArray[] = $senderId;
+            $uniqueIdsArray = array_unique($receiverIdsArray);
+            $mergedIds = implode(',', $uniqueIdsArray);
+
+            $reminder = new Reminder();
+            $reminder->title = $request->title;
+            $reminder->description = $request->description;
+            $reminder->date = $request->date;
+            $reminder->time = $request->time;
+            $reminder->users = $mergedIds;
+            $reminder->save();
+            
+            $data = [
+                'status_code' => 200,
+                'message' => "Add Reminder Successfully!",
+                'data' => []
+            ];
+
+            return response()->json($data);
+        } catch (\Exception $e) {
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => date("Y-m-d H:i:s")
+            ]);
+            return response()->json(['status_code' => 500, 'message' => 'Something went wrong']);
+        }
+    }
 }

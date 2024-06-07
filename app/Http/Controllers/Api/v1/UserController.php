@@ -911,7 +911,8 @@ class UserController extends Controller
                     'message.attachment:id,message_id,attachment_name,attachment_path',
                     'message.task:id,message_id,task_name,task_description',
                     'message.location:id,message_id,latitude,longitude,location_url',
-                    'message.meeting:id,message_id,mode,title,description,date,start_time,end_time,meeting_url'
+                    'message.meeting:id,message_id,mode,title,description,date,start_time,end_time,meeting_url',
+                    'message.reminder:id,message_id,title,description,date,time'
                 ])
                 ->orderByDesc('created_at')
                 ->skip($start)
@@ -933,6 +934,9 @@ class UserController extends Controller
                         break;
                     case 'Task':
                         $messageDetails = $message->message->task;
+                        break;
+                    case 'Reminder':
+                        $messageDetails = $message->message->reminder;
                         break;
                 }
 

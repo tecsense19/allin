@@ -745,6 +745,75 @@
                 ]
             }
         },
+        "/api/v1/add-reminder": {
+            "post": {
+                "tags": [
+                    "Messages"
+                ],
+                "summary": "Add a new Reminder",
+                "description": "Create a new message along with its sender/receiver, attachments, tasks, locations, and meetings.",
+                "operationId": "addReminder",
+                "requestBody": {
+                    "description": "Add Message Request",
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "title",
+                                    "date",
+                                    "time"
+                                ],
+                                "properties": {
+                                    "title": {
+                                        "description": "Enter Reminder Title",
+                                        "type": "string",
+                                        "example": "text"
+                                    },
+                                    "description": {
+                                        "description": "Enter Reminder Description",
+                                        "type": "string",
+                                        "example": ""
+                                    },
+                                    "date": {
+                                        "description": "Enter Reminder Date",
+                                        "type": "string",
+                                        "example": "2024-06-15"
+                                    },
+                                    "time": {
+                                        "description": "Enter Reminder Time",
+                                        "type": "string",
+                                        "example": "18:30:00"
+                                    },
+                                    "users": {
+                                        "description": "Comma-separated IDs of the user",
+                                        "type": "string",
+                                        "example": "1,2,3,4"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "json schema",
+                        "content": {
+                            "application/json": {}
+                        }
+                    },
+                    "404": {
+                        "description": "Invalid Request"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/v1/send-otp": {
             "post": {
                 "tags": [
