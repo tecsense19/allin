@@ -62,7 +62,7 @@
                 <div class="col-md-6 col-lg-6 col-xl-6 col-xxl-3 mb-md-5 mb-xl-10">
                     <!--begin::Card widget 20-->
                     <div class="card card-flush bgi-no-repeat bgi-size-contain bgi-position-x-end h-md-50 mb-5 mb-xl-10"
-                        style="background-color: #F1416C;background-image:url('{{URL::to('public/assets/media/patterns/vector-1.png')}}')">
+                        style="background-color: #F1416C;background-image:url('{{asset('assets/media/patterns/vector-1.png')}}')">
                         <!--begin::Header-->
                         <div class="card-header pt-5">
                             <!--begin::Title-->
@@ -124,21 +124,21 @@
                                 </div>
                                 <div class="symbol symbol-35px symbol-circle" data-bs-toggle="tooltip"
                                     title="Michael Eberon">
-                                    <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-11.jpg')}}" />
+                                    <img alt="Pic" src="{{asset('assets/media/avatars/300-11.jpg')}}" />
                                 </div>
                                 <div class="symbol symbol-35px symbol-circle" data-bs-toggle="tooltip"
                                     title="Susan Redwood">
                                     <span class="symbol-label bg-primary text-inverse-primary fw-bold">S</span>
                                 </div>
                                 <div class="symbol symbol-35px symbol-circle" data-bs-toggle="tooltip" title="Melody Macy">
-                                    <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-2.jpg')}}" />
+                                    <img alt="Pic" src="{{asset('assets/media/avatars/300-2.jpg')}}" />
                                 </div>
                                 <div class="symbol symbol-35px symbol-circle" data-bs-toggle="tooltip"
                                     title="Perry Matthew">
                                     <span class="symbol-label bg-danger text-inverse-danger fw-bold">P</span>
                                 </div>
                                 <div class="symbol symbol-35px symbol-circle" data-bs-toggle="tooltip" title="Barry Walter">
-                                    <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-12.jpg')}}" />
+                                    <img alt="Pic" src="{{asset('assets/media/avatars/300-12.jpg')}}" />
                                 </div>
                                 <a href="#" class="symbol symbol-35px symbol-circle" data-bs-toggle="modal"
                                     data-bs-target="#kt_modal_view_users">
@@ -402,7 +402,7 @@
                     <div class="card card-flush h-md-100">
                         <!--begin::Body-->
                         <div class="card-body d-flex flex-column justify-content-between mt-9 bgi-no-repeat bgi-size-cover bgi-position-x-center pb-0"
-                            style="background-position: 100% 50%; background-image:url('{{URL::to('public/assets/media/stock/900x600/42.png')}}')">
+                            style="background-position: 100% 50%; background-image:url('{{asset('assets/media/stock/900x600/42.png')}}')">
                             <!--begin::Wrapper-->
                             <div class="mb-10">
                                 <!--begin::Title-->
@@ -429,9 +429,9 @@
                             <!--begin::Wrapper-->
                             <!--begin::Illustration-->
                             <img class="mx-auto h-150px h-lg-200px theme-light-show"
-                                src="{{URL::to('public/assets/media/illustrations/misc/upgrade.svg')}}" alt="" />
+                                src="{{asset('assets/media/illustrations/misc/upgrade.svg')}}" alt="" />
                             <img class="mx-auto h-150px h-lg-200px theme-dark-show"
-                                src="{{URL::to('public/assets/media/illustrations/misc/upgrade-dark.svg')}}" alt="" />
+                                src="{{asset('assets/media/illustrations/misc/upgrade-dark.svg')}}" alt="" />
                             <!--end::Illustration-->
                         </div>
                         <!--end::Body-->
@@ -947,7 +947,7 @@
                                                     <td>
                                                         <div class="d-flex align-items-center">
                                                             <div class="symbol symbol-50px me-3">
-                                                                <img src="{{URL::to('public/assets/media/avatars/300-3.jpg')}}" class=""
+                                                                <img src="{{asset('assets/media/avatars/300-3.jpg')}}" class=""
                                                                     alt="" />
                                                             </div>
                                                             <div class="d-flex justify-content-start flex-column">
@@ -977,7 +977,7 @@
                                                     <td>
                                                         <div class="d-flex align-items-center">
                                                             <div class="symbol symbol-50px me-3">
-                                                                <img src="{{URL::to('public/assets/media/avatars/300-2.jpg')}}" class=""
+                                                                <img src="{{asset('assets/media/avatars/300-2.jpg')}}" class=""
                                                                     alt="" />
                                                             </div>
                                                             <div class="d-flex justify-content-start flex-column">
@@ -1007,7 +1007,7 @@
                                                     <td>
                                                         <div class="d-flex align-items-center">
                                                             <div class="symbol symbol-50px me-3">
-                                                                <img src="{{URL::to('public/assets/media/avatars/300-9.jpg')}}" class=""
+                                                                <img src="{{asset('assets/media/avatars/300-9.jpg')}}" class=""
                                                                     alt="" />
                                                             </div>
                                                             <div class="d-flex justify-content-start flex-column">
@@ -1037,7 +1037,7 @@
                                                     <td>
                                                         <div class="d-flex align-items-center">
                                                             <div class="symbol symbol-50px me-3">
-                                                                <img src="{{URL::to('public/assets/media/avatars/300-7.jpg')}}" class=""
+                                                                <img src="{{asset('assets/media/avatars/300-7.jpg')}}" class=""
                                                                     alt="" />
                                                             </div>
                                                             <div class="d-flex justify-content-start flex-column">
@@ -1093,7 +1093,7 @@
                                                     <td>
                                                         <div class="d-flex align-items-center">
                                                             <div class="symbol symbol-50px me-3">
-                                                                <img src="{{URL::to('public/assets/media/avatars/300-25.jpg')}}" class=""
+                                                                <img src="{{asset('assets/media/avatars/300-25.jpg')}}" class=""
                                                                     alt="" />
                                                             </div>
                                                             <div class="d-flex justify-content-start flex-column">
@@ -1123,7 +1123,7 @@
                                                     <td>
                                                         <div class="d-flex align-items-center">
                                                             <div class="symbol symbol-50px me-3">
-                                                                <img src="{{URL::to('public/assets/media/avatars/300-24.jpg')}}" class=""
+                                                                <img src="{{asset('assets/media/avatars/300-24.jpg')}}" class=""
                                                                     alt="" />
                                                             </div>
                                                             <div class="d-flex justify-content-start flex-column">
@@ -1153,7 +1153,7 @@
                                                     <td>
                                                         <div class="d-flex align-items-center">
                                                             <div class="symbol symbol-50px me-3">
-                                                                <img src="{{URL::to('public/assets/media/avatars/300-20.jpg')}}" class=""
+                                                                <img src="{{asset('assets/media/avatars/300-20.jpg')}}" class=""
                                                                     alt="" />
                                                             </div>
                                                             <div class="d-flex justify-content-start flex-column">
@@ -1183,7 +1183,7 @@
                                                     <td>
                                                         <div class="d-flex align-items-center">
                                                             <div class="symbol symbol-50px me-3">
-                                                                <img src="{{URL::to('public/assets/media/avatars/300-17.jpg')}}" class=""
+                                                                <img src="{{asset('assets/media/avatars/300-17.jpg')}}" class=""
                                                                     alt="" />
                                                             </div>
                                                             <div class="d-flex justify-content-start flex-column">
@@ -1239,7 +1239,7 @@
                                                     <td>
                                                         <div class="d-flex align-items-center">
                                                             <div class="symbol symbol-50px me-3">
-                                                                <img src="{{URL::to('public/assets/media/avatars/300-11.jpg')}}" class=""
+                                                                <img src="{{asset('assets/media/avatars/300-11.jpg')}}" class=""
                                                                     alt="" />
                                                             </div>
                                                             <div class="d-flex justify-content-start flex-column">
@@ -1269,7 +1269,7 @@
                                                     <td>
                                                         <div class="d-flex align-items-center">
                                                             <div class="symbol symbol-50px me-3">
-                                                                <img src="{{URL::to('public/assets/media/avatars/300-23.jpg')}}" class=""
+                                                                <img src="{{asset('assets/media/avatars/300-23.jpg')}}" class=""
                                                                     alt="" />
                                                             </div>
                                                             <div class="d-flex justify-content-start flex-column">
@@ -1299,7 +1299,7 @@
                                                     <td>
                                                         <div class="d-flex align-items-center">
                                                             <div class="symbol symbol-50px me-3">
-                                                                <img src="{{URL::to('public/assets/media/avatars/300-4.jpg')}}" class=""
+                                                                <img src="{{asset('assets/media/avatars/300-4.jpg')}}" class=""
                                                                     alt="" />
                                                             </div>
                                                             <div class="d-flex justify-content-start flex-column">
@@ -1329,7 +1329,7 @@
                                                     <td>
                                                         <div class="d-flex align-items-center">
                                                             <div class="symbol symbol-50px me-3">
-                                                                <img src="{{URL::to('public/assets/media/avatars/300-1.jpg')}}" class=""
+                                                                <img src="{{asset('assets/media/avatars/300-1.jpg')}}" class=""
                                                                     alt="" />
                                                             </div>
                                                             <div class="d-flex justify-content-start flex-column">
@@ -1385,7 +1385,7 @@
                                                     <td>
                                                         <div class="d-flex align-items-center">
                                                             <div class="symbol symbol-50px me-3">
-                                                                <img src="{{URL::to('public/assets/media/avatars/300-12.jpg')}}" class=""
+                                                                <img src="{{asset('assets/media/avatars/300-12.jpg')}}" class=""
                                                                     alt="" />
                                                             </div>
                                                             <div class="d-flex justify-content-start flex-column">
@@ -1415,7 +1415,7 @@
                                                     <td>
                                                         <div class="d-flex align-items-center">
                                                             <div class="symbol symbol-50px me-3">
-                                                                <img src="{{URL::to('public/assets/media/avatars/300-21.jpg')}}" class=""
+                                                                <img src="{{asset('assets/media/avatars/300-21.jpg')}}" class=""
                                                                     alt="" />
                                                             </div>
                                                             <div class="d-flex justify-content-start flex-column">
@@ -1445,7 +1445,7 @@
                                                     <td>
                                                         <div class="d-flex align-items-center">
                                                             <div class="symbol symbol-50px me-3">
-                                                                <img src="{{URL::to('public/assets/media/avatars/300-30.jpg')}}" class=""
+                                                                <img src="{{asset('assets/media/avatars/300-30.jpg')}}" class=""
                                                                     alt="" />
                                                             </div>
                                                             <div class="d-flex justify-content-start flex-column">
@@ -1475,7 +1475,7 @@
                                                     <td>
                                                         <div class="d-flex align-items-center">
                                                             <div class="symbol symbol-50px me-3">
-                                                                <img src="{{URL::to('public/assets/media/avatars/300-14.jpg')}}" class=""
+                                                                <img src="{{asset('assets/media/avatars/300-14.jpg')}}" class=""
                                                                     alt="" />
                                                             </div>
                                                             <div class="d-flex justify-content-start flex-column">
@@ -1531,7 +1531,7 @@
                                                     <td>
                                                         <div class="d-flex align-items-center">
                                                             <div class="symbol symbol-50px me-3">
-                                                                <img src="{{URL::to('public/assets/media/avatars/300-6.jpg')}}" class=""
+                                                                <img src="{{asset('assets/media/avatars/300-6.jpg')}}" class=""
                                                                     alt="" />
                                                             </div>
                                                             <div class="d-flex justify-content-start flex-column">
@@ -1561,7 +1561,7 @@
                                                     <td>
                                                         <div class="d-flex align-items-center">
                                                             <div class="symbol symbol-50px me-3">
-                                                                <img src="{{URL::to('public/assets/media/avatars/300-10.jpg')}}" class=""
+                                                                <img src="{{asset('assets/media/avatars/300-10.jpg')}}" class=""
                                                                     alt="" />
                                                             </div>
                                                             <div class="d-flex justify-content-start flex-column">
@@ -1591,7 +1591,7 @@
                                                     <td>
                                                         <div class="d-flex align-items-center">
                                                             <div class="symbol symbol-50px me-3">
-                                                                <img src="{{URL::to('public/assets/media/avatars/300-9.jpg')}}" class=""
+                                                                <img src="{{asset('assets/media/avatars/300-9.jpg')}}" class=""
                                                                     alt="" />
                                                             </div>
                                                             <div class="d-flex justify-content-start flex-column">
@@ -1621,7 +1621,7 @@
                                                     <td>
                                                         <div class="d-flex align-items-center">
                                                             <div class="symbol symbol-50px me-3">
-                                                                <img src="{{URL::to('public/assets/media/avatars/300-3.jpg')}}" class=""
+                                                                <img src="{{asset('assets/media/avatars/300-3.jpg')}}" class=""
                                                                     alt="" />
                                                             </div>
                                                             <div class="d-flex justify-content-start flex-column">
@@ -1680,7 +1680,7 @@
                                 <div class="col-sm-6 mb-10 mb-sm-0">
                                     <!--begin::Image-->
                                     <div class="bgi-no-repeat bgi-position-center bgi-size-cover card-rounded min-h-400px min-h-sm-100 h-100"
-                                        style="background-size: 100% 100%;background-image:url('{{URL::to('public/assets/media/stock/600x600/img-65.jpg')}}')">
+                                        style="background-size: 100% 100%;background-image:url('{{asset('assets/media/stock/600x600/img-65.jpg')}}')">
                                     </div>
                                     <!--end::Image-->
                                 </div>
@@ -1711,7 +1711,7 @@
                                                 <div class="d-flex align-items-center me-5 me-xl-13">
                                                     <!--begin::Symbol-->
                                                     <div class="symbol symbol-30px symbol-circle me-3">
-                                                        <img src="{{URL::to('public/assets/media/avatars/300-3.jpg')}}" class=""
+                                                        <img src="{{asset('assets/media/avatars/300-3.jpg')}}" class=""
                                                             alt="" />
                                                     </div>
                                                     <!--end::Symbol-->
@@ -1792,11 +1792,11 @@
                                             <div class="symbol-group symbol-hover flex-nowrap">
                                                 <div class="symbol symbol-35px symbol-circle" data-bs-toggle="tooltip"
                                                     title="Melody Macy">
-                                                    <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-2.jpg')}}" />
+                                                    <img alt="Pic" src="{{asset('assets/media/avatars/300-2.jpg')}}" />
                                                 </div>
                                                 <div class="symbol symbol-35px symbol-circle" data-bs-toggle="tooltip"
                                                     title="Michael Eberon">
-                                                    <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-3.jpg')}}" />
+                                                    <img alt="Pic" src="{{asset('assets/media/avatars/300-3.jpg')}}" />
                                                 </div>
                                                 <div class="symbol symbol-35px symbol-circle" data-bs-toggle="tooltip"
                                                     title="Susan Redwood">
@@ -2413,7 +2413,7 @@
                                             <td>
                                                 <div class="d-flex align-items-center">
                                                     <div class="symbol symbol-50px me-3">
-                                                        <img src="{{URL::to('public/assets/media/stock/600x600/img-49.jpg')}}" class=""
+                                                        <img src="{{asset('assets/media/stock/600x600/img-49.jpg')}}" class=""
                                                             alt="" />
                                                     </div>
                                                     <div class="d-flex justify-content-start flex-column">
@@ -2455,7 +2455,7 @@
                                             <td>
                                                 <div class="d-flex align-items-center">
                                                     <div class="symbol symbol-50px me-3">
-                                                        <img src="{{URL::to('public/assets/media/stock/600x600/img-40.jpg')}}" class=""
+                                                        <img src="{{asset('assets/media/stock/600x600/img-40.jpg')}}" class=""
                                                             alt="" />
                                                     </div>
                                                     <div class="d-flex justify-content-start flex-column">
@@ -2496,7 +2496,7 @@
                                             <td>
                                                 <div class="d-flex align-items-center">
                                                     <div class="symbol symbol-50px me-3">
-                                                        <img src="{{URL::to('public/assets/media/stock/600x600/img-39.jpg')}}" class=""
+                                                        <img src="{{asset('assets/media/stock/600x600/img-39.jpg')}}" class=""
                                                             alt="" />
                                                     </div>
                                                     <div class="d-flex justify-content-start flex-column">
@@ -2538,7 +2538,7 @@
                                             <td>
                                                 <div class="d-flex align-items-center">
                                                     <div class="symbol symbol-50px me-3">
-                                                        <img src="{{URL::to('public/assets/media/stock/600x600/img-47.jpg')}}" class=""
+                                                        <img src="{{asset('assets/media/stock/600x600/img-47.jpg')}}" class=""
                                                             alt="" />
                                                     </div>
                                                     <div class="d-flex justify-content-start flex-column">
@@ -2580,7 +2580,7 @@
                                             <td>
                                                 <div class="d-flex align-items-center">
                                                     <div class="symbol symbol-50px me-3">
-                                                        <img src="{{URL::to('public/assets/media/stock/600x600/img-48.jpg')}}" class=""
+                                                        <img src="{{asset('assets/media/stock/600x600/img-48.jpg')}}" class=""
                                                             alt="" />
                                                     </div>
                                                     <div class="d-flex justify-content-start flex-column">
@@ -3936,11 +3936,11 @@
                                                 <!--end::Input-->
                                                 <!--begin::Card logos-->
                                                 <div class="position-absolute translate-middle-y top-50 end-0 me-5">
-                                                    <img src="{{URL::to('public/assets/media/svg/card-logos/visa.svg')}}" alt=""
+                                                    <img src="{{asset('assets/media/svg/card-logos/visa.svg')}}" alt=""
                                                         class="h-25px" />
-                                                    <img src="{{URL::to('public/assets/media/svg/card-logos/mastercard.svg')}}" alt=""
+                                                    <img src="{{asset('assets/media/svg/card-logos/mastercard.svg')}}" alt=""
                                                         class="h-25px" />
-                                                    <img src="{{URL::to('public/assets/media/svg/card-logos/american-express.svg')}}"
+                                                    <img src="{{asset('assets/media/svg/card-logos/american-express.svg')}}"
                                                         alt="" class="h-25px" />
                                                 </div>
                                                 <!--end::Card logos-->
@@ -4073,7 +4073,7 @@
                                         <!--end::Description-->
                                         <!--begin::Illustration-->
                                         <div class="text-center px-4 py-15">
-                                            <img src="{{URL::to('public/assets/media/illustrations/sketchy-1/9.png')}}" alt=""
+                                            <img src="{{asset('assets/media/illustrations/sketchy-1/9.png')}}" alt=""
                                                 class="mw-100 mh-300px" />
                                         </div>
                                         <!--end::Illustration-->
@@ -4360,7 +4360,7 @@
                                 <div class="d-flex align-items-center">
                                     <!--begin::Avatar-->
                                     <div class="symbol symbol-35px symbol-circle">
-                                        <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-6.jpg')}}" />
+                                        <img alt="Pic" src="{{asset('assets/media/avatars/300-6.jpg')}}" />
                                     </div>
                                     <!--end::Avatar-->
                                     <!--begin::Details-->
@@ -4433,7 +4433,7 @@
                                 <div class="d-flex align-items-center">
                                     <!--begin::Avatar-->
                                     <div class="symbol symbol-35px symbol-circle">
-                                        <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-1.jpg')}}" />
+                                        <img alt="Pic" src="{{asset('assets/media/avatars/300-1.jpg')}}" />
                                     </div>
                                     <!--end::Avatar-->
                                     <!--begin::Details-->
@@ -4470,7 +4470,7 @@
                                 <div class="d-flex align-items-center">
                                     <!--begin::Avatar-->
                                     <div class="symbol symbol-35px symbol-circle">
-                                        <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-5.jpg')}}" />
+                                        <img alt="Pic" src="{{asset('assets/media/avatars/300-5.jpg')}}" />
                                     </div>
                                     <!--end::Avatar-->
                                     <!--begin::Details-->
@@ -4506,7 +4506,7 @@
                                 <div class="d-flex align-items-center">
                                     <!--begin::Avatar-->
                                     <div class="symbol symbol-35px symbol-circle">
-                                        <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-25.jpg')}}" />
+                                        <img alt="Pic" src="{{asset('assets/media/avatars/300-25.jpg')}}" />
                                     </div>
                                     <!--end::Avatar-->
                                     <!--begin::Details-->
@@ -4580,7 +4580,7 @@
                                 <div class="d-flex align-items-center">
                                     <!--begin::Avatar-->
                                     <div class="symbol symbol-35px symbol-circle">
-                                        <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-9.jpg')}}" />
+                                        <img alt="Pic" src="{{asset('assets/media/avatars/300-9.jpg')}}" />
                                     </div>
                                     <!--end::Avatar-->
                                     <!--begin::Details-->
@@ -4690,7 +4690,7 @@
                                 <div class="d-flex align-items-center">
                                     <!--begin::Avatar-->
                                     <div class="symbol symbol-35px symbol-circle">
-                                        <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-23.jpg')}}" />
+                                        <img alt="Pic" src="{{asset('assets/media/avatars/300-23.jpg')}}" />
                                     </div>
                                     <!--end::Avatar-->
                                     <!--begin::Details-->
@@ -4763,7 +4763,7 @@
                                 <div class="d-flex align-items-center">
                                     <!--begin::Avatar-->
                                     <div class="symbol symbol-35px symbol-circle">
-                                        <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-12.jpg')}}" />
+                                        <img alt="Pic" src="{{asset('assets/media/avatars/300-12.jpg')}}" />
                                     </div>
                                     <!--end::Avatar-->
                                     <!--begin::Details-->
@@ -4937,7 +4937,7 @@
                                         class="d-flex align-items-center p-3 rounded bg-state-light bg-state-opacity-50 mb-1">
                                         <!--begin::Avatar-->
                                         <div class="symbol symbol-35px symbol-circle me-5">
-                                            <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-6.jpg')}}" />
+                                            <img alt="Pic" src="{{asset('assets/media/avatars/300-6.jpg')}}" />
                                         </div>
                                         <!--end::Avatar-->
                                         <!--begin::Info-->
@@ -4969,7 +4969,7 @@
                                         class="d-flex align-items-center p-3 rounded bg-state-light bg-state-opacity-50 mb-1">
                                         <!--begin::Avatar-->
                                         <div class="symbol symbol-35px symbol-circle me-5">
-                                            <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-1.jpg')}}" />
+                                            <img alt="Pic" src="{{asset('assets/media/avatars/300-1.jpg')}}" />
                                         </div>
                                         <!--end::Avatar-->
                                         <!--begin::Info-->
@@ -4985,7 +4985,7 @@
                                         class="d-flex align-items-center p-3 rounded bg-state-light bg-state-opacity-50 mb-1">
                                         <!--begin::Avatar-->
                                         <div class="symbol symbol-35px symbol-circle me-5">
-                                            <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-5.jpg')}}" />
+                                            <img alt="Pic" src="{{asset('assets/media/avatars/300-5.jpg')}}" />
                                         </div>
                                         <!--end::Avatar-->
                                         <!--begin::Info-->
@@ -5001,7 +5001,7 @@
                                         class="d-flex align-items-center p-3 rounded bg-state-light bg-state-opacity-50 mb-1">
                                         <!--begin::Avatar-->
                                         <div class="symbol symbol-35px symbol-circle me-5">
-                                            <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-25.jpg')}}" />
+                                            <img alt="Pic" src="{{asset('assets/media/avatars/300-25.jpg')}}" />
                                         </div>
                                         <!--end::Avatar-->
                                         <!--begin::Info-->
@@ -5033,7 +5033,7 @@
                                             <!--end::Checkbox-->
                                             <!--begin::Avatar-->
                                             <div class="symbol symbol-35px symbol-circle">
-                                                <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-6.jpg')}}" />
+                                                <img alt="Pic" src="{{asset('assets/media/avatars/300-6.jpg')}}" />
                                             </div>
                                             <!--end::Avatar-->
                                             <!--begin::Details-->
@@ -5116,7 +5116,7 @@
                                             <!--end::Checkbox-->
                                             <!--begin::Avatar-->
                                             <div class="symbol symbol-35px symbol-circle">
-                                                <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-1.jpg')}}" />
+                                                <img alt="Pic" src="{{asset('assets/media/avatars/300-1.jpg')}}" />
                                             </div>
                                             <!--end::Avatar-->
                                             <!--begin::Details-->
@@ -5157,7 +5157,7 @@
                                             <!--end::Checkbox-->
                                             <!--begin::Avatar-->
                                             <div class="symbol symbol-35px symbol-circle">
-                                                <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-5.jpg')}}" />
+                                                <img alt="Pic" src="{{asset('assets/media/avatars/300-5.jpg')}}" />
                                             </div>
                                             <!--end::Avatar-->
                                             <!--begin::Details-->
@@ -5198,7 +5198,7 @@
                                             <!--end::Checkbox-->
                                             <!--begin::Avatar-->
                                             <div class="symbol symbol-35px symbol-circle">
-                                                <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-25.jpg')}}" />
+                                                <img alt="Pic" src="{{asset('assets/media/avatars/300-25.jpg')}}" />
                                             </div>
                                             <!--end::Avatar-->
                                             <!--begin::Details-->
@@ -5281,7 +5281,7 @@
                                             <!--end::Checkbox-->
                                             <!--begin::Avatar-->
                                             <div class="symbol symbol-35px symbol-circle">
-                                                <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-9.jpg')}}" />
+                                                <img alt="Pic" src="{{asset('assets/media/avatars/300-9.jpg')}}" />
                                             </div>
                                             <!--end::Avatar-->
                                             <!--begin::Details-->
@@ -5406,7 +5406,7 @@
                                             <!--end::Checkbox-->
                                             <!--begin::Avatar-->
                                             <div class="symbol symbol-35px symbol-circle">
-                                                <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-23.jpg')}}" />
+                                                <img alt="Pic" src="{{asset('assets/media/avatars/300-23.jpg')}}" />
                                             </div>
                                             <!--end::Avatar-->
                                             <!--begin::Details-->
@@ -5489,7 +5489,7 @@
                                             <!--end::Checkbox-->
                                             <!--begin::Avatar-->
                                             <div class="symbol symbol-35px symbol-circle">
-                                                <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-12.jpg')}}" />
+                                                <img alt="Pic" src="{{asset('assets/media/avatars/300-12.jpg')}}" />
                                             </div>
                                             <!--end::Avatar-->
                                             <!--begin::Details-->
@@ -5571,7 +5571,7 @@
                                             <!--end::Checkbox-->
                                             <!--begin::Avatar-->
                                             <div class="symbol symbol-35px symbol-circle">
-                                                <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-13.jpg')}}" />
+                                                <img alt="Pic" src="{{asset('assets/media/avatars/300-13.jpg')}}" />
                                             </div>
                                             <!--end::Avatar-->
                                             <!--begin::Details-->
@@ -5654,7 +5654,7 @@
                                             <!--end::Checkbox-->
                                             <!--begin::Avatar-->
                                             <div class="symbol symbol-35px symbol-circle">
-                                                <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-21.jpg')}}" />
+                                                <img alt="Pic" src="{{asset('assets/media/avatars/300-21.jpg')}}" />
                                             </div>
                                             <!--end::Avatar-->
                                             <!--begin::Details-->
@@ -5695,7 +5695,7 @@
                                             <!--end::Checkbox-->
                                             <!--begin::Avatar-->
                                             <div class="symbol symbol-35px symbol-circle">
-                                                <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-5.jpg')}}" />
+                                                <img alt="Pic" src="{{asset('assets/media/avatars/300-5.jpg')}}" />
                                             </div>
                                             <!--end::Avatar-->
                                             <!--begin::Details-->
@@ -5742,7 +5742,7 @@
                                 <!--end::Message-->
                                 <!--begin::Illustration-->
                                 <div class="text-center px-5">
-                                    <img src="{{URL::to('public/assets/media/illustrations/sketchy-1/1.png')}}" alt=""
+                                    <img src="{{asset('assets/media/illustrations/sketchy-1/1.png')}}" alt=""
                                         class="w-100 h-200px h-sm-325px" />
                                 </div>
                                 <!--end::Illustration-->
@@ -5794,7 +5794,7 @@
                     <!--end::Heading-->
                     <!--begin::Google Contacts Invite-->
                     <div class="btn btn-light-primary fw-bold w-100 mb-8">
-                        <img alt="Logo" src="{{URL::to('public/assets/media/svg/brand-logos/google-icon.svg')}}"
+                        <img alt="Logo" src="{{asset('assets/media/svg/brand-logos/google-icon.svg')}}"
                             class="h-20px me-3" />Invite Gmail Contacts
                     </div>
                     <!--end::Google Contacts Invite-->
@@ -5819,7 +5819,7 @@
                                 <div class="d-flex align-items-center">
                                     <!--begin::Avatar-->
                                     <div class="symbol symbol-35px symbol-circle">
-                                        <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-6.jpg')}}" />
+                                        <img alt="Pic" src="{{asset('assets/media/avatars/300-6.jpg')}}" />
                                     </div>
                                     <!--end::Avatar-->
                                     <!--begin::Details-->
@@ -5879,7 +5879,7 @@
                                 <div class="d-flex align-items-center">
                                     <!--begin::Avatar-->
                                     <div class="symbol symbol-35px symbol-circle">
-                                        <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-1.jpg')}}" />
+                                        <img alt="Pic" src="{{asset('assets/media/avatars/300-1.jpg')}}" />
                                     </div>
                                     <!--end::Avatar-->
                                     <!--begin::Details-->
@@ -5909,7 +5909,7 @@
                                 <div class="d-flex align-items-center">
                                     <!--begin::Avatar-->
                                     <div class="symbol symbol-35px symbol-circle">
-                                        <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-5.jpg')}}" />
+                                        <img alt="Pic" src="{{asset('assets/media/avatars/300-5.jpg')}}" />
                                     </div>
                                     <!--end::Avatar-->
                                     <!--begin::Details-->
@@ -5939,7 +5939,7 @@
                                 <div class="d-flex align-items-center">
                                     <!--begin::Avatar-->
                                     <div class="symbol symbol-35px symbol-circle">
-                                        <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-25.jpg')}}" />
+                                        <img alt="Pic" src="{{asset('assets/media/avatars/300-25.jpg')}}" />
                                     </div>
                                     <!--end::Avatar-->
                                     <!--begin::Details-->
@@ -5999,7 +5999,7 @@
                                 <div class="d-flex align-items-center">
                                     <!--begin::Avatar-->
                                     <div class="symbol symbol-35px symbol-circle">
-                                        <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-9.jpg')}}" />
+                                        <img alt="Pic" src="{{asset('assets/media/avatars/300-9.jpg')}}" />
                                     </div>
                                     <!--end::Avatar-->
                                     <!--begin::Details-->
@@ -6089,7 +6089,7 @@
                                 <div class="d-flex align-items-center">
                                     <!--begin::Avatar-->
                                     <div class="symbol symbol-35px symbol-circle">
-                                        <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-23.jpg')}}" />
+                                        <img alt="Pic" src="{{asset('assets/media/avatars/300-23.jpg')}}" />
                                     </div>
                                     <!--end::Avatar-->
                                     <!--begin::Details-->
@@ -6149,7 +6149,7 @@
                                 <div class="d-flex align-items-center">
                                     <!--begin::Avatar-->
                                     <div class="symbol symbol-35px symbol-circle">
-                                        <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-12.jpg')}}" />
+                                        <img alt="Pic" src="{{asset('assets/media/avatars/300-12.jpg')}}" />
                                     </div>
                                     <!--end::Avatar-->
                                     <!--begin::Details-->
@@ -6209,7 +6209,7 @@
                                 <div class="d-flex align-items-center">
                                     <!--begin::Avatar-->
                                     <div class="symbol symbol-35px symbol-circle">
-                                        <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-13.jpg')}}" />
+                                        <img alt="Pic" src="{{asset('assets/media/avatars/300-13.jpg')}}" />
                                     </div>
                                     <!--end::Avatar-->
                                     <!--begin::Details-->
@@ -6269,7 +6269,7 @@
                                 <div class="d-flex align-items-center">
                                     <!--begin::Avatar-->
                                     <div class="symbol symbol-35px symbol-circle">
-                                        <img alt="Pic" src="{{URL::to('public/assets/media/avatars/300-21.jpg')}}" />
+                                        <img alt="Pic" src="{{asset('assets/media/avatars/300-21.jpg')}}" />
                                     </div>
                                     <!--end::Avatar-->
                                     <!--begin::Details-->
@@ -6356,11 +6356,11 @@
 
 @section('script')
     <!--begin::Custom Javascript(used for this page only)-->
-    <script src="{{'public/assets/js/widgets.bundle.js'}}"></script>
-    <script src="{{'public/assets/js/custom/widgets.js'}}"></script>
-    <script src="{{'public/assets/js/custom/apps/chat/chat.js'}}"></script>
-    <script src="{{'public/assets/js/custom/utilities/modals/upgrade-plan.js'}}"></script>
-    <script src="{{'public/assets/js/custom/utilities/modals/create-app.js'}}"></script>
-    <script src="{{'public/assets/js/custom/utilities/modals/new-target.js'}}"></script>
-    <script src="{{'public/assets/js/custom/utilities/modals/users-search.js'}}"></script>
+    <script src="{{asset('assets/js/widgets.bundle.js')}}"></script>
+    <script src="{{asset('assets/js/custom/widgets.js')}}"></script>
+    <script src="{{asset('assets/js/custom/apps/chat/chat.js')}}"></script>
+    <script src="{{asset('assets/js/custom/utilities/modals/upgrade-plan.js')}}"></script>
+    <script src="{{asset('assets/js/custom/utilities/modals/create-app.js')}}"></script>
+    <script src="{{asset('assets/js/custom/utilities/modals/new-target.js')}}"></script>
+    <script src="{{asset('assets/js/custom/utilities/modals/users-search.js')}}"></script>
 @endsection

@@ -132,6 +132,16 @@ class ProjectManagementController extends Controller
      *     description="Create a new message for Project Management.",
      *     operationId="workHours",
      *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="month",
+     *         in="query",
+     *         description="Enter Month Name",
+     *         example="2024-06"
+     *         required=false,
+     *         @OA\Schema(
+     *             type="string"
+     *         )
+     *     ),
      *      @OA\Response(
      *         response=200,
      *         description="json schema",
@@ -149,7 +159,23 @@ class ProjectManagementController extends Controller
     public function workHours(Request $request)
     {
         try {
-            $workHours = WorkingHours::where('user_id', auth()->user()->id)->get();
+            $rules = [
+               'month' => 'nullable|string',
+            ];
+            $message = [
+               'month.nullable' => 'Month is required',
+               'month.string' => 'Month must be an String'
+            ];
+            $validator = Validator::make($request->all(), $rules, $message);
+            if ($validator->fails()) {
+                return response()->json([
+                   'status_code' => 400,
+                   'message' => $validator->errors()->first(),
+                    'data' => ""
+                ]);
+            }
+            $filterMonth = @$request->month ? Carbon::parse($request->month)->format('Y-m') : Carbon::now()->format('Y-m');
+            $workHours = WorkingHours::where('user_id', auth()->user()->id)->whereDate('start_date_time',$filterMonth)->orderByDesc('id')->get(['id','start_date_time','end_date_time','total_hours','summary']);
             $format = $workHours->map(function ($workHour) {
                 $workHour->start_date_time = Carbon::parse($workHour->start_date_time)->format('Y-m-d H:i:s');
                 $workHour->end_date_time = Carbon::parse($workHour->end_date_time)->format('Y-m-d H:i:s');

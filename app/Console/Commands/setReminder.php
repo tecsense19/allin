@@ -32,7 +32,7 @@ class setReminder extends Command
     {
         $currentDate = Carbon::parse(now())->format('Y-m-d');
         $currentTime = Carbon::parse(now())->format('H:i');
-        $reminders = Reminder::whereDate('date', $currentDate)->whereTime('time', $currentTime)->get();
+        $reminders = Reminder::whereDate('date', $currentDate)->whereTime('time', $currentTime)->where('sent','Pending')->get();
         if (count($reminders) > 0) {
             foreach ($reminders as $reminder) {
                 $message = new Message();
