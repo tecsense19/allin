@@ -136,7 +136,7 @@ class ProjectManagementController extends Controller
      *         name="month",
      *         in="query",
      *         description="Enter Month Name",
-     *         example="2024-06"
+     *         example="2024-06",
      *         required=false,
      *         @OA\Schema(
      *             type="string"
