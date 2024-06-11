@@ -107,7 +107,7 @@
                                 <div class="row align-items-center my-3">
                                     <div class="col-auto">
                                         <div class="symbol symbol-45px w-45px bg-light me-5">
-                                            <img src="{{ asset('assets/media/svg/brand-logos/instagram-2-1.svg') }}"
+                                            <img src="{{ URL::to('public/assets/media/svg/brand-logos/instagram-2-1.svg') }}"
                                                 alt="image" class="p-3">
                                         </div>
                                     </div>
@@ -117,7 +117,7 @@
                                 <div class="row align-items-center my-3">
                                     <div class="col-auto">
                                         <div class="symbol symbol-45px w-45px bg-light me-5">
-                                            <img src="{{ asset('assets/media/svg/brand-logos/facebook-2.svg') }}"
+                                            <img src="{{ URL::to('public/assets/media/svg/brand-logos/facebook-2.svg') }}"
                                                 alt="image" class="p-3">
                                         </div>
                                     </div>
@@ -127,7 +127,7 @@
                                 <div class="row align-items-center my-3">
                                     <div class="col-auto">
                                         <div class="symbol symbol-45px w-45px bg-light me-5">
-                                            <img src="{{ asset('assets/media/svg/brand-logos/twitter.svg') }}"
+                                            <img src="{{ URL::to('public/assets/media/svg/brand-logos/twitter.svg') }}"
                                                 alt="image" class="p-3">
                                         </div>
                                     </div>
@@ -137,7 +137,7 @@
                                 <div class="row align-items-center my-3">
                                     <div class="col-auto">
                                         <div class="symbol symbol-45px w-45px bg-light me-5">
-                                            <img src="{{ asset('assets/media/svg/brand-logos/youtube.svg') }}"
+                                            <img src="{{ URL::to('public/assets/media/svg/brand-logos/youtube.svg') }}"
                                                 alt="image" class="p-3">
                                         </div>
                                     </div>
@@ -147,7 +147,7 @@
                                 <div class="row align-items-center my-3">
                                     <div class="col-auto">
                                         <div class="symbol symbol-45px w-45px bg-light me-5">
-                                            <img src="{{ asset('assets/media/svg/brand-logos/linkedin-1.svg') }}"
+                                            <img src="{{ URL::to('public/assets/media/svg/brand-logos/linkedin-1.svg') }}"
                                                 alt="image" class="p-3">
                                         </div>
                                     </div>

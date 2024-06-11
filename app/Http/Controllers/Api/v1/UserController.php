@@ -334,8 +334,8 @@ class UserController extends Controller
                     $userDeviceToken->user_id = $user->id;
                     $userDeviceToken->token = $request->device_token;
                     $userDeviceToken->save();
-                    $user->profile = @$user->profile ? asset('user-profile/' . $user->profile) : asset('assets/media/avatars/blank.png');
-                    $user->cover_image = @$user->cover_image ? asset('user-profile-cover-image/' . $user->cover_image) : asset('assets/media/misc/image.png');
+                    $user->profile = @$user->profile ? URL::to('public/user-profile/' . $user->profile) : URL::to('public/assets/media/avatars/blank.png');
+                    $user->cover_image = @$user->cover_image ? URL::to('public/user-profile-cover-image/' . $user->cover_image) : URL::to('public/assets/media/misc/image.png');
                     $authData['userDetails'] = $user;
                     $authData['token'] = $token;
                     $authData['token_type'] = 'bearer';
@@ -414,8 +414,8 @@ class UserController extends Controller
                     $userDeviceToken->user_id = $user->id;
                     $userDeviceToken->token = $request->device_token;
                     $userDeviceToken->save();
-                    $user->profile = @$user->profile ? asset('user-profile/' . $user->profile) : asset('assets/media/avatars/blank.png');
-                    $user->cover_image = @$user->cover_image ? asset('user-profile-cover-image/' . $user->cover_image) : asset('assets/media/misc/image.png');
+                    $user->profile = @$user->profile ? URL::to('public/user-profile/' . $user->profile) : URL::to('public/assets/media/avatars/blank.png');
+                    $user->cover_image = @$user->cover_image ? URL::to('public/user-profile-cover-image/' . $user->cover_image) : URL::to('public/assets/media/misc/image.png');
                     $authData['userDetails'] = $user;
                     $authData['token'] = $token;
                     $authData['token_type'] = 'bearer';
@@ -492,8 +492,8 @@ class UserController extends Controller
                     $userDeviceToken->user_id = $user->id;
                     $userDeviceToken->token = $request->device_token;
                     $userDeviceToken->save();
-                    $user->profile = @$user->profile ? asset('user-profile/' . $user->profile) : asset('assets/media/avatars/blank.png');
-                    $user->cover_image = @$user->cover_image ? asset('user-profile-cover-image/' . $user->cover_image) : asset('assets/media/misc/image.png');
+                    $user->profile = @$user->profile ? URL::to('public/user-profile/' . $user->profile) : URL::to('public/assets/media/avatars/blank.png');
+                    $user->cover_image = @$user->cover_image ? URL::to('public/user-profile-cover-image/' . $user->cover_image) : URL::to('public/assets/media/misc/image.png');
                     $authData['userDetails'] = $user;
                     $authData['token'] = $token;
                     $authData['token_type'] = 'bearer';
@@ -769,7 +769,7 @@ class UserController extends Controller
                         'id' => $user->id,
                         'first_name' => $user->first_name,
                         'last_name' => $user->last_name,
-                        'profile' => @$user->profile ? asset('user-profile/' . $user->profile) : asset('assets/media/avatars/blank.png'),
+                        'profile' => @$user->profile ? URL::to('public/user-profile/' . $user->profile) : URL::to('public/assets/media/avatars/blank.png'),
                         'last_message' => $lastMessageContent,
                         'last_message_date' => $lastMessageDate,
                         'unread_message_count' => $unreadMessageCount,
@@ -900,8 +900,8 @@ class UserController extends Controller
             }
             $user = new User();
             $userData = $user->find($request->id);
-            $userData->profile = @$userData->profile ? asset('user-profile/' . $userData->profile) : asset('assets/media/avatars/blank.png');
-            $userData->cover_image = @$userData->cover_image ? asset('user-profile-cover-image/' . $userData->cover_image) : asset('assets/media/misc/image.png');
+            $userData->profile = @$userData->profile ? URL::to('public/user-profile/' . $userData->profile) : URL::to('public/assets/media/avatars/blank.png');
+            $userData->cover_image = @$userData->cover_image ? URL::to('public/user-profile-cover-image/' . $userData->cover_image) : URL::to('public/assets/media/misc/image.png');
 
             $loginUser = auth()->user()->id;
             $userId = $request->id;
@@ -1216,8 +1216,8 @@ class UserController extends Controller
             $user->linkedin_profile_url = @$request->linkedin_profile_url ? $request->linkedin_profile_url : NULL;
             $user->save();
 
-            $user->profile = @$user->profile ? asset('user-profile/' . $user->profile) : NULL;
-            $user->cover_image = @$user->cover_image ? asset('user-profile-cover-image/' . $user->cover_image) : NULL;
+            $user->profile = @$user->profile ? URL::to('public/user-profile/' . $user->profile) : NULL;
+            $user->cover_image = @$user->cover_image ? URL::to('public/user-profile-cover-image/' . $user->cover_image) : NULL;
             $data = [
                 'status_code' => 200,
                 'message' => "User Updated Successfully!",
@@ -1353,7 +1353,7 @@ class UserController extends Controller
             $deletedUsers = deleteChatUsers::where('user_id', $loginUser)->pluck('deleted_user_id');
             $deletedUsers = User::whereIn('id', $deletedUsers)->get(['id', 'account_id', 'first_name', 'last_name', 'email', 'country_code', 'mobile', 'profile']);
             $deletedUsers = $deletedUsers->map(function ($item) {
-                $item->profile = @$item->profile ? asset('user-profile/' . $item->profile) : asset('assets/media/avatars/blank.png');
+                $item->profile = @$item->profile ? URL::to('public/user-profile/' . $item->profile) : URL::to('public/assets/media/avatars/blank.png');
                 return $item;
             });
             $data = [
