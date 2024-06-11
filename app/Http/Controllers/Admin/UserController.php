@@ -57,9 +57,9 @@ class UserController extends Controller
                 return $user->mobile ?? '-';
             })
             ->editColumn('profile', function ($user) {
-                $userImage = asset('assets/media/avatars/blank.png');
+                $userImage = URL::to('public/assets/media/avatars/blank.png');
                 if (!empty($user->profile)) {
-                    $userImage = asset('user-profile/' . $user->profile);
+                    $userImage = URL::to('public/user-profile/' . $user->profile);
                 }
                 $html =  '<img class="img rounded-circle" height="65" width="65" src="' . $userImage . '" />';
                 return $html;
@@ -98,8 +98,8 @@ class UserController extends Controller
 
     public function view($id){
         $data['user'] = User::find($id);
-        $data['user']->profile = @$data['user']->profile ? asset('user-profile/' . $data['user']->profile) : asset('assets/media/avatars/blank.png');
-        $data['user']->cover_image = @$data['user']->cover_image ? asset('user-profile-cover-image/'.$data['user']->cover_image) : asset('assets/media/misc/image.png');
+        $data['user']->profile = @$data['user']->profile ? URL::to('public/user-profile/' . $data['user']->profile) : URL::to('public/assets/media/avatars/blank.png');
+        $data['user']->cover_image = @$data['user']->cover_image ? URL::to('public/user-profile-cover-image/'.$data['user']->cover_image) : URL::to('public/assets/media/misc/image.png');
         return view('Admin.User.view',$data);
     }
 }

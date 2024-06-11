@@ -13,12 +13,12 @@
 		<meta property="og:url" content="https://keenthemes.com/metronic" />
 		<meta property="og:site_name" content="Keenthemes | Metronic" />
 		<link rel="canonical" href="https://preview.keenthemes.com/metronic8" />
-		<link rel="shortcut icon" href="{{ asset('public/assets/favicon.ico') }}" />
+		<link rel="shortcut icon" href="{{ URL::to('public/public/assets/favicon.ico') }}" />
 		<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700" />
-		<link href="{{ asset('assets/plugins/custom/fullcalendar/fullcalendar.bundle.css') }}" rel="stylesheet" type="text/css" />
-		<link href="{{ asset('assets/plugins/custom/datatables/datatables.bundle.css') }}" rel="stylesheet" type="text/css" />
-		<link href="{{ asset('assets/plugins/global/plugins.bundle.css') }}" rel="stylesheet" type="text/css" />
-		<link href="{{ asset('assets/css/style.bundle.css') }}" rel="stylesheet" type="text/css" />
+		<link href="{{ URL::to('public/assets/plugins/custom/fullcalendar/fullcalendar.bundle.css') }}" rel="stylesheet" type="text/css" />
+		<link href="{{ URL::to('public/assets/plugins/custom/datatables/datatables.bundle.css') }}" rel="stylesheet" type="text/css" />
+		<link href="{{ URL::to('public/assets/plugins/global/plugins.bundle.css') }}" rel="stylesheet" type="text/css" />
+		<link href="{{ URL::to('public/assets/css/style.bundle.css') }}" rel="stylesheet" type="text/css" />
 
         @yield('header')
 	</head>
@@ -47,10 +47,10 @@
             </div>
         </div>
         <!--begin::Javascript-->
-		<script>var hostUrl = "{{asset('assets/')}}";</script>
-		<script src="{{asset('assets/plugins/global/plugins.bundle.js')}}"></script>
-		<script src="{{ asset('assets/js/scripts.bundle.js') }}"></script>
-		<script src="{{ asset('assets/plugins/custom/fullcalendar/fullcalendar.bundle.js') }}"></script>
+		<script>var hostUrl = "{{URL::to('public/assets/')}}";</script>
+		<script src="{{URL::to('public/assets/plugins/global/plugins.bundle.js')}}"></script>
+		<script src="{{ URL::to('public/assets/js/scripts.bundle.js') }}"></script>
+		<script src="{{ URL::to('public/assets/plugins/custom/fullcalendar/fullcalendar.bundle.js') }}"></script>
 		<script src="https://cdn.amcharts.com/lib/5/index.js"></script>
 		<script src="https://cdn.amcharts.com/lib/5/xy.js"></script>
 		<script src="https://cdn.amcharts.com/lib/5/percent.js"></script>
@@ -62,14 +62,14 @@
 		<script src="https://cdn.amcharts.com/lib/5/geodata/usaLow.js"></script>
 		<script src="https://cdn.amcharts.com/lib/5/geodata/worldTimeZonesLow.js"></script>
 		<script src="https://cdn.amcharts.com/lib/5/geodata/worldTimeZoneAreasLow.js"></script>
-		<script src="{{ asset('assets/plugins/custom/datatables/datatables.bundle.js') }}"></script>
-		<script src="{{ asset('assets/js/widgets.bundle.js') }}"></script>
-		<script src="{{ asset('assets/js/custom/widgets.js') }}"></script>
-		<script src="{{ asset('assets/js/custom/apps/chat/chat.js') }}"></script>
-		<script src="{{ asset('assets/js/custom/utilities/modals/upgrade-plan.js') }}"></script>
-		<script src="{{ asset('assets/js/custom/utilities/modals/create-app.js') }}"></script>
-		<script src="{{ asset('assets/js/custom/utilities/modals/new-target.js') }}"></script>
-		<script src="{{ asset('assets/js/custom/utilities/modals/users-search.js') }}"></script>
+		<script src="{{ URL::to('public/assets/plugins/custom/datatables/datatables.bundle.js') }}"></script>
+		<script src="{{ URL::to('public/assets/js/widgets.bundle.js') }}"></script>
+		<script src="{{ URL::to('public/assets/js/custom/widgets.js') }}"></script>
+		<script src="{{ URL::to('public/assets/js/custom/apps/chat/chat.js') }}"></script>
+		<script src="{{ URL::to('public/assets/js/custom/utilities/modals/upgrade-plan.js') }}"></script>
+		<script src="{{ URL::to('public/assets/js/custom/utilities/modals/create-app.js') }}"></script>
+		<script src="{{ URL::to('public/assets/js/custom/utilities/modals/new-target.js') }}"></script>
+		<script src="{{ URL::to('public/assets/js/custom/utilities/modals/users-search.js') }}"></script>
 		<!--end::Javascript-->
 
 		

@@ -248,7 +248,7 @@ class ChatController extends Controller
             $messageAttachment = new MessageAttachment();
             $messageAttachment->message_id = $msg->id;
             $messageAttachment->attachment_name = $request->attachment;
-            $messageAttachment->attachment_path = asset('chat-file/' . $request->attachment);
+            $messageAttachment->attachment_path = URL::to('public/chat-file/' . $request->attachment);
             $messageAttachment->save();
 
             $message = [
@@ -258,7 +258,7 @@ class ChatController extends Controller
                 'message_type' => $request->message_type,
                 'attachment_type' => $request->attachment_type,
                 'attachment_name' => $request->attachment,
-                'attachment_path' => asset('chat-file/' . $request->attachment),
+                'attachment_path' => URL::to('public/chat-file/' . $request->attachment),
             ];
 
             broadcast(new MessageSent($message))->toOthers();
@@ -533,7 +533,7 @@ class ChatController extends Controller
                 $messageAttachment = new MessageAttachment();
                 $messageAttachment->message_id = $msg->id;
                 $messageAttachment->attachment_name = $request->attachment;
-                $messageAttachment->attachment_path = asset('chat-file/' . $request->attachment);
+                $messageAttachment->attachment_path = URL::to('public/chat-file/' . $request->attachment);
                 $messageAttachment->save();
             }
 
@@ -989,7 +989,7 @@ class ChatController extends Controller
                     'data' => [
                         'image_name' => $imageName,
                         'file_type' => $extension,
-                        'image_path' => asset('chat-file/' . $imageName)
+                        'image_path' => URL::to('public/chat-file/' . $imageName)
                     ]
                 ];
                 return $this->sendJsonResponse($data);
@@ -1368,7 +1368,7 @@ class ChatController extends Controller
             Excel::store(new chatExport($loginUser, $userId, $timezone), $fileName, 'export');
 
             // Generate the file URL using the asset() helper function
-            $fileUrl = asset('exported-chat/' . $fileName);
+            $fileUrl = URL::to('public/exported-chat/' . $fileName);
 
             $data = [
                 'status_code' => 200,
@@ -1481,7 +1481,7 @@ class ChatController extends Controller
                     return [
                         'userId' => $user->id,
                         'name' => "{$user->first_name} {$user->last_name}",
-                        'profilePic' => @$user->profile ? asset('user-profile/' . $user->profile) : asset('assets/media/avatars/blank.png'),
+                        'profilePic' => @$user->profile ? URL::to('public/user-profile/' . $user->profile) : URL::to('public/assets/media/avatars/blank.png'),
                     ];
                 });
 
@@ -1511,7 +1511,7 @@ class ChatController extends Controller
                     'messageDetails' => $messageDetails,
                     'senderId' => $sender->id,
                     'name' => "{$sender->first_name} {$sender->last_name}",
-                    'profilePic' => @$sender->profile ? asset('user-profile/' . $sender->profile) : asset('assets/media/avatars/blank.png'),
+                    'profilePic' => @$sender->profile ? URL::to('public/user-profile/' . $sender->profile) : URL::to('public/assets/media/avatars/blank.png'),
                 ];
             });
 
