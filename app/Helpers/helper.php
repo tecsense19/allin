@@ -197,3 +197,15 @@ function generateMessage($deviceToken, $notification, $data, $androidConfig, $ap
     ->withApnsConfig($appleConfig);
   return $message;
 }
+
+if (!function_exists('setAssetPath')) {
+  function setAssetPath($path)
+  {
+    if (App::environment('local')) {
+        $url = asset($path);
+    }else{
+        $url = URL::to('public/'.$path);
+    }
+    return $url;
+  }
+}
