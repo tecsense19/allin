@@ -9,6 +9,7 @@ use App\Models\Message;
 use App\Models\MessageAttachment;
 use App\Models\MessageLocation;
 use App\Models\MessageMeeting;
+use App\Models\MessageReminder;
 use App\Models\MessageSenderReceiver;
 use App\Models\MessageTask;
 use App\Models\MessageTaskChat;
@@ -1678,7 +1679,35 @@ class ChatController extends Controller
             $reminder->time = $request->time;
             $reminder->users = $mergedIds;
             $reminder->save();
-            
+
+            $message = new Message();
+            $message->message_type = 'Reminder';
+            $message->status = 'Unread';
+            $message->save();
+
+            $receiverIdsArray = explode(',', $reminder->users);
+            $senderId = NULL;
+            if (in_array($reminder->created_by, $receiverIdsArray)) {
+                $senderId = $reminder->created_by;
+            }
+            foreach ($receiverIdsArray as $receiverId) {
+                $messageSenderReceiver = new MessageSenderReceiver();
+                $messageSenderReceiver->message_id = $message->id;
+                $messageSenderReceiver->sender_id = $senderId;
+                $messageSenderReceiver->receiver_id = $receiverId;
+                $messageSenderReceiver->save();
+            }
+
+            $messageReminder = new MessageReminder();
+            $messageReminder->message_id = $message->id;
+            $messageReminder->title = $reminder->title;
+            $messageReminder->description = $reminder->description;
+            $messageReminder->date = $reminder->date;
+            $messageReminder->time = $reminder->time;
+            $messageReminder->users = $reminder->users;
+            $messageReminder->created_by = $reminder->created_by;
+            $messageReminder->save();
+
             $data = [
                 'status_code' => 200,
                 'message' => "Add Reminder Successfully!",

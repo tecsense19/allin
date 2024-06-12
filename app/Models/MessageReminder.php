@@ -19,6 +19,7 @@ class MessageReminder extends Model
         'description',
         'date',
         'time',
+        'users',
         'created_by',
         'updated_by',
         'deleted_by',

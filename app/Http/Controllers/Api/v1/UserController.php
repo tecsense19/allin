@@ -769,6 +769,8 @@ class UserController extends Controller
                         'id' => $user->id,
                         'first_name' => $user->first_name,
                         'last_name' => $user->last_name,
+                        'country_code' => $user->country_code,
+                        'mobile' => $user->mobile,
                         'profile' => @$user->profile ? setAssetPath('user-profile/' . $user->profile) : setAssetPath('assets/media/avatars/blank.png'),
                         'last_message' => $lastMessageContent,
                         'last_message_date' => $lastMessageDate,
@@ -924,8 +926,8 @@ class UserController extends Controller
                     'message.attachment:id,message_id,attachment_name,attachment_path',
                     'message.task:id,message_id,task_name,task_description',
                     'message.location:id,message_id,latitude,longitude,location_url',
-                    'message.meeting:id,message_id,mode,title,description,date,start_time,end_time,meeting_url',
-                    'message.reminder:id,message_id,title,description,date,time'
+                    'message.meeting:id,message_id,mode,title,description,date,start_time,end_time,meeting_url,users',
+                    'message.reminder:id,message_id,title,description,date,time,users'
                 ])
                 ->orderByDesc('created_at')
                 ->skip($start)
@@ -952,7 +954,15 @@ class UserController extends Controller
                         $messageDetails = $message->message->reminder;
                         break;
                 }
-
+                if($message->message->message_type == 'Meeting' || $message->message->message_type == 'Reminder'){
+                    $users = explode(',',$messageDetails->users);
+                    $userList = User::whereIn('id', $users)->get(['id','first_name','last_name','country_code','mobile','profile']);
+                    $userList = $userList->map(function ($user) {
+                        $user->profile = @$user->profile ? setAssetPath('user-profile/' . $user->profile) : setAssetPath('assets/media/avatars/blank.png');
+                        return $user;
+                    });
+                    $messageDetails->users = $userList;
+                }
                 return [
                     'messageId' => $message->message->id,
                     'messageType' => $message->message->message_type,
