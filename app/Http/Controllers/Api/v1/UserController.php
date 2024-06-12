@@ -962,6 +962,13 @@ class UserController extends Controller
                         return $user;
                     });
                     $messageDetails->users = $userList;
+                    $messageDetails->date = @$request->timezone ? Carbon::parse($messageDetails->date)->setTimezone($request->timezone)->format('d-m-Y') : Carbon::parse($messageDetails->date)->format('Y-m-d H:i:s');
+                    if($message->message->message_type == 'Reminder'){
+                        $messageDetails->time = @$request->timezone ? Carbon::parse($messageDetails->time)->setTimezone($request->timezone)->format('h:i a') : Carbon::parse($messageDetails->time)->format('h:i a');
+                    }elseif($message->message->message_type == 'Meeting'){
+                        $messageDetails->start_time = @$request->timezone ? Carbon::parse($messageDetails->start_time)->setTimezone($request->timezone)->format('h:i a') : Carbon::parse($messageDetails->start_time)->format('h:i a');
+                        $messageDetails->end_time = @$request->timezone ? Carbon::parse($messageDetails->end_time)->setTimezone($request->timezone)->format('h:i a') : Carbon::parse($messageDetails->end_time)->format('h:i a');
+                    }
                 }
                 return [
                     'messageId' => $message->message->id,

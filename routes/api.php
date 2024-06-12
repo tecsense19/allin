@@ -62,6 +62,11 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
         Route::controller(ProjectManagementController::class)->group(function () {
             Route::post('/add-work-hours', 'addWorkHours');
             Route::post('/work-hours', 'workHours');
+            Route::post('/edit-work-hours-summary', 'editWorkHoursSummary');
+            Route::post('/add-note', 'addNote');
+            Route::post('/note', 'notes');
+            Route::post('/note-details', 'noteDetails');
+            Route::post('/edit-note', 'editNotes');
         });
     });
 });

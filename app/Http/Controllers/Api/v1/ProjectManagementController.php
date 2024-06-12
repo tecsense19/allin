@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\v1;
 
 use App\Http\Controllers\Controller;
+use App\Models\Notes;
 use App\Models\WorkingHours;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -207,4 +208,404 @@ class ProjectManagementController extends Controller
             return response()->json(['status_code' => 500, 'message' => 'Something went wrong']);
         }
     }
+
+    /**
+     * @OA\Post(
+     *     path="/api/v1/edit-work-hours-summary",
+     *     summary="Edit a work hours",
+     *     tags={"ProjectManagement"},
+     *     description="Create a new message for Project Management.",
+     *     operationId="editWorkHoursSummary",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="query",
+     *         description="Enter work hour Id",
+     *         example="1",
+     *         required=true,
+     *         @OA\Schema(
+     *             type="number"
+     *         )
+     *     ),
+     *     @OA\Parameter(
+     *         name="summary",
+     *         in="query",
+     *         description="Enter work hour Summary",
+     *         example="",
+     *         required=false,
+     *         @OA\Schema(
+     *             type="string"
+     *         )
+     *     ),
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+
+     public function editWorkHoursSummary(Request $request)
+     {
+        try {
+            $rules = [
+                'id' => 'required|integer',
+                'summary' => 'nullable|string',
+            ];
+            $message = [
+                'id.required' => 'Id is required',
+                'id.integer' => 'Id must be an Integer',
+                'summary.string' => 'Summary must be an String'
+            ];
+            $validator = Validator::make($request->all(), $rules, $message);
+            if ($validator->fails()) {
+                return response()->json([
+                    'status_code' => 400,
+                    'message' => $validator->errors()->first(),
+                    'data' => ""
+                ]);
+            }
+            $workHour = WorkingHours::find($request->id);
+            if ($workHour) {
+                $workHour->summary = $request->summary;
+                $workHour->save();
+                $data = [
+                    'status_code' => 200,
+                    'message' => "Work Hours Successfully get!",
+                    'data' => [
+                        'workHours' => $workHour
+                    ]
+                ];
+                return response()->json($data);
+            } else {
+                return response()->json([
+                    'status_code' => 400,
+                    'message' => "Work Hours Not Found!",
+                    'data' => ""
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => date("Y-m-d H:i:s")
+            ]);
+            return response()->json(['status_code' => 500, 'message' => 'Something went wrong']);
+        }
+     }
+
+     /**
+     * @OA\Post(
+     *     path="/api/v1/add-note",
+     *     summary="Add a new Note",
+     *     tags={"ProjectManagement"},
+     *     description="Create a new note for Project Management.",
+     *     operationId="addNote",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="title",
+     *         in="query",
+     *         description="Enter Note Title",
+     *         example="",
+     *         required=true,
+     *         @OA\Schema(
+     *             type="string"
+     *         )
+     *     ),
+     *     @OA\Parameter(
+     *         name="description",
+     *         in="query",
+     *         description="Enter Note description",
+     *         example="",
+     *         required=false,
+     *         @OA\Schema(
+     *             type="string"
+     *         )
+     *     ),
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+
+     public function addNote(Request $request){
+        try {
+            $rules = [
+                'title' => 'required|string',
+                'description' => 'nullable|string',
+            ];
+            $message = [
+                'title.required' => 'Title is required',
+                'title.string' => 'Title must be an String',
+                'description.string' => 'Description must be an String'
+            ];
+            $validator = Validator::make($request->all(), $rules, $message);
+            if ($validator->fails()) {
+                return response()->json([
+                    'status_code' => 400,
+                    'message' => $validator->errors()->first(),
+                    'data' => ""
+                ]);
+            }
+            $note = new Notes();
+            $note->user_id = auth()->user()->id;
+            $note->title = $request->title;
+            $note->description = $request->description;
+            $note->save();
+            $data = [
+                'status_code' => 200,
+                'message' => "Note Successfully get!",
+                'data' => [
+                    'note' => $note
+                ]
+                ];
+            return response()->json($data);
+        } catch (\Exception $e) {
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => date("Y-m-d H:i:s")
+            ]);
+        }
+     }
+
+     /**
+     * @OA\Post(
+     *     path="/api/v1/note",
+     *     summary="new Note list",
+     *     tags={"ProjectManagement"},
+     *     description="List of note for Project Management.",
+     *     operationId="noteLost",
+     *     security={{"bearerAuth":{}}},
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+
+     public function notes(Request $request){
+        try {
+            $data = [
+                'status_code' => 200,
+                'message' => "Note Successfully get!",
+                'data' => [
+                    'notes' => Notes::where('user_id',auth()->user()->id)->get()
+                ]
+                ];
+            return response()->json($data);
+        } catch (\Exception $e) {
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => date("Y-m-d H:i:s")
+            ]);
+        }
+     }
+
+     /**
+     * @OA\Post(
+     *     path="/api/v1/note-details",
+     *     summary="Note Details",
+     *     tags={"ProjectManagement"},
+     *     description="Details of note for Project Management.",
+     *     operationId="noteDetails",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="query",
+     *         description="Enter Note Id",
+     *         example="1",
+     *         required=true,
+     *         @OA\Schema(
+     *             type="number"
+     *         )
+     *     ),
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+
+     public function noteDetails(Request $request){
+        try {
+            $rules = [
+                'id' => 'required|integer|exists:notes,id',
+            ];
+
+            $message = [
+                'id.required' => 'User ID is required.',
+                'id.integer' => 'User ID must be an integer.',
+                'id.exists' => 'The specified Note does not exist.',
+            ];
+            $validator = Validator::make($request->all(), $rules, $message);
+            if ($validator->fails()) {
+                $data = [
+                    'status_code' => 400,
+                    'message' => $validator->errors()->first(),
+                    'data' => ""
+                ];
+                return $this->sendJsonResponse($data);
+            }
+            $data = [
+                'status_code' => 200,
+                'message' => "Note Successfully get!",
+                'data' => [
+                    'note' => Notes::where('id',$request->id)->first()
+                ]
+                ];
+            return $this->sendJsonResponse($data);
+        } catch (\Exception $e) {
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => date("Y-m-d H:i:s")
+            ]);
+        }
+     }
+
+     /**
+     * @OA\Post(
+     *     path="/api/v1/edit-note",
+     *     summary="Edit Note",
+     *     tags={"ProjectManagement"},
+     *     description="Edit note for Project Management.",
+     *     operationId="editNotes",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="query",
+     *         description="Enter Note Id",
+     *         example="1",
+     *         required=true,
+     *         @OA\Schema(
+     *             type="number"
+     *         )
+     *     ),
+     *     @OA\Parameter(
+     *         name="title",
+     *         in="query",
+     *         description="Enter Note Title",
+     *         example="",
+     *         required=true,
+     *         @OA\Schema(
+     *             type="string"
+     *         )
+     *     ),
+     *     @OA\Parameter(
+     *         name="description",
+     *         in="query",
+     *         description="Enter Note Description",
+     *         example="",
+     *         required=false,
+     *         @OA\Schema(
+     *             type="string"
+     *         )
+     *     ),
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+
+     public function editNotes(Request $request){
+        try {
+            $rules = [
+                'id' => 'required|integer|exists:notes,id',
+                'title' => 'required|string',
+                'description' => 'nullable|string',
+            ];
+            $message = [
+                'id.required' => 'Note ID is required.',
+                'id.integer' => 'Note ID must be an integer.',
+                'id.exists' => 'The specified Note does not exist.',
+                'title.required' => 'Title is required.',
+                'description.string' => 'Description must be a string.',
+            ];
+            $validator = Validator::make($request->all(), $rules, $message);
+            if ($validator->fails()) {
+                $data = [
+                    'status_code' => 400,
+                    'message' => $validator->errors()->first(),
+                    'data' => ""
+                ];
+                return $this->sendJsonResponse($data);
+            }
+            $note = Notes::find($request->id);
+            $note->title = $request->title;
+            $note->description = $request->description;
+            $note->save();
+            $data = [
+                'status_code' => 200,
+                'message' => "Note Successfully Updated!",
+                'data' => [
+                    'note' => $note
+                ]
+                ];
+            return $this->sendJsonResponse($data);
+        } catch (\Exception $e) {
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => date("Y-m-d H:i:s")
+            ]);
+        }
+     }
 }
