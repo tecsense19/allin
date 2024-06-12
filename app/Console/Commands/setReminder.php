@@ -59,6 +59,7 @@ class setReminder extends Command
                 $messageReminder->description = $reminder->description;
                 $messageReminder->date = $reminder->date;
                 $messageReminder->time = $reminder->time;
+                $messageReminder->users = $reminder->users;
                 $messageReminder->created_by = $reminder->created_by;
                 $messageReminder->save();
 
