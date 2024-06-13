@@ -1,6 +1,6 @@
 <div id="kt_app_sidebar" class="app-sidebar flex-column" data-kt-drawer="true" data-kt-drawer-name="app-sidebar" data-kt-drawer-activate="{default: true, lg: false}" data-kt-drawer-overlay="true" data-kt-drawer-width="225px" data-kt-drawer-direction="start" data-kt-drawer-toggle="#kt_app_sidebar_mobile_toggle">
     <div class="app-sidebar-logo px-6" id="kt_app_sidebar_logo">
-        <a href="../../demo1/dist/index.html">
+        <a href="{{ route('dashboard') }}">
         <img alt="Logo" src="{{ URL::to('public/assets/media/logos/default-dark.svg') }}" class="h-25px app-sidebar-logo-default" />
         <img alt="Logo" src="{{ URL::to('public/assets/media/logos/default-small.svg') }}" class="h-20px app-sidebar-logo-minimize" />
         </a>
@@ -14,7 +14,7 @@
     <div class="app-sidebar-menu overflow-hidden flex-column-fluid">
         <div id="kt_app_sidebar_menu_wrapper" class="app-sidebar-wrapper hover-scroll-overlay-y my-5" data-kt-scroll="true" data-kt-scroll-activate="true" data-kt-scroll-height="auto" data-kt-scroll-dependencies="#kt_app_sidebar_logo, #kt_app_sidebar_footer" data-kt-scroll-wrappers="#kt_app_sidebar_menu" data-kt-scroll-offset="5px" data-kt-scroll-save-state="true">
             <div class="menu menu-column menu-rounded menu-sub-indention px-3" id="#kt_app_sidebar_menu" data-kt-menu="true" data-kt-menu-expand="false">
-                
+
                 <div class="menu-item">
                     <a class="menu-link @if(request()->is('dashboard')) active @endif" href="{{ route('dashboard') }}">
                     <span class="menu-icon">

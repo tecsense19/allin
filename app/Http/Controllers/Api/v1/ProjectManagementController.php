@@ -570,7 +570,6 @@ class ProjectManagementController extends Controller
      *     ),
      * )
      */
-
      public function editNotes(Request $request){
         try {
             $rules = [
@@ -615,6 +614,85 @@ class ProjectManagementController extends Controller
                     'message' => $e->getMessage()
                 ],
                 'created_at' => date("Y-m-d H:i:s")
+            ]);
+        }
+     }
+
+     /**
+     * @OA\Post(
+     *     path="/api/v1/delete-note",
+     *     summary="Delete Note",
+     *     tags={"ProjectManagement"},
+     *     description="Delete note for Project Management.",
+     *     operationId="deleteNotes",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="query",
+     *         description="Enter Note Id",
+     *         example="1",
+     *         required=true,
+     *         @OA\Schema(
+     *             type="number"
+     *         )
+     *     ),
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+
+     public function deleteNote(Request $request){
+        try {
+            $rules = [
+                'id' => 'required|integer|exists:notes,id',
+            ];
+            $message = [
+                'id.required' => 'Note ID is required.',
+                'id.integer' => 'Note ID must be an integer.',
+                'id.exists' => 'The specified Note does not exist.',
+            ];
+            $validator = Validator::make($request->all(), $rules, $message);
+            if ($validator->fails()) {
+                $data = [
+                    'status_code' => 400,
+                    'message' => $validator->errors()->first(),
+                    'data' => ""
+                ];
+                return $this->sendJsonResponse($data);
+            }
+            $note = Notes::find($request->id);
+            $note->delete();
+            $data = [
+                'status_code' => 200,
+                'message' => "Note Successfully Deleted!",
+                'data' => [
+                    'note' => $note
+                ]
+                ];
+            return $this->sendJsonResponse($data);
+        } catch (\Exception $e) {
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => date("Y-m-d H:i:s")
+            ]);
+            return $this->sendJsonResponse([
+               'status_code' => 500,
+               'message' => 'Internal Server Error',
+                'data' => ''
             ]);
         }
      }
