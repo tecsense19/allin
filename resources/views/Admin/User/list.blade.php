@@ -138,9 +138,7 @@
                 autoWidth: true
             });
             $('#global-search').on('keyup', function() {
-                if (this.value.length >= 3) {
-                    table.search(this.value).draw();
-                }
+                table.search(this.value).draw();
             });
         });
 
