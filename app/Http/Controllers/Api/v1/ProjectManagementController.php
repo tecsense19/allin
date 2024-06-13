@@ -382,7 +382,7 @@ class ProjectManagementController extends Controller
             $note->save();
             $data = [
                 'status_code' => 200,
-                'message' => "Note Successfully get!",
+                'message' => "Note Successfully Add!",
                 'data' => [
                     'note' => $note
                 ]
@@ -427,7 +427,7 @@ class ProjectManagementController extends Controller
         try {
             $data = [
                 'status_code' => 200,
-                'message' => "Note Successfully get!",
+                'message' => "Note get Successfully!",
                 'data' => [
                     'notes' => Notes::where('user_id',auth()->user()->id)->get()
                 ]
@@ -672,12 +672,12 @@ class ProjectManagementController extends Controller
             $note = Notes::find($request->id);
             $note->delete();
             $data = [
-                'status_code' => 200,
-                'message' => "Note Successfully Deleted!",
-                'data' => [
-                    'note' => $note
-                ]
-                ];
+                        'status_code' => 200,
+                        'message' => "Note Successfully Deleted!",
+                        'data' => [
+                            'note' => $note
+                        ]
+                    ];
             return $this->sendJsonResponse($data);
         } catch (\Exception $e) {
             Log::error([
