@@ -27,7 +27,7 @@ class ProjectManagementController extends Controller
      *         @OA\MediaType(
      *             mediaType="multipart/form-data",
      *             @OA\Schema(
-     *                 required={"start_date_time","end_date_time"},
+     *                 required={"start_date_time","end_date_time","timezone"},
      *                 @OA\Property(
      *                     property="start_date_time",
      *                     type="string",
@@ -45,6 +45,12 @@ class ProjectManagementController extends Controller
      *                     type="string",
      *                     example="",
      *                     description="Enter Work Summary"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="timezone",
+     *                     type="string",
+     *                     example="Asia/Kolkata",
+     *                     description="Enter timezone"
      *                 ),
      *             )
      *         )
@@ -69,6 +75,7 @@ class ProjectManagementController extends Controller
             $rules = [
                 'start_date_time' => 'required|string',
                 'end_date_time' => 'nullable|string',
+                'timezone' => 'required|string',
             ];
 
             $message = [
@@ -76,6 +83,8 @@ class ProjectManagementController extends Controller
                 'start_date_time.string' => 'Start Date Time must be an String.',
                 'end_date_time.required' => 'End Date Time is required.',
                 'end_date_time.string' => 'End Date Time must be an String.',
+                'timezone.required' => 'Timezone is required.',
+                'timezone.string' => 'Timezone must be an String.',
             ];
 
             $validator = Validator::make($request->all(), $rules, $message);
@@ -99,6 +108,7 @@ class ProjectManagementController extends Controller
             $workHours->start_date_time = $request->start_date_time;
             $workHours->end_date_time = $request->end_date_time;
             $workHours->summary = $request->summary;
+            $workHours->timezone = $request->timezone;
             $workHours->total_hours = $totalWorkingTime;
             $workHours->save();
 

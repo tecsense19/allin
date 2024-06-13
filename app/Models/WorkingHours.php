@@ -37,6 +37,7 @@ class WorkingHours extends Model
         'start_date_time',
         'end_date_time',
         'summary',
+        'timezone',
         'created_by',
         'updated_by',
         'deleted_by',
