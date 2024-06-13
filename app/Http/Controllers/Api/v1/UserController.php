@@ -1008,11 +1008,14 @@ class UserController extends Controller
             foreach ($reversedGroupedChat as $item) {
                 foreach ($item as $date => $messages) {
                     if ($request->filter == 'filter') {
+                        $msgArr = [];
                         foreach ($messages as $single) {
                             if (in_array($single['messageType'], $filter)) {
-                                $chat[$date] = $messages;
+                                $msgArr[] = $single;
+                                //$chat[$date] = $msgArr;
                             }
                         }
+                        $chat[$date] = $msgArr;
                     } else {
                         $chat[$date] = $messages;
                     }
