@@ -794,6 +794,30 @@ class ChatController extends Controller
      *                     example="",
      *                     description="Meeting URL"
      *                 ),
+     *                 @OA\Property(
+     *                     property="latitude",
+     *                     type="string",
+     *                     example="",
+     *                     description="Meeting latitude"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="longitude",
+     *                     type="string",
+     *                     example="",
+     *                     description="Meeting longitude"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="location_url",
+     *                     type="string",
+     *                     example="",
+     *                     description="Meeting location URL"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="location",
+     *                     type="string",
+     *                     example="",
+     *                     description="Meeting location"
+     *                 ),
      *             )
      *         )
      *     ),
@@ -887,6 +911,10 @@ class ChatController extends Controller
             $messageMeeting->end_time = @$request->end_time ? Carbon::parse($request->end_time)->format('H:i:s') : NULL;
             $messageMeeting->meeting_url = @$request->meeting_url ? $request->meeting_url : NULL;
             $messageMeeting->users = $mergedIds;
+            $messageMeeting->latitude = @$request->latitude ? $request->latitude : NULL;
+            $messageMeeting->longitude = @$request->longitude ? $request->longitude : NULL;
+            $messageMeeting->location_url = @$request->location_url ? $request->location_url : NULL;
+            $messageMeeting->location = @$request->location ? $request->location : NULL;
             $messageMeeting->save();
 
             $data = [

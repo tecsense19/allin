@@ -926,7 +926,7 @@ class UserController extends Controller
                     'message.attachment:id,message_id,attachment_name,attachment_path',
                     'message.task:id,message_id,task_name,task_description',
                     'message.location:id,message_id,latitude,longitude,location_url',
-                    'message.meeting:id,message_id,mode,title,description,date,start_time,end_time,meeting_url,users',
+                    'message.meeting:id,message_id,mode,title,description,date,start_time,end_time,meeting_url,users,latitude,longitude,location_url,location',
                     'message.reminder:id,message_id,title,description,date,time,users'
                 ])
                 ->orderByDesc('created_at')
