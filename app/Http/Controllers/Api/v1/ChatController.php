@@ -1926,4 +1926,92 @@ class ChatController extends Controller
             return response()->json(['status_code' => 500, 'message' => 'Something went wrong']);
         }
     }
+
+    /**
+     * @OA\Post(
+     *     path="/api/v1/message-contact",
+     *     summary="Message Contact",
+     *     tags={"Messages"},
+     *     description="Message Contact",
+     *     operationId="messageContact",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Add Message Request",
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"contactDetails"},
+     *                 @OA\Property(
+     *                     property="contact_details",
+     *                     type="string",
+     *                     example="",
+     *                     description="Enter Contact Json"
+     *                 ),
+     *             )
+     *         )
+     *     ),
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+
+    public function contactDetails(Request $request)
+    {
+        try {
+            $rules = [
+                'contact_details' => 'required|json',
+            ];
+            $message = [
+                'contact_details.required' => 'Enter Contact Details',
+            ];
+
+            $validator = Validator::make($request->all(), $rules, $message);
+            if ($validator->fails()) {
+                return response()->json([
+                    'status_code' => 400,
+                    'message' => $validator->errors(),
+                    'data' => []
+                ]);
+            }
+
+            $contactDetails = $request->contact_details;
+            $message = new Message();
+            $message->message = $contactDetails;
+            $message->message_type = 'Contact';
+            $message->attachment_type = NULL;
+            $message->status = 'Unread';
+            $message->save();
+            $data = [
+                'status_code' => 200,
+                'message' => "User Deleted Successfully!",
+                'data' => [
+                    'contactDetails' => $message
+                ]
+            ];
+            return $this->sendJsonResponse($data);
+        } catch (\Exception $e) {
+            Log::error(
+                [
+                    'method' => __METHOD__,
+                    'error' => [
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'message' => $e->getMessage()
+                    ],
+                    'created_at' => date("Y-m-d H:i:s")
+                ]
+            );
+            return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
+        }
+    }
 }

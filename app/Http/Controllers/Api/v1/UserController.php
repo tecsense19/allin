@@ -738,7 +738,13 @@ class UserController extends Controller
                     $lastMessage = $filteredMessages->first();
                     if ($lastMessage && $lastMessage->message) {
                         if ($lastMessage && $lastMessage->message) {
-                            $lastMessageContent = $lastMessage->message->message ?? $lastMessage->message->message_type ?? null;
+                            if($lastMessage->message->message_type == 'Text'){
+                                $msg = $lastMessage->message->message;
+                            }else{
+                                $msg = $lastMessage->message->message_type;
+                            }
+                            $lastMessageContent = @$msg ? $msg : null;
+                            //$lastMessageContent = $lastMessage->message->message ?? $lastMessage->message->message_type ?? null;
                             if ($lastMessage->created_at && $request->timezone) {
                                 $lastMessageDate = Carbon::parse($lastMessage->created_at)->setTimezone($request->timezone)->format('Y-m-d H:i:s');
                             } elseif ($lastMessage->created_at) {
@@ -955,6 +961,9 @@ class UserController extends Controller
                         break;
                     case 'Reminder':
                         $messageDetails = $message->message->reminder;
+                        break;
+                    case 'Contact':
+                        $messageDetails = $message->message->message;
                         break;
                 }
                 if($message->message->message_type == 'Meeting' || $message->message->message_type == 'Reminder'){
@@ -1385,6 +1394,56 @@ class UserController extends Controller
                 'data' => [
                     'userList' => $deletedUsers,
                 ]
+            ];
+            return $this->sendJsonResponse($data);
+        } catch (\Exception $e) {
+            Log::error(
+                [
+                    'method' => __METHOD__,
+                    'error' => [
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'message' => $e->getMessage()
+                    ],
+                    'created_at' => date("Y-m-d H:i:s")
+                ]
+            );
+            return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/v1/deleted-user-account",
+     *     summary="Deleted User Account",
+     *     tags={"User"},
+     *     description="Deleted User Account",
+     *     operationId="deletedUserAccount",
+     *     security={{"bearerAuth":{}}},
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+
+     public function deletedUserAccount(Request $request)
+    {
+        try {
+            $loginUser = auth()->user()->id;
+            User::where('id',$loginUser)->forceDelete();
+            userDeviceToken::where('user_id',$loginUser)->forceDelete();
+            $data = [
+                'status_code' => 200,
+                'message' => "User Deleted Successfully!",
+                'data' => []
             ];
             return $this->sendJsonResponse($data);
         } catch (\Exception $e) {
