@@ -708,10 +708,14 @@ class UserController extends Controller
                 ->where(function ($q) use ($request) {
                     if (@$request->search) {
                         $q->where(function ($qq) use ($request) {
-                            $qq->where('first_name', 'LIKE', '%' . $request->search . '%')
-                                ->orWhere('last_name', 'LIKE', '%' . $request->search . '%')
-                                ->orWhere('email', 'LIKE', '%' . $request->search . '%')
-                                ->orWhere('mobile', 'LIKE', '%' . $request->search . '%');
+                            $searchTerm = '%' . $request->search . '%';
+
+                            $qq->where('first_name', 'LIKE', $searchTerm)
+                                ->orWhere('last_name', 'LIKE', $searchTerm)
+                                ->orWhere('email', 'LIKE', $searchTerm)
+                                ->orWhere('mobile', 'LIKE', $searchTerm)
+                                ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", [$searchTerm])
+                                ->orWhereRaw("CONCAT(first_name, last_name) LIKE ?", [$searchTerm]);
                         });
                     }
                 })

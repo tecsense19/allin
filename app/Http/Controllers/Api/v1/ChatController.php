@@ -1756,4 +1756,104 @@ class ChatController extends Controller
             return response()->json(['status_code' => 500, 'message' => 'Something went wrong']);
         }
     }
+
+
+    /**
+     * @OA\Post(
+     *     path="/api/v1/forward-message",
+     *     summary="Forward Message",
+     *     tags={"Messages"},
+     *     description="Forward Messages",
+     *     operationId="forwardMessage",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Add Message Request",
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"message_id","user_id"},
+     *                 @OA\Property(
+     *                     property="message_id",
+     *                     type="string",
+     *                     example="1,2,3",
+     *                     description="Enter message id"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="user_id",
+     *                     type="string",
+     *                     example="1,2,3",
+     *                     description="Enter UserId"
+     *                 ),
+     *             )
+     *         )
+     *     ),
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+
+     public function forwardMessage(Request $request)
+     {
+        try{
+            $rule = [
+                'message_id' => 'required|string',
+                'user_id' => 'required|string',
+            ];
+            $message = [
+                'message_id.required' => 'Message Id is required.',
+                'message_id.string' => 'Message Id must be an string.',
+                'user_id.required' => 'User Id is required.',
+                'user_id.string' => 'User Id must be an Comma Separated String.',
+            ];
+
+            $validator = Validator::make($request->all(), $rule, $message);
+            if ($validator->fails()) {
+                return response()->json([
+                    'status_code' => 400,
+                    'message' => $validator->errors(),
+                    'data' => []
+                ]);
+            }
+            $mergedIds = explode(',',$request->message_id);
+            $users = explode(',', $request->user_id);
+            foreach($mergedIds as $singleMessage){
+                foreach($users as $singleUser){
+                    $messageSenderReceiver = new MessageSenderReceiver();
+                    $messageSenderReceiver->message_id = $singleMessage;
+                    $messageSenderReceiver->sender_id = auth()->user()->id;
+                    $messageSenderReceiver->receiver_id = $singleUser;
+                    $messageSenderReceiver->save();
+                }
+            }
+
+            $data = [
+                'status_code' => 200,
+                'message' => "Forward Message Successfully!",
+                'data' => []
+            ];
+            return $this->sendJsonResponse($data);
+
+        }catch (\Exception $e) {
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => date("Y-m-d H:i:s")
+            ]);
+            return response()->json(['status_code' => 500, 'message' => 'Something went wrong']);
+        }
+     }
 }
