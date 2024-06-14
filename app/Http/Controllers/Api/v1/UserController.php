@@ -712,7 +712,6 @@ class UserController extends Controller
 
                             $qq->where('first_name', 'LIKE', $searchTerm)
                                 ->orWhere('last_name', 'LIKE', $searchTerm)
-                                ->orWhere('email', 'LIKE', $searchTerm)
                                 ->orWhere('mobile', 'LIKE', $searchTerm)
                                 ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", [$searchTerm])
                                 ->orWhereRaw("CONCAT(first_name, last_name) LIKE ?", [$searchTerm]);
@@ -1016,10 +1015,10 @@ class UserController extends Controller
                         foreach ($messages as $single) {
                             if (in_array($single['messageType'], $filter)) {
                                 $msgArr[] = $single;
-                                //$chat[$date] = $msgArr;
+                                $chat[$date] = $msgArr;
                             }
                         }
-                        $chat[$date] = $msgArr;
+                        // $chat[$date] = $msgArr;
                     } else {
                         $chat[$date] = $messages;
                     }

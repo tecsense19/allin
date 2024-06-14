@@ -58,6 +58,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
             Route::post('/export-chat', 'exportChat');
             Route::post('/task-chat', 'taskChat');
             Route::post('/add-reminder', 'addReminder');
+            Route::post('/forward-message', 'forwardMessage');
         });
         Route::controller(ProjectManagementController::class)->group(function () {
             Route::post('/add-work-hours', 'addWorkHours');
