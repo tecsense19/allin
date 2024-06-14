@@ -1802,9 +1802,9 @@ class ChatController extends Controller
      * )
      */
 
-     public function forwardMessage(Request $request)
-     {
-        try{
+    public function forwardMessage(Request $request)
+    {
+        try {
             $rule = [
                 'message_id' => 'required|string',
                 'user_id' => 'required|string',
@@ -1824,12 +1824,82 @@ class ChatController extends Controller
                     'data' => []
                 ]);
             }
-            $mergedIds = explode(',',$request->message_id);
+            $mergedIds = explode(',', $request->message_id);
             $users = explode(',', $request->user_id);
-            foreach($mergedIds as $singleMessage){
-                foreach($users as $singleUser){
+            foreach ($mergedIds as $singleMessage) {
+                $message = new Message();
+                $messageDetails = $message->find($singleMessage);
+                if (!empty($messageDetails)) {
+                    $message->message_type = $messageDetails->message_type;
+                    $message->attachment_type = $messageDetails->attachment_type;
+                    $message->message = $messageDetails->message;
+                    $message->status = 'Unread';
+                    $message->save();
+                    if ($messageDetails->message_type == 'Attachment') {
+                        $messageAttachment = new MessageAttachment();
+                        $AttachmentDetails = $messageAttachment->where('message_id', $singleMessage)->first();
+                        if (!empty($AttachmentDetails)) {
+                            $messageAttachment->attachment_name = $AttachmentDetails->attachment_name;
+                            $messageAttachment->attachment_path = $AttachmentDetails->attachment_path;
+                            $messageAttachment->message_id = $message->id;
+                            $messageAttachment->save();
+                        }
+                    } elseif ($messageDetails->message_type == 'Location') {
+                        $messageLocation = new MessageLocation();
+                        $locationDetails = $messageLocation->where('message_id', $singleMessage)->first();
+                        if (!empty($locationDetails)) {
+                            $messageLocation->latitude = $locationDetails->latitude;
+                            $messageLocation->longitude = $locationDetails->longitude;
+                            $messageLocation->location_url = $locationDetails->location_url;
+                            $messageLocation->message_id = $message->id;
+                            $messageLocation->save();
+                        }
+                    } elseif ($messageDetails->message_type == 'Meeting') {
+                        $messageMeeting = new MessageMeeting();
+                        $meetingDetails = $messageMeeting->where('message_id', $singleMessage)->first();
+                        if (!empty($meetingDetails)) {
+                            $messageMeeting->mode = $meetingDetails->mode;
+                            $messageMeeting->title = $meetingDetails->title;
+                            $messageMeeting->description = $meetingDetails->description;
+                            $messageMeeting->date = $meetingDetails->date;
+                            $messageMeeting->start_time = $meetingDetails->start_time;
+                            $messageMeeting->end_time = $meetingDetails->end_time;
+                            $messageMeeting->meeting_url = $meetingDetails->meeting_url;
+                            $messageMeeting->users = $meetingDetails->users;
+                            $messageMeeting->latitude = $meetingDetails->latitude;
+                            $messageMeeting->longitude = $meetingDetails->longitude;
+                            $messageMeeting->location_url = $meetingDetails->location_url;
+                            $messageMeeting->location = $meetingDetails->location;
+                            $messageMeeting->message_id = $message->id;
+                            $messageMeeting->save();
+                        }
+                    } elseif ($messageDetails->message_type == 'Task') {
+                        $messageTask = new MessageTask();
+                        $taskDetails = $messageTask->where('message_id', $singleMessage)->first();
+                        if (!empty($taskDetails)) {
+                            $messageTask->message_id = $message->id;
+                            $messageTask->task_name = $taskDetails->task_name;
+                            $messageTask->task_description = $taskDetails->task_description;
+                            $messageTask->users = $taskDetails->users;
+                            $messageLocation->save();
+                        }
+                    } elseif ($messageDetails->message_type == 'Reminder') {
+                        $messageReminder = new MessageReminder();
+                        $reminderDetails = $messageReminder->where('message_id', $singleMessage)->first();
+                        if (!empty($reminderDetails)) {
+                            $messageReminder->message_id = $message->id;
+                            $messageReminder->title = $reminderDetails->title;
+                            $messageReminder->description = $reminderDetails->description;
+                            $messageReminder->date = $reminderDetails->date;
+                            $messageReminder->time = $reminderDetails->time;
+                            $messageReminder->users = $reminderDetails->users;
+                            $messageReminder->save();
+                        }
+                    }
+                }
+                foreach ($users as $singleUser) {
                     $messageSenderReceiver = new MessageSenderReceiver();
-                    $messageSenderReceiver->message_id = $singleMessage;
+                    $messageSenderReceiver->message_id = $message->id;
                     $messageSenderReceiver->sender_id = auth()->user()->id;
                     $messageSenderReceiver->receiver_id = $singleUser;
                     $messageSenderReceiver->save();
@@ -1843,7 +1913,7 @@ class ChatController extends Controller
             ];
             return $this->sendJsonResponse($data);
 
-        }catch (\Exception $e) {
+        } catch (\Exception $e) {
             Log::error([
                 'method' => __METHOD__,
                 'error' => [
@@ -1855,5 +1925,5 @@ class ChatController extends Controller
             ]);
             return response()->json(['status_code' => 500, 'message' => 'Something went wrong']);
         }
-     }
+    }
 }
