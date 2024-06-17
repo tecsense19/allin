@@ -61,6 +61,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
             Route::post('/add-reminder', 'addReminder');
             Route::post('/forward-message', 'forwardMessage');
             Route::post('/message-contact', 'contactDetails');
+
         });
         Route::controller(ProjectManagementController::class)->group(function () {
             Route::post('/add-work-hours', 'addWorkHours');
