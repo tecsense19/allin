@@ -1948,6 +1948,12 @@ class ChatController extends Controller
      *                     example="",
      *                     description="Enter Contact Json"
      *                 ),
+     *                 @OA\Property(
+     *                     property="receiver_id",
+     *                     type="string",
+     *                     example="",
+     *                     description="Enter Receiver Id"
+     *                 ),
      *             )
      *         )
      *     ),
@@ -1992,6 +1998,12 @@ class ChatController extends Controller
             $message->attachment_type = NULL;
             $message->status = 'Unread';
             $message->save();
+
+            $messageSenderReceiver = new MessageSenderReceiver();
+            $messageSenderReceiver->message_id = $message->id;
+            $messageSenderReceiver->sender_id = auth()->user()->id;
+            $messageSenderReceiver->receiver_id = $request->receiver_id;
+            $messageSenderReceiver->save();
             $data = [
                 'status_code' => 200,
                 'message' => "Contact Shared Successfully!",
