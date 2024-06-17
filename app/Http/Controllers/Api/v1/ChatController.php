@@ -1994,7 +1994,7 @@ class ChatController extends Controller
             $message->save();
             $data = [
                 'status_code' => 200,
-                'message' => "User Deleted Successfully!",
+                'message' => "Contact Shared Successfully!",
                 'data' => [
                     'contactDetails' => $message
                 ]
