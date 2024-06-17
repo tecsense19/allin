@@ -1968,6 +1968,7 @@ class ChatController extends Controller
     public function contactDetails(Request $request)
     {
         try {
+
             $rules = [
                 'contact_details' => 'required|json',
             ];
