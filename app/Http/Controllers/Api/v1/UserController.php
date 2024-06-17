@@ -1390,7 +1390,7 @@ class UserController extends Controller
             });
             $data = [
                 'status_code' => 200,
-                'message' => "User Deleted Successfully!",
+                'message' => "Deleted User get Successfully!",
                 'data' => [
                     'userList' => $deletedUsers,
                 ]
@@ -1437,14 +1437,16 @@ class UserController extends Controller
      public function deletedUserAccount(Request $request)
     {
         try {
+            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
             $loginUser = auth()->user()->id;
-            User::where('id',$loginUser)->forceDelete();
             userDeviceToken::where('user_id',$loginUser)->forceDelete();
+            User::where('id',$loginUser)->forceDelete();
             $data = [
                 'status_code' => 200,
                 'message' => "User Deleted Successfully!",
                 'data' => []
             ];
+            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
             return $this->sendJsonResponse($data);
         } catch (\Exception $e) {
             Log::error(
