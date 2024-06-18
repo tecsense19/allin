@@ -24,6 +24,7 @@ use Maatwebsite\Excel\Facades\Excel;
 use Spatie\ImageOptimizer\OptimizerChainFactory;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class ChatController extends Controller
 {
@@ -517,7 +518,7 @@ class ChatController extends Controller
                 ];
                 return $this->sendJsonResponse($data);
             }
-
+            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
             if ($request->chat_type == 'Text') {
                 $msg = new Message();
                 $msg->message_type = $request->message_type;
@@ -555,7 +556,7 @@ class ChatController extends Controller
             $messageTaskChat->message_id = $msg->id;
             $messageTaskChat->task_id = $request->task_id;
             $messageTaskChat->save();
-
+            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
             $message = [
                 'id' => $msg->id,
                 'sender' => auth()->user()->id,

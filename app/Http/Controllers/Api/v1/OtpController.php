@@ -39,37 +39,63 @@ class OtpController extends Controller
      *     tags={"Authentication"},
      *     description="Send Otp",
      *     operationId="sendOtp",
-     *     @OA\Parameter(
-     *         name="country_code",
-     *         in="query",
-     *         example="+91",
-     *         description="Enter Country Code",
+     *     @OA\RequestBody(
      *         required=true,
-     *         @OA\Schema(
-     *             type="string",
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 type="object",
+     *                 required={"country_code", "mobile", "type"},
+     *                 @OA\Property(
+     *                     property="country_code",
+     *                     description="Enter Country Code",
+     *                     type="string",
+     *                     example="+91"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="mobile",
+     *                     description="Enter Mobile Number",
+     *                     type="number",
+     *                     example="9876543210"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="type",
+     *                     description="Enter Type (Login / Register)",
+     *                     type="string",
+     *                     example="Login"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="first_name",
+     *                     description="Enter First Name",
+     *                     type="string",
+     *                     example="Test"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="last_name",
+     *                     description="Enter Last Name",
+     *                     type="string",
+     *                     example="User"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="profile",
+     *                     description="Profile Image",
+     *                     type="file",
+     *                 ),
+     *                 @OA\Property(
+     *                     property="cover_image",
+     *                     description="Cover Image",
+     *                     type="file",
+     *                 ),
+     *                 @OA\Property(
+     *                     property="device_token",
+     *                     type="string",
+     *                     example="",
+     *                     description="Enter Device Token"
+     *                 ),
+     *             )
      *         )
      *     ),
-     *     @OA\Parameter(
-     *         name="mobile",
-     *         in="query",
-     *         example="9876543210",
-     *         description="Enter Mobile Number",
-     *         required=true,
-     *         @OA\Schema(
-     *             type="number",
-     *         )
-     *     ),
-     *          @OA\Parameter(
-     *         name="type",
-     *         in="query",
-     *         example="Login",
-     *         description="Enter Type (Login / Register)",
-     *         required=true,
-     *         @OA\Schema(
-     *             type="string",
-     *         )
-     *     ),
-     *      @OA\Response(
+     *     @OA\Response(
      *         response=200,
      *         description="json schema",
      *         @OA\MediaType(
@@ -82,6 +108,7 @@ class OtpController extends Controller
      *     ),
      * )
      */
+
 
     public function sendOtp(Request $request)
     {
@@ -115,6 +142,38 @@ class OtpController extends Controller
             }
             $user = User::where('country_code', $request->country_code)->where('mobile', $request->mobile)->first();
             if ($request->type == 'Register') {
+                $rulesRegistration = [
+                    'first_name' => 'required|string|regex:/^[a-zA-Z\s]+$/|max:255',
+                    'last_name' => 'nullable|string|regex:/^[a-zA-Z\s]+$/|max:255',
+                    'profile' => 'nullable|image|mimes:jpeg,jpg,png,webp,svg|max:2048',
+                    'cover_image' => 'nullable|image|mimes:jpeg,jpg,png,webp,svg|max:2048',
+                    'device_token' => 'required|string'
+                ];
+                $messageRegistration = [
+                    'first_name.required' => 'First name is required.',
+                    'first_name.string' => 'First name must be a string.',
+                    'first_name.regex' => 'First name must contain only alphabets and spaces.',
+                    'first_name.max' => 'First name must not exceed 255 characters.',
+                    'last_name.string' => 'Last name must be a string.',
+                    'last_name.regex' => 'Last name must contain only alphabets and spaces.',
+                    'last_name.max' => 'Last name must not exceed 255 characters.',
+                    'profile.image' => 'Profile image must be an image file.',
+                    'profile.mimes' => 'Profile image must be a JPEG, JPG, PNG,svg, or WebP file.',
+                    'profile.max' => 'Profile image size must not exceed 2MB.',
+                    'cover_image.image' => 'Cover image must be an image file.',
+                    'cover_image.mimes' => 'Cover image must be a JPEG, JPG, PNG,svg, or WebP file.',
+                    'cover_image.max' => 'Cover image size must not exceed 2MB.',
+                    'device_token.required' => 'Device token is required.'
+                ];
+                $validatorRegistration = Validator::make($request->all(), $rulesRegistration, $messageRegistration);
+                if ($validatorRegistration->fails()) {
+                    $dataRegistration = [
+                        'status_code' => 400,
+                        'message' => $validatorRegistration->errors()->first(),
+                        'data' => ""
+                    ];
+                    return $this->sendJsonResponse($dataRegistration);
+                }
                 if ($user) {
                     $data = [
                         'status_code' => 400,
