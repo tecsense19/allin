@@ -907,8 +907,8 @@ class ChatController extends Controller
             $messageMeeting->title = $request->title;
             $messageMeeting->description = @$request->description ? $request->description : NULL;
             $messageMeeting->date = @$request->date ? Carbon::parse($request->date)->format('Y-m-d') : NULL;
-            $messageMeeting->start_time = @$request->start_time ? Carbon::parse($request->start_time)->setTimezone('UTC')->format('H:i:s') : NULL;
-            $messageMeeting->end_time = @$request->end_time ? Carbon::parse($request->end_time)->setTimezone('UTC')->format('H:i:s') : NULL;
+            $messageMeeting->start_time = @$request->start_time ? $request->start_time : NULL;
+            $messageMeeting->end_time = @$request->end_time ? $request->end_time : NULL;
             $messageMeeting->meeting_url = @$request->meeting_url ? $request->meeting_url : NULL;
             $messageMeeting->users = $mergedIds;
             $messageMeeting->latitude = @$request->latitude ? $request->latitude : NULL;
