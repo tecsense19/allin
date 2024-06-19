@@ -1194,6 +1194,24 @@ class UserController extends Controller
             $user = $users->find($userId);
             $profileImageName = $user->profile;
             if ($request->hasFile('profile')) {
+                $rule = [
+                    'profile' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+                ];
+                $message = [
+                    'profile.required' => 'Profile image required',
+                    'profile.image' => 'Profile image must be an image file.',
+                    'profile.mimes' => 'Profile image must be a JPEG, JPG, PNG,svg, or WebP file.',
+                    'profile.max' => 'Profile image size must not exceed 2MB.',
+                ];
+                $validator = Validator::make($request->all(), $rule, $message);
+                if ($validator->fails()) {
+                    $data = [
+                        'status_code' => 400,
+                        'message' => $validator->errors()->first(),
+                        'data' => ""
+                    ];
+                    return $this->sendJsonResponse($data);
+                }
                 $profileImage = $request->file('profile');
                 $profileImageName = imageUpload($profileImage, 'user-profile');
                 if ($profileImageName == 'upload_failed') {
@@ -1214,6 +1232,24 @@ class UserController extends Controller
             }
             $coverImageName = $user->cover_image;
             if ($request->hasFile('cover_image')) {
+                $ruleCover = [
+                    'cover_image' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+                ];
+                $messageCover = [
+                    'cover_image.required' => 'Profile image required',
+                    'cover_image.image' => 'Profile image must be an image file.',
+                    'cover_image.mimes' => 'Profile image must be a JPEG, JPG, PNG,svg, or WebP file.',
+                    'cover_image.max' => 'Profile image size must not exceed 2MB.',
+                ];
+                $validatorCover = Validator::make($request->all(), $ruleCover, $messageCover);
+                if ($validatorCover->fails()) {
+                    $dataCover = [
+                        'status_code' => 400,
+                        'message' => $validator->errors()->first(),
+                        'data' => ""
+                    ];
+                    return $this->sendJsonResponse($dataCover);
+                }
                 $coverImage = $request->file('cover_image');
                 $coverImageName = imageUpload($coverImage, 'user-profile-cover-image');
                 if ($coverImageName == 'upload_failed') {
