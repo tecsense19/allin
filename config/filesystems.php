@@ -59,6 +59,10 @@ return [
             'driver' => 'local',
             'root' => public_path('exported-chat'),
         ],
+        'workHoursExport' => [
+            'driver' => 'local',
+            'root' => public_path('work-hours-export'),
+        ],
 
     ],
 

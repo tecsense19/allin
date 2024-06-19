@@ -72,6 +72,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
             Route::post('/note-details', 'noteDetails');
             Route::post('/edit-note', 'editNotes');
             Route::post('/delete-note', 'deleteNote');
+            Route::post('/send-work-hours-email', 'sendWorkHoursEmail');
         });
     });
 });

@@ -2,14 +2,20 @@
 
 namespace App\Http\Controllers\Api\v1;
 
+use App\Exports\workHoursExport;
 use App\Http\Controllers\Controller;
+use App\Mail\WorkHoursMail;
 use App\Models\Notes;
+use App\Models\User;
 use App\Models\WorkingHours;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Validator;
+use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\File;
 
 class ProjectManagementController extends Controller
 {
@@ -171,17 +177,17 @@ class ProjectManagementController extends Controller
     {
         try {
             $rules = [
-               'month' => 'nullable|string',
+                'month' => 'nullable|string',
             ];
             $message = [
-               'month.nullable' => 'Month is required',
-               'month.string' => 'Month must be an String'
+                'month.nullable' => 'Month is required',
+                'month.string' => 'Month must be an String'
             ];
             $validator = Validator::make($request->all(), $rules, $message);
             if ($validator->fails()) {
                 return response()->json([
-                   'status_code' => 400,
-                   'message' => $validator->errors()->first(),
+                    'status_code' => 400,
+                    'message' => $validator->errors()->first(),
                     'data' => ""
                 ]);
             }
@@ -261,8 +267,8 @@ class ProjectManagementController extends Controller
      * )
      */
 
-     public function editWorkHoursSummary(Request $request)
-     {
+    public function editWorkHoursSummary(Request $request)
+    {
         try {
             $rules = [
                 'id' => 'required|integer',
@@ -312,9 +318,9 @@ class ProjectManagementController extends Controller
             ]);
             return response()->json(['status_code' => 500, 'message' => 'Something went wrong']);
         }
-     }
+    }
 
-     /**
+    /**
      * @OA\Post(
      *     path="/api/v1/add-note",
      *     summary="Add a new Note",
@@ -356,7 +362,8 @@ class ProjectManagementController extends Controller
      * )
      */
 
-     public function addNote(Request $request){
+    public function addNote(Request $request)
+    {
         try {
             $rules = [
                 'title' => 'required|string',
@@ -386,7 +393,7 @@ class ProjectManagementController extends Controller
                 'data' => [
                     'note' => $note
                 ]
-                ];
+            ];
             return response()->json($data);
         } catch (\Exception $e) {
             Log::error([
@@ -399,9 +406,9 @@ class ProjectManagementController extends Controller
                 'created_at' => date("Y-m-d H:i:s")
             ]);
         }
-     }
+    }
 
-     /**
+    /**
      * @OA\Post(
      *     path="/api/v1/note",
      *     summary="new Note list",
@@ -423,15 +430,16 @@ class ProjectManagementController extends Controller
      * )
      */
 
-     public function notes(Request $request){
+    public function notes(Request $request)
+    {
         try {
             $data = [
                 'status_code' => 200,
                 'message' => "Note get Successfully!",
                 'data' => [
-                    'notes' => Notes::where('user_id',auth()->user()->id)->get()
+                    'notes' => Notes::where('user_id', auth()->user()->id)->get()
                 ]
-                ];
+            ];
             return response()->json($data);
         } catch (\Exception $e) {
             Log::error([
@@ -444,9 +452,9 @@ class ProjectManagementController extends Controller
                 'created_at' => date("Y-m-d H:i:s")
             ]);
         }
-     }
+    }
 
-     /**
+    /**
      * @OA\Post(
      *     path="/api/v1/note-details",
      *     summary="Note Details",
@@ -478,7 +486,8 @@ class ProjectManagementController extends Controller
      * )
      */
 
-     public function noteDetails(Request $request){
+    public function noteDetails(Request $request)
+    {
         try {
             $rules = [
                 'id' => 'required|integer|exists:notes,id',
@@ -502,9 +511,9 @@ class ProjectManagementController extends Controller
                 'status_code' => 200,
                 'message' => "Note Successfully get!",
                 'data' => [
-                    'note' => Notes::where('id',$request->id)->first()
+                    'note' => Notes::where('id', $request->id)->first()
                 ]
-                ];
+            ];
             return $this->sendJsonResponse($data);
         } catch (\Exception $e) {
             Log::error([
@@ -517,9 +526,9 @@ class ProjectManagementController extends Controller
                 'created_at' => date("Y-m-d H:i:s")
             ]);
         }
-     }
+    }
 
-     /**
+    /**
      * @OA\Post(
      *     path="/api/v1/edit-note",
      *     summary="Edit Note",
@@ -570,7 +579,8 @@ class ProjectManagementController extends Controller
      *     ),
      * )
      */
-     public function editNotes(Request $request){
+    public function editNotes(Request $request)
+    {
         try {
             $rules = [
                 'id' => 'required|integer|exists:notes,id',
@@ -603,7 +613,7 @@ class ProjectManagementController extends Controller
                 'data' => [
                     'note' => $note
                 ]
-                ];
+            ];
             return $this->sendJsonResponse($data);
         } catch (\Exception $e) {
             Log::error([
@@ -616,9 +626,9 @@ class ProjectManagementController extends Controller
                 'created_at' => date("Y-m-d H:i:s")
             ]);
         }
-     }
+    }
 
-     /**
+    /**
      * @OA\Post(
      *     path="/api/v1/delete-note",
      *     summary="Delete Note",
@@ -650,7 +660,8 @@ class ProjectManagementController extends Controller
      * )
      */
 
-     public function deleteNote(Request $request){
+    public function deleteNote(Request $request)
+    {
         try {
             $rules = [
                 'id' => 'required|integer|exists:notes,id',
@@ -672,12 +683,12 @@ class ProjectManagementController extends Controller
             $note = Notes::find($request->id);
             $note->delete();
             $data = [
-                        'status_code' => 200,
-                        'message' => "Note Successfully Deleted!",
-                        'data' => [
-                            'note' => $note
-                        ]
-                    ];
+                'status_code' => 200,
+                'message' => "Note Successfully Deleted!",
+                'data' => [
+                    'note' => $note
+                ]
+            ];
             return $this->sendJsonResponse($data);
         } catch (\Exception $e) {
             Log::error([
@@ -690,10 +701,120 @@ class ProjectManagementController extends Controller
                 'created_at' => date("Y-m-d H:i:s")
             ]);
             return $this->sendJsonResponse([
-               'status_code' => 500,
-               'message' => 'Internal Server Error',
+                'status_code' => 500,
+                'message' => 'Internal Server Error',
                 'data' => ''
             ]);
         }
-     }
+    }
+
+
+    /**
+     * @OA\Post(
+     *     path="/api/v1/send-work-hours-email",
+     *     summary="Send Work Hours email",
+     *     tags={"ProjectManagement"},
+     *     description="Send Email of work Hours.",
+     *     operationId="sendWorkHoursEmail",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="query",
+     *         description="Enter Comma Separated UserId",
+     *         example="1,2,3",
+     *         required=true,
+     *         @OA\Schema(
+     *             type="string"
+     *         )
+     *     ),
+     *     @OA\Parameter(
+     *         name="month",
+     *         in="query",
+     *         description="Enter Month Year",
+     *         example="2024-06",
+     *         required=true,
+     *         @OA\Schema(
+     *             type="string"
+     *         )
+     *     ),
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+    public function sendWorkHoursEmail(Request $request)
+    {
+        try {
+            $rules = [
+                'id' => 'required|string',
+                'month' => 'required|string',
+            ];
+            $message = [
+                'id.required' => 'Id is required',
+                'id.string' => 'Id must be an String',
+                'month.required' => 'Month is required',
+                'month.string' => 'Month must be an String'
+            ];
+            $validator = Validator::make($request->all(), $rules, $message);
+            if ($validator->fails()) {
+                $data = [
+                    'status_code' => 400,
+                    'message' => $validator->errors()->first(),
+                    'data' => ""
+                ];
+                return $this->sendJsonResponse($data);
+            }
+            $recipient = explode(',', $request->id);
+            $filterMonth = Carbon::parse($request->month);
+            $uniqueName = auth()->user()->account_id;
+            $timestamp = Carbon::now()->timestamp;
+            $fileName = "work_hours_{$uniqueName}_{$timestamp}_{$filterMonth->year}_{$filterMonth->month}.xlsx";
+
+            $excelContent = Excel::raw(new WorkHoursExport($request), \Maatwebsite\Excel\Excel::XLSX);
+            $tempFilePath = tempnam(sys_get_temp_dir(), $fileName);
+            file_put_contents($tempFilePath, $excelContent);
+            $email = [];
+            foreach ($recipient as $single) {
+                $user = User::where('id', $single)->first();
+                if (!empty($user)) {
+                    $email[] = $user;
+                }
+            }
+            if (empty($email)) {
+                return response()->json(['status_code' => 400, 'message' => 'No valid recipients found.'], 400);
+            }
+            $month = $request->month;
+            foreach ($email as $singleEmail) {
+                if (!empty($singleEmail->email)) {
+                    Mail::to($singleEmail->email)->send(new WorkHoursMail($tempFilePath, $month, $fileName));
+                }
+            }
+            unlink($tempFilePath);
+            $data = [
+                'status_code' => 200,
+                'message' => "Work Hours sent Successfully!",
+                'data' => []
+            ];
+            return $this->sendJsonResponse($data);
+        } catch (\Exception $e) {
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => date("Y-m-d H:i:s")
+            ]);
+            return response()->json(['status_code' => 500, 'message' => 'Something went wrong']);
+        }
+    }
 }
