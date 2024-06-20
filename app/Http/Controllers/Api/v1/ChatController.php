@@ -15,6 +15,7 @@ use App\Models\MessageTask;
 use App\Models\MessageTaskChat;
 use App\Models\Reminder;
 use App\Models\User;
+use App\Models\userDeviceToken;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -127,7 +128,32 @@ class ChatController extends Controller
                 'message' => $request->message,
             ];
 
+            //Pusher
             broadcast(new MessageSent($message))->toOthers();
+
+            //Push Notification
+            $validationResults = validateToken($request->receiver_id);
+            $validTokens = [];
+            $invalidTokens = [];
+            foreach ($validationResults as $result) {
+                $validTokens = array_merge($validTokens, $result['valid']);
+                $invalidTokens = array_merge($invalidTokens, $result['invalid']);
+            }
+            if (count($invalidTokens) > 0) {
+                foreach ($invalidTokens as $singleInvalidToken) {
+                    userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
+                }
+            }
+
+            $notification = [
+                'title' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
+                'body' => $request->message,
+                'image' => '',
+            ];
+
+            if (count($validTokens) > 0) {
+                sendPushNotification($validTokens, $notification, $message);
+            }
 
             $data = [
                 'status_code' => 200,
@@ -265,6 +291,30 @@ class ChatController extends Controller
 
             broadcast(new MessageSent($message))->toOthers();
 
+            //Push Notification
+            $validationResults = validateToken($request->receiver_id);
+            $validTokens = [];
+            $invalidTokens = [];
+            foreach ($validationResults as $result) {
+                $validTokens = array_merge($validTokens, $result['valid']);
+                $invalidTokens = array_merge($invalidTokens, $result['invalid']);
+            }
+            if (count($invalidTokens) > 0) {
+                foreach ($invalidTokens as $singleInvalidToken) {
+                    userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
+                }
+            }
+
+            $notification = [
+                'title' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
+                'body' => $request->message_type,
+                'image' => setAssetPath('chat-file/' . $request->attachment),
+            ];
+
+            if (count($validTokens) > 0) {
+                sendPushNotification($validTokens, $notification, $message);
+            }
+
             $data = [
                 'status_code' => 200,
                 'message' => 'Message Sent Successfully!',
@@ -375,14 +425,6 @@ class ChatController extends Controller
             $receiverIdsArray = explode(',', $request->receiver_id);
             $senderId = auth()->user()->id;
 
-            foreach ($receiverIdsArray as $receiverId) {
-                $messageSenderReceiver = new MessageSenderReceiver();
-                $messageSenderReceiver->message_id = $msg->id;
-                $messageSenderReceiver->sender_id = $senderId;
-                $messageSenderReceiver->receiver_id = $receiverId;
-                $messageSenderReceiver->save();
-            }
-
             $receiverIdsArray[] = $senderId;
             $uniqueIdsArray = array_unique($receiverIdsArray);
             $mergedIds = implode(',', $uniqueIdsArray);
@@ -394,16 +436,49 @@ class ChatController extends Controller
             $messageTask->users = $mergedIds;
             $messageTask->save();
 
-            $message = [
-                'id' => $msg->id,
-                'sender' => auth()->user()->id,
-                'receiver' => $request->receiver_id,
-                'message_type' => $request->message_type,
-                'task_name' => $request->task_name,
-                'task_description' => @$request->task_description ? $request->task_description : NULL,
-            ];
+            foreach ($receiverIdsArray as $receiverId) {
+                $messageSenderReceiver = new MessageSenderReceiver();
+                $messageSenderReceiver->message_id = $msg->id;
+                $messageSenderReceiver->sender_id = $senderId;
+                $messageSenderReceiver->receiver_id = $receiverId;
+                $messageSenderReceiver->save();
 
-            broadcast(new MessageSent($message))->toOthers();
+                $message = [
+                    'id' => $msg->id,
+                    'sender' => auth()->user()->id,
+                    'receiver' => $receiverId,
+                    'message_type' => $request->message_type,
+                    'task_name' => $request->task_name,
+                    'task_description' => @$request->task_description ? $request->task_description : NULL,
+                ];
+
+                broadcast(new MessageSent($message))->toOthers();
+
+
+                //Push Notification
+                $validationResults = validateToken($receiverId);
+                $validTokens = [];
+                $invalidTokens = [];
+                foreach ($validationResults as $result) {
+                    $validTokens = array_merge($validTokens, $result['valid']);
+                    $invalidTokens = array_merge($invalidTokens, $result['invalid']);
+                }
+                if (count($invalidTokens) > 0) {
+                    foreach ($invalidTokens as $singleInvalidToken) {
+                        userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
+                    }
+                }
+
+                $notification = [
+                    'title' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
+                    'body' => 'Task : ' . $request->task_name,
+                    'image' => "",
+                ];
+
+                if (count($validTokens) > 0) {
+                    sendPushNotification($validTokens, $notification, $message);
+                }
+            }
 
             $data = [
                 'status_code' => 200,
@@ -550,6 +625,43 @@ class ChatController extends Controller
                         'sender_id' => auth()->user()->id,
                         'receiver_id' => $singleUser,
                     ]);
+
+
+                    $message = [
+                        'id' => $msg->id,
+                        'sender' => auth()->user()->id,
+                        'receiver' => $singleUser,
+                        'message_type' => $request->message_type,
+                        'message' => $request->message,
+                        'attachment' => @$request->attachment ? setAssetPath('chat-file/' . $request->attachment) : '',
+                        'task_id' => $request->task_id
+                    ];
+
+                    broadcast(new MessageSent($message))->toOthers();
+
+                    //Push Notification
+                    $validationResults = validateToken($singleUser);
+                    $validTokens = [];
+                    $invalidTokens = [];
+                    foreach ($validationResults as $result) {
+                        $validTokens = array_merge($validTokens, $result['valid']);
+                        $invalidTokens = array_merge($invalidTokens, $result['invalid']);
+                    }
+                    if (count($invalidTokens) > 0) {
+                        foreach ($invalidTokens as $singleInvalidToken) {
+                            userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
+                        }
+                    }
+
+                    $notification = [
+                        'title' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
+                        'body' => 'Task Chat: ' . @$request->message ? $request->message : '',
+                        'image' => @$request->attachment ? setAssetPath('chat-file/' . $request->attachment) : '',
+                    ];
+
+                    if (count($validTokens) > 0) {
+                        sendPushNotification($validTokens, $notification, $message);
+                    }
                 }
             }
             $messageTaskChat = new MessageTaskChat();
@@ -557,15 +669,6 @@ class ChatController extends Controller
             $messageTaskChat->task_id = $request->task_id;
             $messageTaskChat->save();
             DB::statement('SET FOREIGN_KEY_CHECKS=1;');
-            $message = [
-                'id' => $msg->id,
-                'sender' => auth()->user()->id,
-                'receiver' => $notInArray,
-                'message_type' => $request->message_type,
-                'message' => $request->message
-            ];
-
-            broadcast(new MessageSent($message))->toOthers();
             $data = [
                 'status_code' => 200,
                 'message' => 'Message Sent Successfully!',
@@ -706,6 +809,30 @@ class ChatController extends Controller
             ];
 
             broadcast(new MessageSent($message))->toOthers();
+
+            //Push Notification
+            $validationResults = validateToken($request->receiver_id);
+            $validTokens = [];
+            $invalidTokens = [];
+            foreach ($validationResults as $result) {
+                $validTokens = array_merge($validTokens, $result['valid']);
+                $invalidTokens = array_merge($invalidTokens, $result['invalid']);
+            }
+            if (count($invalidTokens) > 0) {
+                foreach ($invalidTokens as $singleInvalidToken) {
+                    userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
+                }
+            }
+
+            $notification = [
+                'title' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
+                'body' => $request->message_type,
+                'image' => "",
+            ];
+
+            if (count($validTokens) > 0) {
+                sendPushNotification($validTokens, $notification, $message);
+            }
 
             $data = [
                 'status_code' => 200,
@@ -890,14 +1017,6 @@ class ChatController extends Controller
             $receiverIdsArray = explode(',', $request->receiver_id);
             $senderId = auth()->user()->id;
 
-            foreach ($receiverIdsArray as $receiverId) {
-                $messageSenderReceiver = new MessageSenderReceiver();
-                $messageSenderReceiver->message_id = $msg->id;
-                $messageSenderReceiver->sender_id = $senderId;
-                $messageSenderReceiver->receiver_id = $receiverId;
-                $messageSenderReceiver->save();
-            }
-
             $receiverIdsArray[] = $senderId;
             $uniqueIdsArray = array_unique($receiverIdsArray);
             $mergedIds = implode(',', $uniqueIdsArray);
@@ -917,6 +1036,60 @@ class ChatController extends Controller
             $messageMeeting->location_url = @$request->location_url ? $request->location_url : NULL;
             $messageMeeting->location = @$request->location ? $request->location : NULL;
             $messageMeeting->save();
+
+            foreach ($receiverIdsArray as $receiverId) {
+                $messageSenderReceiver = new MessageSenderReceiver();
+                $messageSenderReceiver->message_id = $msg->id;
+                $messageSenderReceiver->sender_id = $senderId;
+                $messageSenderReceiver->receiver_id = $receiverId;
+                $messageSenderReceiver->save();
+
+
+                $message = [
+                    'id' => $msg->id,
+                    'sender' => auth()->user()->id,
+                    'receiver' => $receiverId,
+                    'message_type' => $request->message_type,
+                    'mode' => $request->mode,
+                    'title' => $request->title,
+                    'description' => @$request->description ? $request->description : NULL,
+                    'date' => @$request->date ? Carbon::parse($request->date)->format('Y-m-d') : NULL,
+                    'start_time' => @$request->start_time ? $request->start_time : NULL,
+                    'end_time' => @$request->end_time ? $request->end_time : NULL,
+                    'meeting_url' => @$request->meeting_url ? $request->meeting_url : NULL,
+                    'users' => $mergedIds,
+                    'latitude' => @$request->latitude ? $request->latitude : NULL,
+                    'longitude' => @$request->longitude ? $request->longitude : NULL,
+                    'location_url' => @$request->location_url ? $request->location_url : NULL,
+                    'location' => @$request->location ? $request->location : NULL,
+                ];
+
+                broadcast(new MessageSent($message))->toOthers();
+
+                //Push Notification
+                $validationResults = validateToken($receiverId);
+                $validTokens = [];
+                $invalidTokens = [];
+                foreach ($validationResults as $result) {
+                    $validTokens = array_merge($validTokens, $result['valid']);
+                    $invalidTokens = array_merge($invalidTokens, $result['invalid']);
+                }
+                if (count($invalidTokens) > 0) {
+                    foreach ($invalidTokens as $singleInvalidToken) {
+                        userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
+                    }
+                }
+
+                $notification = [
+                    'title' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
+                    'body' => 'Meeting: ' . @$request->title ? $request->title : '',
+                    'image' => "",
+                ];
+
+                if (count($validTokens) > 0) {
+                    sendPushNotification($validTokens, $notification, $message);
+                }
+            }
 
             $data = [
                 'status_code' => 200,
@@ -1719,13 +1892,6 @@ class ChatController extends Controller
             if (in_array($reminder->created_by, $receiverIdsArray)) {
                 $senderId = $reminder->created_by;
             }
-            foreach ($receiverIdsArray as $receiverId) {
-                $messageSenderReceiver = new MessageSenderReceiver();
-                $messageSenderReceiver->message_id = $message->id;
-                $messageSenderReceiver->sender_id = $senderId;
-                $messageSenderReceiver->receiver_id = $receiverId;
-                $messageSenderReceiver->save();
-            }
 
             $messageReminder = new MessageReminder();
             $messageReminder->message_id = $message->id;
@@ -1736,6 +1902,53 @@ class ChatController extends Controller
             $messageReminder->users = $reminder->users;
             $messageReminder->created_by = $reminder->created_by;
             $messageReminder->save();
+
+            foreach ($receiverIdsArray as $receiverId) {
+                $messageSenderReceiver = new MessageSenderReceiver();
+                $messageSenderReceiver->message_id = $message->id;
+                $messageSenderReceiver->sender_id = $senderId;
+                $messageSenderReceiver->receiver_id = $receiverId;
+                $messageSenderReceiver->save();
+
+
+                $message = [
+                    'id' => $message->id,
+                    'sender' => $senderId,
+                    'receiver' => $receiverId,
+                    'message_type' => "Reminder",
+                    'title' => $request->title,
+                    'description' => @$request->description ? $request->description : NULL,
+                    'date' => @$request->date ? Carbon::parse($request->date)->format('Y-m-d') : NULL,
+                    'time' => @$request->time ? Carbon::parse($request->time)->format('H:i:s') : NULL,
+                    'users' => $mergedIds,
+                ];
+
+                broadcast(new MessageSent($message))->toOthers();
+
+                //Push Notification
+                $validationResults = validateToken($receiverId);
+                $validTokens = [];
+                $invalidTokens = [];
+                foreach ($validationResults as $result) {
+                    $validTokens = array_merge($validTokens, $result['valid']);
+                    $invalidTokens = array_merge($invalidTokens, $result['invalid']);
+                }
+                if (count($invalidTokens) > 0) {
+                    foreach ($invalidTokens as $singleInvalidToken) {
+                        userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
+                    }
+                }
+
+                $notification = [
+                    'title' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
+                    'body' => 'Reminder: ' . @$request->title ? $request->title : '',
+                    'image' => "",
+                ];
+
+                if (count($validTokens) > 0) {
+                    sendPushNotification($validTokens, $notification, $message);
+                }
+            }
 
             $data = [
                 'status_code' => 200,
@@ -1836,7 +2049,47 @@ class ChatController extends Controller
                     $message->message = $messageDetails->message;
                     $message->status = 'Unread';
                     $message->save();
-                    if ($messageDetails->message_type == 'Attachment') {
+                    if($messageDetails->message_type == 'Text'){
+                        foreach ($users as $singleUser) {
+                            $sender_id = auth()->user()->id;
+                            $receiver_id = $singleUser;
+
+                            $message = [
+                                'id' => $message->id,
+                                'sender' => $sender_id,
+                                'receiver' => $receiver_id,
+                                'message_type' => $messageDetails->message_type,
+                                'message' => $messageDetails->message,
+                            ];
+
+                            //Pusher
+                            broadcast(new MessageSent($message))->toOthers();
+
+                            //Push Notification
+                            $validationResults = validateToken($request->receiver_id);
+                            $validTokens = [];
+                            $invalidTokens = [];
+                            foreach ($validationResults as $result) {
+                                $validTokens = array_merge($validTokens, $result['valid']);
+                                $invalidTokens = array_merge($invalidTokens, $result['invalid']);
+                            }
+                            if (count($invalidTokens) > 0) {
+                                foreach ($invalidTokens as $singleInvalidToken) {
+                                    userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
+                                }
+                            }
+
+                            $notification = [
+                                'title' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
+                                'body' => $messageDetails->message,
+                                'image' => '',
+                            ];
+
+                            if (count($validTokens) > 0) {
+                                sendPushNotification($validTokens, $notification, $message);
+                            }
+                        }
+                    } elseif ($messageDetails->message_type == 'Attachment') {
                         $messageAttachment = new MessageAttachment();
                         $AttachmentDetails = $messageAttachment->where('message_id', $singleMessage)->first();
                         if (!empty($AttachmentDetails)) {
@@ -1844,6 +2097,47 @@ class ChatController extends Controller
                             $messageAttachment->attachment_path = $AttachmentDetails->attachment_path;
                             $messageAttachment->message_id = $message->id;
                             $messageAttachment->save();
+                        }
+
+                        foreach ($users as $singleUser) {
+                            $sender_id = auth()->user()->id;
+                            $receiver_id = $singleUser;
+
+                            $message = [
+                                'id' => $message->id,
+                                'sender' => auth()->user()->id,
+                                'receiver' => $receiver_id,
+                                'message_type' => $messageDetails->message_type,
+                                'attachment_type' => $messageDetails->attachment_type,
+                                'attachment_name' => $AttachmentDetails->attachment_name,
+                                'attachment_path' => $AttachmentDetails->attachment_path,
+                            ];
+
+                            broadcast(new MessageSent($message))->toOthers();
+
+                            //Push Notification
+                            $validationResults = validateToken($request->receiver_id);
+                            $validTokens = [];
+                            $invalidTokens = [];
+                            foreach ($validationResults as $result) {
+                                $validTokens = array_merge($validTokens, $result['valid']);
+                                $invalidTokens = array_merge($invalidTokens, $result['invalid']);
+                            }
+                            if (count($invalidTokens) > 0) {
+                                foreach ($invalidTokens as $singleInvalidToken) {
+                                    userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
+                                }
+                            }
+
+                            $notification = [
+                                'title' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
+                                'body' => $messageDetails->message_type,
+                                'image' => $AttachmentDetails->attachment_path,
+                            ];
+
+                            if (count($validTokens) > 0) {
+                                sendPushNotification($validTokens, $notification, $message);
+                            }
                         }
                     } elseif ($messageDetails->message_type == 'Location') {
                         $messageLocation = new MessageLocation();
@@ -1854,6 +2148,47 @@ class ChatController extends Controller
                             $messageLocation->location_url = $locationDetails->location_url;
                             $messageLocation->message_id = $message->id;
                             $messageLocation->save();
+                        }
+
+                        foreach ($users as $singleUser) {
+                            $sender_id = auth()->user()->id;
+                            $receiver_id = $singleUser;
+
+                            $message = [
+                                'id' => $message->id,
+                                'sender' => auth()->user()->id,
+                                'receiver' => $receiver_id,
+                                'message_type' => $messageDetails->message_type,
+                                'latitude' => $locationDetails->latitude,
+                                'latitude' => $locationDetails->latitude,
+                                'location_url' => @$locationDetails->location_url ? $locationDetails->location_url : NULL
+                            ];
+
+                            broadcast(new MessageSent($message))->toOthers();
+
+                            //Push Notification
+                            $validationResults = validateToken($request->receiver_id);
+                            $validTokens = [];
+                            $invalidTokens = [];
+                            foreach ($validationResults as $result) {
+                                $validTokens = array_merge($validTokens, $result['valid']);
+                                $invalidTokens = array_merge($invalidTokens, $result['invalid']);
+                            }
+                            if (count($invalidTokens) > 0) {
+                                foreach ($invalidTokens as $singleInvalidToken) {
+                                    userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
+                                }
+                            }
+
+                            $notification = [
+                                'title' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
+                                'body' => $messageDetails->message_type,
+                                'image' => "",
+                            ];
+
+                            if (count($validTokens) > 0) {
+                                sendPushNotification($validTokens, $notification, $message);
+                            }
                         }
                     } elseif ($messageDetails->message_type == 'Meeting') {
                         $messageMeeting = new MessageMeeting();
@@ -1874,6 +2209,55 @@ class ChatController extends Controller
                             $messageMeeting->message_id = $message->id;
                             $messageMeeting->save();
                         }
+
+                        foreach ($users as $singleUser) {
+                            $sender_id = auth()->user()->id;
+                            $receiver_id = $singleUser;
+
+                            $message = [
+                                'id' => $message->id,
+                                'sender' => auth()->user()->id,
+                                'receiver' => $receiver_id,
+                                'message_type' => $messageDetails->message_type,
+                                'mode' => $meetingDetails->mode,
+                                'title' => $meetingDetails->title,
+                                'description' => @$meetingDetails->description ? $meetingDetails->description : NULL,
+                                'date' => @$meetingDetails->date ? Carbon::parse($meetingDetails->date)->format('Y-m-d') : NULL,
+                                'start_time' => @$meetingDetails->start_time ? $meetingDetails->start_time : NULL,
+                                'end_time' => @$meetingDetails->end_time ? $meetingDetails->end_time : NULL,
+                                'meeting_url' => @$meetingDetails->meeting_url ? $meetingDetails->meeting_url : NULL,
+                                'latitude' => @$meetingDetails->latitude ? $meetingDetails->latitude : NULL,
+                                'longitude' => @$meetingDetails->longitude ? $meetingDetails->longitude : NULL,
+                                'location_url' => @$meetingDetails->location_url ? $meetingDetails->location_url : NULL,
+                                'location' => @$meetingDetails->location ? $meetingDetails->location : NULL,
+                            ];
+
+                            broadcast(new MessageSent($message))->toOthers();
+
+                            //Push Notification
+                            $validationResults = validateToken($receiver_id);
+                            $validTokens = [];
+                            $invalidTokens = [];
+                            foreach ($validationResults as $result) {
+                                $validTokens = array_merge($validTokens, $result['valid']);
+                                $invalidTokens = array_merge($invalidTokens, $result['invalid']);
+                            }
+                            if (count($invalidTokens) > 0) {
+                                foreach ($invalidTokens as $singleInvalidToken) {
+                                    userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
+                                }
+                            }
+
+                            $notification = [
+                                'title' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
+                                'body' => 'Meeting: ' . @$meetingDetails->title ? $meetingDetails->title : '',
+                                'image' => "",
+                            ];
+
+                            if (count($validTokens) > 0) {
+                                sendPushNotification($validTokens, $notification, $message);
+                            }
+                        }
                     } elseif ($messageDetails->message_type == 'Task') {
                         $messageTask = new MessageTask();
                         $taskDetails = $messageTask->where('message_id', $singleMessage)->first();
@@ -1883,6 +2267,47 @@ class ChatController extends Controller
                             $messageTask->task_description = $taskDetails->task_description;
                             $messageTask->users = $taskDetails->users;
                             $messageLocation->save();
+                        }
+
+                        foreach ($users as $singleUser) {
+                            $sender_id = auth()->user()->id;
+                            $receiver_id = $singleUser;
+
+                            $message = [
+                                'id' => $message->id,
+                                'sender' => auth()->user()->id,
+                                'receiver' => $receiver_id,
+                                'message_type' => $messageDetails->message_type,
+                                'task_name' => $taskDetails->task_name,
+                                'task_description' => @$taskDetails->task_description ? $taskDetails->task_description : NULL,
+                            ];
+
+                            broadcast(new MessageSent($message))->toOthers();
+
+
+                            //Push Notification
+                            $validationResults = validateToken($receiver_id);
+                            $validTokens = [];
+                            $invalidTokens = [];
+                            foreach ($validationResults as $result) {
+                                $validTokens = array_merge($validTokens, $result['valid']);
+                                $invalidTokens = array_merge($invalidTokens, $result['invalid']);
+                            }
+                            if (count($invalidTokens) > 0) {
+                                foreach ($invalidTokens as $singleInvalidToken) {
+                                    userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
+                                }
+                            }
+
+                            $notification = [
+                                'title' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
+                                'body' => 'Task : ' . $taskDetails->task_name,
+                                'image' => "",
+                            ];
+
+                            if (count($validTokens) > 0) {
+                                sendPushNotification($validTokens, $notification, $message);
+                            }
                         }
                     } elseif ($messageDetails->message_type == 'Reminder') {
                         $messageReminder = new MessageReminder();
@@ -1895,6 +2320,48 @@ class ChatController extends Controller
                             $messageReminder->time = $reminderDetails->time;
                             $messageReminder->users = $reminderDetails->users;
                             $messageReminder->save();
+                        }
+
+                        foreach ($users as $singleUser) {
+                            $sender_id = auth()->user()->id;
+                            $receiver_id = $singleUser;
+
+                            $message = [
+                                'id' => $message->id,
+                                'sender' => $sender_id,
+                                'receiver' => $receiver_id,
+                                'message_type' => "Reminder",
+                                'title' => $reminderDetails->title,
+                                'description' => @$reminderDetails->description ? $reminderDetails->description : NULL,
+                                'date' => @$reminderDetails->date ? Carbon::parse($reminderDetails->date)->format('Y-m-d') : NULL,
+                                'time' => @$reminderDetails->time ? Carbon::parse($reminderDetails->time)->format('H:i:s') : NULL
+                            ];
+
+                            broadcast(new MessageSent($message))->toOthers();
+
+                            //Push Notification
+                            $validationResults = validateToken($receiver_id);
+                            $validTokens = [];
+                            $invalidTokens = [];
+                            foreach ($validationResults as $result) {
+                                $validTokens = array_merge($validTokens, $result['valid']);
+                                $invalidTokens = array_merge($invalidTokens, $result['invalid']);
+                            }
+                            if (count($invalidTokens) > 0) {
+                                foreach ($invalidTokens as $singleInvalidToken) {
+                                    userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
+                                }
+                            }
+
+                            $notification = [
+                                'title' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
+                                'body' => 'Reminder: ' . @$reminderDetails->title ? $reminderDetails->title : '',
+                                'image' => "",
+                            ];
+
+                            if (count($validTokens) > 0) {
+                                sendPushNotification($validTokens, $notification, $message);
+                            }
                         }
                     }
                 }
@@ -2005,6 +2472,41 @@ class ChatController extends Controller
             $messageSenderReceiver->sender_id = auth()->user()->id;
             $messageSenderReceiver->receiver_id = $request->receiver_id;
             $messageSenderReceiver->save();
+
+            $message = [
+                'id' => $message->id,
+                'sender' => auth()->user()->id,
+                'receiver' => $request->receiver_id,
+                'message_type' => "Contact",
+                'message' => $contactDetails,
+            ];
+
+            //Pusher
+            broadcast(new MessageSent($message))->toOthers();
+
+            //Push Notification
+            $validationResults = validateToken($request->receiver_id);
+            $validTokens = [];
+            $invalidTokens = [];
+            foreach ($validationResults as $result) {
+                $validTokens = array_merge($validTokens, $result['valid']);
+                $invalidTokens = array_merge($invalidTokens, $result['invalid']);
+            }
+            if (count($invalidTokens) > 0) {
+                foreach ($invalidTokens as $singleInvalidToken) {
+                    userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
+                }
+            }
+
+            $notification = [
+                'title' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
+                'body' => "Contact",
+                'image' => '',
+            ];
+
+            if (count($validTokens) > 0) {
+                sendPushNotification($validTokens, $notification, $message);
+            }
             $data = [
                 'status_code' => 200,
                 'message' => "Contact Shared Successfully!",
