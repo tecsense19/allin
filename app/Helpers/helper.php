@@ -123,69 +123,89 @@ if (!function_exists('verifyOtp')) {
 }
 
 if (!function_exists('sendPushNotification')) {
-  function sendPushNotification($device_id, $message, $data)
-  {
+    function sendPushNotification($device_id, $message, $data)
+    {
+        $reservedKeys = [
+            'from', 'message_type', 'collapse_key', 'data', 'notification', 'priority', 'time_to_live', 'delay_while_idle'
+        ];
 
-    $result = [];
-    $allMessage = [];
-    $path = app_path(config('services.firebase.url'));
-    $factory = (new Factory)
-      ->withServiceAccount($path);
-    $messaging = $factory->createMessaging();
-    //$messaging = app('firebase.messaging');
-    foreach ($device_id as $Device) {
-      $deviceToken = $Device;
-      $title = $message['title'];
-      $body =  $message['body'];
-      $image = $message['image'];
-      $notification = Notification::create($title, $body);
+        // Check and rename any reserved keys
+        foreach ($reservedKeys as $reservedKey) {
+            if (array_key_exists($reservedKey, $data)) {
+                // Rename the reserved key
+                $data['custom_' . $reservedKey] = $data[$reservedKey];
+                unset($data[$reservedKey]);
+            }
+        }
 
-      $androidConfig = AndroidConfig::fromArray([
-        'notification' => [
-          "title" => $title,
-          "body" => $body,
-          "image" => $image
-        ]
-      ]);
+        $result = [];
+        $allMessage = [];
+        $path = base_path(config('services.firebase.url')); // Correctly retrieves the full path to the credential file
+        $factory = (new Factory)->withServiceAccount($path);
+        $messaging = $factory->createMessaging();
 
-      $appleConfig = ApnsConfig::fromArray([
-        'payload' => [
-          'aps' => [
-            "content-available" => 1,
-            "mutable-content" => 1
-          ],
-        ],
-        'fcm_options' => [
-          'image' => $image
-        ]
-      ]);
-      if (!empty($deviceToken)) {
-        $allMessage[] = generateMessage($deviceToken, $notification, $data, $androidConfig, $appleConfig);
-        $validateTokens[] = $messaging->validateRegistrationTokens($deviceToken);
-      }
-    }
+        foreach ($device_id as $Device) {
+            $deviceToken = $Device;
+            $title = (string)$message['title'];  // Ensure title is a string
+            $body = (string)$message['body'];    // Ensure body is a string
+            $image = $message['image'];
+            $notification = Notification::create($title, $body);
 
-    if (count($allMessage) > 0) {
-      $result = $messaging->sendAll($allMessage);
-      // Log::error(['method' => _METHOD_, 'notification_test' => ['message' =>$result,"Validation"=>$validateTokens], 'created_at' => date("Y-m-d H:i:s")]);
+            $androidConfig = AndroidConfig::fromArray([
+                'notification' => [
+                    "title" => $title,
+                    "body" => $body,
+                    "image" => $image
+                ]
+            ]);
+
+            $appleConfig = ApnsConfig::fromArray([
+                'headers' => [
+                    'apns-push-type' => 'alert',
+                ],
+                'payload' => [
+                    'aps' => [
+                        "alert" => [
+                            "title" => $title,
+                            "body" => $body,
+                            'image' => $image
+                        ],
+                        "content-available" => 1,
+                        "mutable-content" => 1
+                    ],
+                ],
+                'fcm_options' => [
+                    'image' => $image
+                ]
+            ]);
+
+            if (!empty($deviceToken)) {
+                $allMessage[] = generateMessage($deviceToken, $notification, $data, $androidConfig, $appleConfig);
+                $validateTokens[] = $messaging->validateRegistrationTokens($deviceToken);
+            }
+        }
+
+        if (count($allMessage) > 0) {
+            $result = $messaging->sendAll($allMessage);
+            // Log::error(['method' => _METHOD_, 'notification_test' => ['message' =>$result,"Validation"=>$validateTokens], 'created_at' => date("Y-m-d H:i:s")]);
+        }
     }
   }
-}
 
-if (!function_exists('validateToken')) {
-  function validateToken($user_id)
-  {
-    $device_id = userDeviceToken::where('user_id', $user_id)->pluck('token')->toArray();
-    $path = app_path(config('services.firebase.url'));
-    $factory = (new Factory)
-      ->withServiceAccount($path);
-    $messaging = $factory->createMessaging();
-    // $messaging = app('firebase.messaging');
-    foreach ($device_id as $Device) {
-      $validateTokens[] = $messaging->validateRegistrationTokens($Device);
+  if (!function_exists('validateToken')) {
+    function validateToken($user_id)
+    {
+        $device_id = userDeviceToken::where('user_id', $user_id)->pluck('token')->toArray();
+        $path = base_path(config('services.firebase.url')); // Use base_path instead of app_path
+        $factory = (new Factory)
+            ->withServiceAccount($path);
+        $messaging = $factory->createMessaging();
+        $validateTokens = [];
+        foreach ($device_id as $Device) {
+            $validateTokens[] = $messaging->validateRegistrationTokens($Device);
+        }
+        return $validateTokens;
     }
-    return $validateTokens;
-  }
 }
 
 function generateMessage($deviceToken, $notification, $data, $androidConfig, $appleConfig)

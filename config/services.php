@@ -37,6 +37,7 @@ return [
         'TWILIO_OTP_SERVICE_ID' => env('TWILIO_OTP_SERVICE_ID'),
     ],
     'firebase' => [
+        'url' => 'app/credentials/firebase.json',
         'api_key' => $firebaseConfig['apiKey'] ?? null,
         'auth_domain' => $firebaseConfig['authDomain'] ?? null,
         'database_url' => $firebaseConfig['databaseURL'] ?? null,
