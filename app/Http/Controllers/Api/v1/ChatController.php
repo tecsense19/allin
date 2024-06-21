@@ -126,6 +126,7 @@ class ChatController extends Controller
                 'receiver' => $request->receiver_id,
                 'message_type' => $request->message_type,
                 'message' => $request->message,
+                "screen" => "chatinner"
             ];
 
             //Pusher
@@ -287,6 +288,7 @@ class ChatController extends Controller
                 'attachment_type' => $request->attachment_type,
                 'attachment_name' => $request->attachment,
                 'attachment_path' => setAssetPath('chat-file/' . $request->attachment),
+                "screen" => "chatinner"
             ];
 
             broadcast(new MessageSent($message))->toOthers();
@@ -450,6 +452,7 @@ class ChatController extends Controller
                     'message_type' => $request->message_type,
                     'task_name' => $request->task_name,
                     'task_description' => @$request->task_description ? $request->task_description : NULL,
+                    "screen" => "chatinner"
                 ];
 
                 broadcast(new MessageSent($message))->toOthers();
@@ -634,7 +637,8 @@ class ChatController extends Controller
                         'message_type' => $request->message_type,
                         'message' => $request->message,
                         'attachment' => @$request->attachment ? setAssetPath('chat-file/' . $request->attachment) : '',
-                        'task_id' => $request->task_id
+                        'task_id' => $request->task_id,
+                        "screen" => "chatinner"
                     ];
 
                     broadcast(new MessageSent($message))->toOthers();
@@ -1911,7 +1915,7 @@ class ChatController extends Controller
                 $messageSenderReceiver->save();
 
 
-                $message = [
+                $messageForNotification = [
                     'id' => $message->id,
                     'sender' => $senderId,
                     'receiver' => $receiverId,
@@ -1923,7 +1927,7 @@ class ChatController extends Controller
                     'users' => $mergedIds,
                 ];
 
-                broadcast(new MessageSent($message))->toOthers();
+                broadcast(new MessageSent($messageForNotification))->toOthers();
 
                 //Push Notification
                 $validationResults = validateToken($receiverId);
@@ -1946,7 +1950,7 @@ class ChatController extends Controller
                 ];
 
                 if (count($validTokens) > 0) {
-                    sendPushNotification($validTokens, $notification, $message);
+                    sendPushNotification($validTokens, $notification, $messageForNotification);
                 }
             }
 

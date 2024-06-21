@@ -6,6 +6,7 @@ use App\Models\Message;
 use App\Models\MessageReminder;
 use App\Models\MessageSenderReceiver;
 use App\Models\Reminder;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 
@@ -45,14 +46,6 @@ class setReminder extends Command
                 if (in_array($reminder->created_by, $receiverIdsArray)) {
                     $senderId = $reminder->created_by;
                 }
-                foreach ($receiverIdsArray as $receiverId) {
-                    $messageSenderReceiver = new MessageSenderReceiver();
-                    $messageSenderReceiver->message_id = $message->id;
-                    $messageSenderReceiver->sender_id = $senderId;
-                    $messageSenderReceiver->receiver_id = $receiverId;
-                    $messageSenderReceiver->save();
-                }
-
                 $messageReminder = new MessageReminder();
                 $messageReminder->message_id = $message->id;
                 $messageReminder->title = $reminder->title;
@@ -63,9 +56,58 @@ class setReminder extends Command
                 $messageReminder->created_by = $reminder->created_by;
                 $messageReminder->save();
 
+
+                foreach ($receiverIdsArray as $receiverId) {
+                    $messageSenderReceiver = new MessageSenderReceiver();
+                    $messageSenderReceiver->message_id = $message->id;
+                    $messageSenderReceiver->sender_id = $senderId;
+                    $messageSenderReceiver->receiver_id = $receiverId;
+                    $messageSenderReceiver->save();
+
+                    $message = [
+                        'id' => $message->id,
+                        'sender' => $senderId,
+                        'receiver' => $receiverId,
+                        'message_type' => "Reminder",
+                        'title' => $reminder->title,
+                        'description' => @$reminder->description ? $reminder->description : NULL,
+                        'date' => @$reminder->date ? Carbon::parse($reminder->date)->format('Y-m-d') : NULL,
+                        'time' => @$reminder->time ? Carbon::parse($reminder->time)->format('H:i:s') : NULL,
+                        'users' => $reminder->users,
+                    ];
+
+                    broadcast(new MessageSent($message))->toOthers();
+
+                    //Push Notification
+                    $validationResults = validateToken($receiverId);
+                    $validTokens = [];
+                    $invalidTokens = [];
+                    foreach ($validationResults as $result) {
+                        $validTokens = array_merge($validTokens, $result['valid']);
+                        $invalidTokens = array_merge($invalidTokens, $result['invalid']);
+                    }
+                    if (count($invalidTokens) > 0) {
+                        foreach ($invalidTokens as $singleInvalidToken) {
+                            userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
+                        }
+                    }
+                    $userDetails = User::find($senderId);
+                    $notification = [
+                        'title' => $userDetails->first_name . ' ' . $userDetails->last_name,
+                        'body' => 'Reminder: ' . @$reminder->title ? $reminder->title : '',
+                        'image' => "",
+                    ];
+
+                    if (count($validTokens) > 0) {
+                        sendPushNotification($validTokens, $notification, $message);
+                    }
+                }
+
                 $reminderData = Reminder::find($reminder->id);
                 $reminderData->sent = 'Sent';
                 $reminderData->save();
+
+
             }
         }
     }
