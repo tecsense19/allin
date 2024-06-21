@@ -34,10 +34,14 @@ class UserController extends Controller
         if ($request->has('search') && !is_null($request->search['value'])) {
             $search = $request->search['value'];
             $query->where(function ($q) use ($search) {
-                $q->where('first_name', 'LIKE', "%{$search}%")
-                    ->orWhere('last_name', 'LIKE', "%{$search}%")
-                    ->orWhere('email', 'LIKE', "%{$search}%")
-                    ->orWhere('mobile', 'LIKE', "%{$search}%");
+                $q->where(function ($qq) use ($search) {
+                    $searchTerm = '%' . $search . '%';
+                    $qq->where('first_name', 'LIKE', $searchTerm)
+                        ->orWhere('last_name', 'LIKE', $searchTerm)
+                        ->orWhere('mobile', 'LIKE', $searchTerm)
+                        ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", [$searchTerm])
+                        ->orWhereRaw("CONCAT(first_name, last_name) LIKE ?", [$searchTerm]);
+                });
             });
         }
         $filterCount = $query->count();
@@ -61,12 +65,12 @@ class UserController extends Controller
                 if (!empty($user->profile)) {
                     $userImage = setAssetPath('user-profile/' . $user->profile);
                 }
-                $html =  '<img class="img rounded-circle" height="65" width="65" src="' . $userImage . '" />';
+                $html = '<img class="img rounded-circle" height="65" width="65" src="' . $userImage . '" />';
                 return $html;
             })
             ->editColumn('action', function ($user) {
-                $userView = route('userView',$user->id);
-                $html =  '<div class="row"><div class="col-12"><a href="'.$userView.'" class="mx-md-3" title="View"><i class="fas fa-eye"></i></a> <a href="javascript:void(0);" class="" title="Delete" onclick="deleteUser(' . $user->id . ')"><i class="fas fa-trash"></i></a></div></div>';
+                $userView = route('userView', $user->id);
+                $html = '<div class="row"><div class="col-12"><a href="' . $userView . '" class="mx-md-3" title="View"><i class="fas fa-eye"></i></a> <a href="javascript:void(0);" class="" title="Delete" onclick="deleteUser(' . $user->id . ')"><i class="fas fa-trash"></i></a></div></div>';
                 return $html;
             })
             ->rawColumns(['profile', 'cover_image', 'action'])
@@ -96,10 +100,11 @@ class UserController extends Controller
         }
     }
 
-    public function view($id){
+    public function view($id)
+    {
         $data['user'] = User::find($id);
         $data['user']->profile = @$data['user']->profile ? setAssetPath('user-profile/' . $data['user']->profile) : setAssetPath('assets/media/avatars/blank.png');
-        $data['user']->cover_image = @$data['user']->cover_image ? setAssetPath('user-profile-cover-image/'.$data['user']->cover_image) : setAssetPath('assets/media/misc/image.png');
-        return view('Admin.User.view',$data);
+        $data['user']->cover_image = @$data['user']->cover_image ? setAssetPath('user-profile-cover-image/' . $data['user']->cover_image) : setAssetPath('assets/media/misc/image.png');
+        return view('Admin.User.view', $data);
     }
 }
