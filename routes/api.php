@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\v1\ChatController;
+use App\Http\Controllers\Api\v1\GroupController;
 use App\Http\Controllers\Api\v1\OtpController;
 use App\Http\Controllers\Api\v1\ProjectManagementController;
 use App\Http\Controllers\Api\v1\UserController;
@@ -73,6 +74,13 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
             Route::post('/edit-note', 'editNotes');
             Route::post('/delete-note', 'deleteNote');
             Route::post('/send-work-hours-email', 'sendWorkHoursEmail');
+        });
+        Route::controller(GroupController::class)->group(function () {
+            Route::post('/create-group', 'createGroup');
+            Route::post('/edit-group', 'editGroup');
+            Route::post('/user-list-for-group', 'userListForGroup');
+            Route::post('/add-group-user', 'addGroupUser');
+            Route::post('/remove-group-user', 'removeGroupUser');
         });
     });
 });
