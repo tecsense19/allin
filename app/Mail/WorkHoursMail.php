@@ -20,17 +20,19 @@ class WorkHoursMail extends Mailable
     protected $filePath;
     protected $month;
     protected $fileName;
+    protected $summary;
 
     /**
      * Create a new message instance.
      *
      * @return void
      */
-    public function __construct($filePath,$month,$fileName)
+    public function __construct($filePath,$month,$fileName,$summary)
     {
         $this->filePath = $filePath;
         $this->month = $month;
         $this->fileName = $fileName;
+        $this->summary = $summary;
     }
 
     /**
@@ -43,7 +45,8 @@ class WorkHoursMail extends Mailable
         $month = Carbon::parse($this->month)->format('M Y');
         $data = [
             'name' => auth()->user()->first_name . auth()->user()->first_name,
-            'month' => $month
+            'month' => $month,
+            'summary' => $this->summary
         ];
         return $this->view('email-templates.work-hours-email', $data)
                     ->subject('Submission of Work Hours for'.$month)

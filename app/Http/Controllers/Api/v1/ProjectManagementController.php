@@ -23,7 +23,7 @@ class ProjectManagementController extends Controller
      * @OA\Post(
      *     path="/api/v1/add-work-hours",
      *     summary="Add a new Reminder",
-     *     tags={"ProjectManagement"},
+     *     tags={"Project Management"},
      *     description="Create a new message for Project Management.",
      *     operationId="addWorkHours",
      *     security={{"bearerAuth":{}}},
@@ -145,7 +145,7 @@ class ProjectManagementController extends Controller
      * @OA\Post(
      *     path="/api/v1/work-hours",
      *     summary="Add a new Reminder",
-     *     tags={"ProjectManagement"},
+     *     tags={"Project Management"},
      *     description="Create a new message for Project Management.",
      *     operationId="workHours",
      *     security={{"bearerAuth":{}}},
@@ -229,7 +229,7 @@ class ProjectManagementController extends Controller
      * @OA\Post(
      *     path="/api/v1/edit-work-hours-summary",
      *     summary="Edit a work hours",
-     *     tags={"ProjectManagement"},
+     *     tags={"Project Management"},
      *     description="Create a new message for Project Management.",
      *     operationId="editWorkHoursSummary",
      *     security={{"bearerAuth":{}}},
@@ -324,7 +324,7 @@ class ProjectManagementController extends Controller
      * @OA\Post(
      *     path="/api/v1/add-note",
      *     summary="Add a new Note",
-     *     tags={"ProjectManagement"},
+     *     tags={"Project Management"},
      *     description="Create a new note for Project Management.",
      *     operationId="addNote",
      *     security={{"bearerAuth":{}}},
@@ -412,7 +412,7 @@ class ProjectManagementController extends Controller
      * @OA\Post(
      *     path="/api/v1/note",
      *     summary="new Note list",
-     *     tags={"ProjectManagement"},
+     *     tags={"Project Management"},
      *     description="List of note for Project Management.",
      *     operationId="noteLost",
      *     security={{"bearerAuth":{}}},
@@ -458,7 +458,7 @@ class ProjectManagementController extends Controller
      * @OA\Post(
      *     path="/api/v1/note-details",
      *     summary="Note Details",
-     *     tags={"ProjectManagement"},
+     *     tags={"Project Management"},
      *     description="Details of note for Project Management.",
      *     operationId="noteDetails",
      *     security={{"bearerAuth":{}}},
@@ -532,7 +532,7 @@ class ProjectManagementController extends Controller
      * @OA\Post(
      *     path="/api/v1/edit-note",
      *     summary="Edit Note",
-     *     tags={"ProjectManagement"},
+     *     tags={"Project Management"},
      *     description="Edit note for Project Management.",
      *     operationId="editNotes",
      *     security={{"bearerAuth":{}}},
@@ -632,7 +632,7 @@ class ProjectManagementController extends Controller
      * @OA\Post(
      *     path="/api/v1/delete-note",
      *     summary="Delete Note",
-     *     tags={"ProjectManagement"},
+     *     tags={"Project Management"},
      *     description="Delete note for Project Management.",
      *     operationId="deleteNotes",
      *     security={{"bearerAuth":{}}},
@@ -713,7 +713,7 @@ class ProjectManagementController extends Controller
      * @OA\Post(
      *     path="/api/v1/send-work-hours-email",
      *     summary="Send Work Hours email",
-     *     tags={"ProjectManagement"},
+     *     tags={"Project Management"},
      *     description="Send Email of work Hours.",
      *     operationId="sendWorkHoursEmail",
      *     security={{"bearerAuth":{}}},
@@ -737,6 +737,16 @@ class ProjectManagementController extends Controller
      *             type="string"
      *         )
      *     ),
+     *     @OA\Parameter(
+     *         name="summary",
+     *         in="query",
+     *         description="Enter Email Summary",
+     *         example="Lorem Ipsum is simply dummy text of the printing and typesetting industry.",
+     *         required=false,
+     *         @OA\Schema(
+     *             type="string"
+     *         )
+     *     ),
      *      @OA\Response(
      *         response=200,
      *         description="json schema",
@@ -756,12 +766,14 @@ class ProjectManagementController extends Controller
             $rules = [
                 'id' => 'required|string',
                 'month' => 'required|string',
+                'summary' => 'nullable|string',
             ];
             $message = [
                 'id.required' => 'Id is required',
                 'id.string' => 'Id must be an String',
                 'month.required' => 'Month is required',
-                'month.string' => 'Month must be an String'
+                'month.string' => 'Month must be an String',
+                'summary.string' => 'Summary must be an String'
             ];
             $validator = Validator::make($request->all(), $rules, $message);
             if ($validator->fails()) {
@@ -792,9 +804,10 @@ class ProjectManagementController extends Controller
                 return response()->json(['status_code' => 400, 'message' => 'No valid recipients found.'], 400);
             }
             $month = $request->month;
+            $summary = $request->summary;
             foreach ($email as $singleEmail) {
                 if (!empty($singleEmail->email)) {
-                    Mail::to($singleEmail->email)->send(new WorkHoursMail($tempFilePath, $month, $fileName));
+                    Mail::to($singleEmail->email)->send(new WorkHoursMail($tempFilePath, $month, $fileName,$summary));
                 }
             }
             unlink($tempFilePath);

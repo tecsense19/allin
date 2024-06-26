@@ -14,6 +14,7 @@ class Message extends Model
     protected $table = 'message';
 
     protected $fillable = [
+        'group_id',
         'message_type',
         'attachment_type',
         'message',
@@ -90,5 +91,10 @@ class Message extends Model
     public function senderReceiverOne()
     {
         return $this->hasOne(MessageSenderReceiver::class);
+    }
+
+    public function group()
+    {
+        return $this->belongsTo(Group::class);
     }
 }
