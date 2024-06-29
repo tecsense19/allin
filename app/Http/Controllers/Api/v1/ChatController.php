@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\v1;
 use App\Events\MessageSent;
 use App\Exports\chatExport;
 use App\Http\Controllers\Controller;
+use App\Mail\taskMail;
 use App\Models\Message;
 use App\Models\MessageAttachment;
 use App\Models\MessageLocation;
@@ -26,6 +27,7 @@ use Spatie\ImageOptimizer\OptimizerChainFactory;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 
 class ChatController extends Controller
 {
@@ -2653,6 +2655,127 @@ class ChatController extends Controller
                 'data' => [
                     'userList' => $uniqueResult
                 ]
+            ];
+            return $this->sendJsonResponse($data);
+        } catch (\Exception $e) {
+            Log::error(
+                [
+                    'method' => __METHOD__,
+                    'error' => [
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'message' => $e->getMessage()
+                    ],
+                    'created_at' => date("Y-m-d H:i:s")
+                ]
+            );
+            return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/v1/sent-task-summary-email",
+     *     summary="Task Summary Email",
+     *     tags={"Messages"},
+     *     description="Task Summary Email",
+     *     operationId="taskSummaryEmail",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Add Task Summary Email Request",
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"type","user_id","summary"},
+     *                 @OA\Property(
+     *                     property="type",
+     *                     type="string",
+     *                     example="Receive",
+     *                     description="Enter Type (Receive,Given,All Task)"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="user_id",
+     *                     type="string",
+     *                     example="1,2,3",
+     *                     description="Enter Comma Separated User Id"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="summary",
+     *                     type="string",
+     *                     example="Lorem Ipsum is simply dummy text of the printing and typesetting industry.",
+     *                     description="Enter Summary"
+     *                 ),
+     *             )
+     *         )
+     *     ),
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+
+     public function sentTaskSummaryEmail(Request $request)
+    {
+        try {
+
+            $rules = [
+                'type' => 'required|string|in:Receive,Given,All Task',
+                'user_id' => 'required|string|regex:/^(\d+)(,\d+)*$/',
+                'summary' => 'required|string',
+            ];
+
+            $message = [
+                'type.required' => 'The type field is required.',
+                'type.string' => 'The type field must be a string.',
+                'type.in' => 'The selected type is invalid. Valid options are: Receive, Given, All Task.',
+                'user_id.required' => 'The user_id field is required.',
+                'user_id.string' => 'The user_id field must be a string.',
+                'user_id.regex' => 'The user_id field must be a comma-separated list of integers.',
+                'summary.required' => 'The summary field is required.',
+                'summary.string' => 'The summary field must be a string.',
+            ];
+
+
+            $validator = Validator::make($request->all(), $rules, $message);
+            if ($validator->fails()) {
+                return response()->json([
+                    'status_code' => 400,
+                    'message' => $validator->errors(),
+                    'data' => []
+                ]);
+            }
+
+            $type = $request->type;
+            $loginUser = auth()->user()->id;
+
+            $recipient = explode(',', $request->user_id);
+            $email = [];
+            foreach ($recipient as $single) {
+                $user = User::where('id', $single)->first()->email;
+                if (!empty($user)) {
+                    $email[] = $user;
+                }
+            }
+            $summary = $request->summary;
+            foreach ($email as $singleEmail) {
+                if (!empty($singleEmail)) {
+                    Mail::to($singleEmail)->send(new taskMail($summary));
+                }
+            }
+
+            $data = [
+                'status_code' => 200,
+                'message' => "Email Sent Successfully!",
+                'data' => []
             ];
             return $this->sendJsonResponse($data);
         } catch (\Exception $e) {

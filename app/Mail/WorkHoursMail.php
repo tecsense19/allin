@@ -44,6 +44,7 @@ class WorkHoursMail extends Mailable
     {
         $month = Carbon::parse($this->month)->format('M Y');
         $data = [
+            'title' => 'Submission of Work Hours for '.$month,
             'name' => auth()->user()->first_name . auth()->user()->first_name,
             'month' => $month,
             'summary' => $this->summary
