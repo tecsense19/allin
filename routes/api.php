@@ -63,6 +63,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
             Route::post('/forward-message', 'forwardMessage');
             Route::post('/message-contact', 'contactDetails');
             Route::post('/task-users-list', 'taskUserList');
+            Route::post('/sent-task-summary-email', 'sentTaskSummaryEmail');
 
         });
         Route::controller(ProjectManagementController::class)->group(function () {

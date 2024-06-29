@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>Submission of Work Hours for {{ $month }}</title>
+    <title>{{ $title }}</title>
 </head>
 
 <body>
