@@ -97,4 +97,9 @@ class Message extends Model
     {
         return $this->belongsTo(Group::class);
     }
+
+    public function senderReceivers()
+    {
+        return $this->hasMany(MessageSenderReceiver::class, 'message_id');
+    }
 }

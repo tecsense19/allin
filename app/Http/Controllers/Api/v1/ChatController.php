@@ -2053,7 +2053,7 @@ class ChatController extends Controller
                     $message->message = $messageDetails->message;
                     $message->status = 'Unread';
                     $message->save();
-                    if($messageDetails->message_type == 'Text'){
+                    if ($messageDetails->message_type == 'Text') {
                         foreach ($users as $singleUser) {
                             $sender_id = auth()->user()->id;
                             $receiver_id = $singleUser;
@@ -2516,6 +2516,142 @@ class ChatController extends Controller
                 'message' => "Contact Shared Successfully!",
                 'data' => [
                     'contactDetails' => $message
+                ]
+            ];
+            return $this->sendJsonResponse($data);
+        } catch (\Exception $e) {
+            Log::error(
+                [
+                    'method' => __METHOD__,
+                    'error' => [
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'message' => $e->getMessage()
+                    ],
+                    'created_at' => date("Y-m-d H:i:s")
+                ]
+            );
+            return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/v1/task-users-list",
+     *     summary="Task Users List",
+     *     tags={"Messages"},
+     *     description="Task Users List",
+     *     operationId="taskUserList",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Add Task user List Request",
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"type"},
+     *                 @OA\Property(
+     *                     property="type",
+     *                     type="string",
+     *                     example="Receive",
+     *                     description="Enter Type (Receive,Given,All Task)"
+     *                 ),
+     *             )
+     *         )
+     *     ),
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+
+
+    public function taskUserList(Request $request)
+    {
+        try {
+
+            $rules = [
+                'type' => 'required|string|in:Receive,Given,All Task',
+            ];
+
+            $message = [
+                'type.required' => 'The type field is required.',
+                'type.string' => 'The type field must be a string.',
+                'type.in' => 'The selected type is invalid. Valid options are: Receive, Given, All Task.',
+            ];
+
+            $validator = Validator::make($request->all(), $rules, $message);
+            if ($validator->fails()) {
+                return response()->json([
+                    'status_code' => 400,
+                    'message' => $validator->errors(),
+                    'data' => []
+                ]);
+            }
+
+            $type = $request->type;
+            $loginUser = auth()->user()->id;
+
+            $baseQuery = MessageSenderReceiver::with(['message', 'sender', 'receiver'])
+                ->whereHas('message', function ($query) {
+                    $query->where('message_type', 'Task');
+                });
+            if ($type == 'Receive') {
+                $userList = (clone $baseQuery)
+                    ->where('receiver_id', $loginUser)
+                    ->get();
+            } elseif ($type == 'Given') {
+                $userList = (clone $baseQuery)
+                    ->where('sender_id', $loginUser)
+                    ->get();
+            } elseif ($type == 'All Task') {
+                $userList = (clone $baseQuery)
+                    ->where(function ($query) use ($loginUser) {
+                        $query->where('sender_id', $loginUser)
+                            ->orWhere('receiver_id', $loginUser);
+                    })
+                    ->get();
+            }
+            $result = $userList->map(function ($messageSenderReceiver) use ($loginUser) {
+                $sender = $messageSenderReceiver->sender;
+                $receiver = $messageSenderReceiver->receiver;
+
+                if ($sender && $sender->id != $loginUser) {
+                    $profileUrl = $sender->profile ? setAssetPath('user-profile/' . $sender->profile) : setAssetPath('assets/media/avatars/blank.png');
+                    return [
+                        'id' => $sender->id,
+                        'name' => $sender->first_name . ' ' . $sender->last_name,
+                        'profile' => $profileUrl,
+                    ];
+                }
+
+                if ($receiver && $receiver->id != $loginUser) {
+                    $profileUrl = $receiver->profile ? setAssetPath('user-profile/' . $receiver->profile) : setAssetPath('assets/media/avatars/blank.png');
+                    return [
+                        'id' => $receiver->id,
+                        'name' => $receiver->first_name . ' ' . $receiver->last_name,
+                        'profile' => $profileUrl,
+                    ];
+                }
+
+                return null;
+            });
+            $uniqueResult = $result->filter()->unique('id')->values();
+
+
+            $data = [
+                'status_code' => 200,
+                'message' => "Task User List Get Successfully!",
+                'data' => [
+                    'userList' => $uniqueResult
                 ]
             ];
             return $this->sendJsonResponse($data);

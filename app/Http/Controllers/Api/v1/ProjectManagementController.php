@@ -800,8 +800,13 @@ class ProjectManagementController extends Controller
                     $email[] = $user;
                 }
             }
-            if (empty($email)) {
-                return response()->json(['status_code' => 400, 'message' => 'No valid recipients found.'], 400);
+            if (count($email) == 0) {
+                $data = [
+                    'status_code' => 400,
+                    'message' => "No valid recipients found.",
+                    'data' => []
+                ];
+                return $this->sendJsonResponse($data);
             }
             $month = $request->month;
             $summary = $request->summary;
