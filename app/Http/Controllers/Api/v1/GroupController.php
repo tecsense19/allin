@@ -171,7 +171,7 @@ class GroupController extends Controller
 
             $groupUser = new GroupMembers();
             $groupUser->group_id = $group->id;
-            $groupUser->user_id = auth()->user()->id;
+            $groupUser->user_id = auth()->user()->id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
             $groupUser->is_admin = "Yes";
             $groupUser->save();
 
@@ -636,6 +636,11 @@ class GroupController extends Controller
             $userIds = explode(',', $request->user_id);
             GroupMembers::where('group_id',$request->id)->whereIn('user_id',$userIds)->delete();
 
+            $totalGroupMembers = GroupMembers::where('group_id',$request->id)->count();
+            if($totalGroupMembers == 0){
+                Group::where('id',$request->id)->delete();
+            }
+
             $data = [
                 'status_code' => 200,
                 'message' => 'Group Users deleted successfully',
@@ -655,4 +660,6 @@ class GroupController extends Controller
             return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
         }
     }
+
+
 }
