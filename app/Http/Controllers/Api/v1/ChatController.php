@@ -2754,22 +2754,28 @@ class ChatController extends Controller
                 ]);
             }
 
-            $type = $request->type;
-            $loginUser = auth()->user()->id;
-
             $recipient = explode(',', $request->user_id);
             $email = [];
             foreach ($recipient as $single) {
                 $user = User::where('id', $single)->first()->email;
-                if (!empty($user)) {
+                if (!empty($user) && $user !== 'null') {
                     $email[] = $user;
                 }
             }
             $summary = $request->summary;
-            foreach ($email as $singleEmail) {
-                if (!empty($singleEmail)) {
-                    Mail::to($singleEmail)->send(new taskMail($summary));
+            if(count($email) > 0){
+                foreach ($email as $singleEmail) {
+                    if (!empty($singleEmail)) {
+                        Mail::to($singleEmail)->send(new taskMail($summary));
+                    }
                 }
+            }else{
+                $data = [
+                    'status_code' => 400,
+                    'message' => "Selected User Email Address Not Added!",
+                    'data' => []
+                ];
+                return $this->sendJsonResponse($data);
             }
 
             $data = [
