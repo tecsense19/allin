@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Validator;
+use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenExpiredException;
+use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenInvalidException;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 use PHPOpenSourceSaver\JWTAuth\Exceptions\JWTException;
 use Illuminate\Validation\Rule;
@@ -540,8 +542,18 @@ class OtpController extends Controller
     public function refreshToken(Request $request)
     {
         try {
-            // Refresh the token
-            $newToken = JWTAuth::parseToken()->refresh();
+            $currentToken = JWTAuth::getToken();
+
+            if (!$currentToken) {
+                return response()->json([
+                    'status' => 'error',
+                    'status_code' => 401,
+                    'message' => 'Token not provided',
+                ], 401);
+            }
+
+            // Attempt to refresh the token
+            $newToken = JWTAuth::refresh($currentToken);
 
             $data = [
                 'status_code' => 200,
@@ -551,11 +563,19 @@ class OtpController extends Controller
                 ]
             ];
             return $this->sendJsonResponse($data);
+        } catch (TokenExpiredException $e) {
+            return response()->json([
+                'status' => 'error',
+                'status_code' => 401,
+                'message' => 'Token has expired and cannot be refreshed',
+            ], 401);
         } catch (JWTException $e) {
             return response()->json([
                 'status' => 'error',
+                'status_code' => 401,
                 'message' => 'Token refresh failed',
             ], 401);
         }
     }
+
 }

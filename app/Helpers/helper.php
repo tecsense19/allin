@@ -140,14 +140,14 @@ if (!function_exists('sendPushNotification')) {
 
         $result = [];
         $allMessage = [];
-        $path = base_path(config('services.firebase.url')); // Correctly retrieves the full path to the credential file
+        $path = base_path(config('services.firebase.url'));
         $factory = (new Factory)->withServiceAccount($path);
         $messaging = $factory->createMessaging();
 
         foreach ($device_id as $Device) {
             $deviceToken = $Device;
-            $title = (string)$message['title'];  // Ensure title is a string
-            $body = (string)$message['body'];    // Ensure body is a string
+            $title = (string)$message['title'];
+            $body = (string)$message['body'];
             $image = $message['image'];
             $notification = Notification::create($title, $body);
 
@@ -170,6 +170,7 @@ if (!function_exists('sendPushNotification')) {
                             "body" => $body,
                             'image' => $image
                         ],
+                        'sound' => 'default',
                         "content-available" => 1,
                         "mutable-content" => 1
                     ],
