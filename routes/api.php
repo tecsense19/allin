@@ -36,6 +36,9 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
         Route::post('/user-registration', 'userRegistration');
     });
     Route::group(['middleware' => ['UserAuthentication']], function () {
+        Route::controller(OtpController::class)->group(function () {
+            Route::post('/refresh-token', 'refreshToken');
+        });
         Route::controller(UserController::class)->group(function () {
             Route::post('/logout', 'logout');
             Route::post('/users-mobile-numbers', 'userMobileNumbers');

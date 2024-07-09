@@ -191,7 +191,7 @@ class ProjectManagementController extends Controller
                     'data' => ""
                 ]);
             }
-            $filterMonth = $request->filled('month') ? Carbon::parse($request->month) : Carbon::now();
+            $filterMonth = $request->filled('mon                                                                                                              th') ? Carbon::parse($request->month) : Carbon::now();
             $workHours = WorkingHours::where('user_id', auth()->user()->id)
                 ->whereYear('start_date_time', $filterMonth->year)
                 ->whereMonth('start_date_time', $filterMonth->month)
