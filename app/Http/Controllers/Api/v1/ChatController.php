@@ -2820,7 +2820,7 @@ class ChatController extends Controller
         /**
      * @OA\Post(
      *     path="/api/v1/sent-task-done",
-     *     summary="Task task done",
+     *     summary="sent task done",
      *     tags={"Messages"},
      *     description="Task done",
      *     operationId="taskDone",

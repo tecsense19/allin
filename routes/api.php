@@ -82,6 +82,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
             Route::post('/send-work-hours-email', 'sendWorkHoursEmail');
         });
         Route::controller(GroupController::class)->group(function () {
+            Route::Post('/group-list', 'groupList');
             Route::post('/create-group', 'createGroup');
             Route::post('/edit-group', 'editGroup');
             Route::post('/user-list-for-group', 'userListForGroup');

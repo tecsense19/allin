@@ -12,6 +12,83 @@ use Illuminate\Support\Facades\Validator;
 
 class GroupController extends Controller
 {
+
+     /**
+     * @OA\Post(
+     *     path="/api/v1/group-list",
+     *     summary="Get list of group names",
+     *     description="Get list Group names",
+     *     tags={"Group Chat"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="List of group names",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(
+     *                 property="status_code",
+     *                 type="integer",
+     *                 example=200
+     *             ),
+     *             @OA\Property(
+     *                 property="message",
+     *                 type="string",
+     *                 example="Group names fetched successfully"
+     *             ),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     type="string",
+     *                     example="Group Name"
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Internal Server Error",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(
+     *                 property="status_code",
+     *                 type="integer",
+     *                 example=500
+     *             ),
+     *             @OA\Property(
+     *                 property="message",
+     *                 type="string",
+     *                 example="Something went wrong"
+     *             )
+     *         )
+     *     )
+     * )
+     */
+
+     public function groupList(Request $request)
+     {
+         try {
+             $groups = Group::all(['id', 'name']);
+             $data = [
+                 'status_code' => 200,
+                 'message' => 'Group names fetched successfully',
+                 'data' => $groups
+             ];
+             return response()->json($data, 200);
+         } catch (\Exception $e) {
+             Log::error([
+                 'method' => __METHOD__,
+                 'error' => [
+                     'file' => $e->getFile(),
+                     'line' => $e->getLine(),
+                     'message' => $e->getMessage()
+                 ],
+                 'created_at' => now()->format("Y-m-d H:i:s")
+             ]);
+             return response()->json(['status_code' => 500, 'message' => 'Something went wrong'], 500);
+         }
+     }
+
     /**
      * @OA\Post(
      *     path="/api/v1/create-group",
@@ -261,113 +338,94 @@ class GroupController extends Controller
     public function editGroup(Request $request)
     {
         try {
-            $rule = [
+            // Validation rules and messages
+            $rules = [
                 'name' => 'required',
-                'description' => 'nullable|string'
+                'description' => 'nullable|string',
+                'profile' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+                'cover_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048'
             ];
-            $message = [
+            $messages = [
                 'name.required' => 'Name is required',
-                'description.string' => 'Description must be string',
+                'description.string' => 'Description must be a string',
+                'profile.image' => 'Profile image must be an image file.',
+                'profile.mimes' => 'Profile image must be a JPEG, JPG, PNG, SVG, or WebP file.',
+                'profile.max' => 'Profile image size must not exceed 2MB.',
+                'cover_image.image' => 'Cover image must be an image file.',
+                'cover_image.mimes' => 'Cover image must be a JPEG, JPG, PNG, SVG, or WebP file.',
+                'cover_image.max' => 'Cover image size must not exceed 2MB.'
             ];
-            $validator = \Validator::make($request->all(), $rule, $message);
+
+            // Validate request
+            $validator = \Validator::make($request->all(), $rules, $messages);
             if ($validator->fails()) {
-                $data = [
+                return $this->sendJsonResponse([
                     'status_code' => 400,
                     'message' => $validator->errors()->first(),
                     'data' => ""
-                ];
-                return $this->sendJsonResponse($data);
+                ]);
             }
-            $group = new Group();
-            $groupDetails = $group->find($request->id);
-            $profileImageName = $groupDetails->profile_pic;
-            $coverImageName = $groupDetails->cover_image;
+
+            // Find the existing group
+            $group = Group::find($request->id);
+            if (!$group) {
+                return $this->sendJsonResponse([
+                    'status_code' => 404,
+                    'message' => 'Group not found',
+                    'data' => ""
+                ]);
+            }
+
+            // Handle profile image upload
             if ($request->hasFile('profile')) {
-                $rule = [
-                    'profile' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-                ];
-                $message = [
-                    'profile.required' => 'Profile image required',
-                    'profile.image' => 'Profile image must be an image file.',
-                    'profile.mimes' => 'Profile image must be a JPEG, JPG, PNG,svg, or WebP file.',
-                    'profile.max' => 'Profile image size must not exceed 2MB.',
-                ];
-                $validator = Validator::make($request->all(), $rule, $message);
-                if ($validator->fails()) {
-                    $data = [
-                        'status_code' => 400,
-                        'message' => $validator->errors()->first(),
-                        'data' => ""
-                    ];
-                    return $this->sendJsonResponse($data);
-                }
                 $profileImage = $request->file('profile');
                 $profileImageName = imageUpload($profileImage, 'user-profile');
                 if ($profileImageName == 'upload_failed') {
-                    $data = [
+                    return $this->sendJsonResponse([
                         'status_code' => 400,
-                        'message' => 'profile Upload faild',
+                        'message' => 'Profile upload failed',
                         'data' => ""
-                    ];
-                    return $this->sendJsonResponse($data);
+                    ]);
                 } elseif ($profileImageName == 'invalid_image') {
-                    $data = [
+                    return $this->sendJsonResponse([
                         'status_code' => 400,
-                        'message' => 'Please Select jpg, jpeg, png, webp, svg File',
+                        'message' => 'Please select a valid image file (jpg, jpeg, png, webp, svg)',
                         'data' => ""
-                    ];
-                    return $this->sendJsonResponse($data);
+                    ]);
                 }
+                $group->profile_pic = $profileImageName;
             }
+
+            // Handle cover image upload
             if ($request->hasFile('cover_image')) {
-                $ruleCover = [
-                    'cover_image' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-                ];
-                $messageCover = [
-                    'cover_image.required' => 'Cover image required',
-                    'cover_image.image' => 'Cover image must be an image file.',
-                    'cover_image.mimes' => 'Cover image must be a JPEG, JPG, PNG,svg, or WebP file.',
-                    'cover_image.max' => 'Cover image size must not exceed 2MB.',
-                ];
-                $validatorCover = Validator::make($request->all(), $ruleCover, $messageCover);
-                if ($validatorCover->fails()) {
-                    $dataCover = [
-                        'status_code' => 400,
-                        'message' => $validator->errors()->first(),
-                        'data' => ""
-                    ];
-                    return $this->sendJsonResponse($dataCover);
-                }
                 $coverImage = $request->file('cover_image');
                 $coverImageName = imageUpload($coverImage, 'user-profile-cover-image');
                 if ($coverImageName == 'upload_failed') {
-                    $data = [
+                    return $this->sendJsonResponse([
                         'status_code' => 400,
-                        'message' => 'Cover Image Upload faild',
+                        'message' => 'Cover image upload failed',
                         'data' => ""
-                    ];
-                    return $this->sendJsonResponse($data);
+                    ]);
                 } elseif ($coverImageName == 'invalid_image') {
-                    $data = [
+                    return $this->sendJsonResponse([
                         'status_code' => 400,
-                        'message' => 'Please Select jpg, jpeg, png, webp, svg File',
+                        'message' => 'Please select a valid image file (jpg, jpeg, png, webp, svg)',
                         'data' => ""
-                    ];
-                    return $this->sendJsonResponse($data);
+                    ]);
                 }
+                $group->cover_image = $coverImageName;
             }
-            $group = new Group();
-            $group->name = @$request->name ? $request->name : $groupDetails->name;
-            $group->description = @$request->description ? $request->description : $groupDetails->description;
-            $group->profile_pic = $profileImageName;
-            $group->cover_image = $coverImageName;
+
+            // Update group details
+            $group->name = $request->name;
+            $group->description = $request->description;
             $group->save();
-            $data = [
+
+            return $this->sendJsonResponse([
                 'status_code' => 200,
                 'message' => 'Group updated successfully',
                 'data' => $group
-            ];
-            return $this->sendJsonResponse($data);
+            ]);
         } catch (\Exception $e) {
             Log::error([
                 'method' => __METHOD__,
@@ -439,7 +497,7 @@ class GroupController extends Controller
                 return $this->sendJsonResponse($data);
             }
             $groupUser = GroupMembers::where('group_id', $request->id)->pluck('user_id');
-            $userList = User::whereNotIn('id', $groupUser)->where('role', 'User')->get([
+            $userList = User::whereIn('id', $groupUser)->where('role', 'User')->get([
                 'id',
                 'first_name',
                 'last_name',
