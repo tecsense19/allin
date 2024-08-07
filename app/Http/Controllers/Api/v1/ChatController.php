@@ -240,7 +240,8 @@ class ChatController extends Controller
                 'message_type' => 'required|string',
                 'attachment' => 'required|string',
                 'attachment_type' => 'required|string',
-                'receiver_id' => 'required|integer',
+                // 'receiver_id' => 'required|integer',
+                'receiver_id' => 'nullable|string',
             ];
 
             $message = [
@@ -250,8 +251,9 @@ class ChatController extends Controller
                 'attachment_type.string' => 'The Attachment type must be a string.',
                 'attachment.required' => 'The Attachment is required.',
                 'attachment.string' => 'The Attachment must be a string.',
-                'receiver_id.required' => 'The receiver ID is required.',
-                'receiver_id.integer' => 'The receiver ID must be an integer.',
+                // 'receiver_id.required' => 'The receiver ID is required.',
+                // 'receiver_id.integer' => 'The receiver ID must be an integer.',
+                'receiver_id.string' => 'users must be an Comma Separated String.',
             ];
 
             $validator = Validator::make($request->all(), $rules, $message);
@@ -264,59 +266,67 @@ class ChatController extends Controller
                 return $this->sendJsonResponse($data);
             }
 
-            $msg = new Message();
-            $msg->message_type = $request->message_type;
-            $msg->attachment_type = $request->attachment_type;
-            $msg->status = "Unread";
-            $msg->save();
+            $receiverIdsArray = $request->receiver_id ? explode(',', $request->receiver_id) : [];
+            $senderId = auth()->user()->id;
+            $uniqueIdsArray = array_unique($receiverIdsArray);
+            $mergedIds = implode(',', $uniqueIdsArray);
 
-            $messageSenderReceiver = new MessageSenderReceiver();
-            $messageSenderReceiver->message_id = $msg->id;
-            $messageSenderReceiver->sender_id = auth()->user()->id;
-            $messageSenderReceiver->receiver_id = $request->receiver_id;
-            $messageSenderReceiver->save();
+            foreach ($receiverIdsArray as $receiverId) 
+            {
+                $msg = new Message();
+                $msg->message_type = $request->message_type;
+                $msg->attachment_type = $request->attachment_type;
+                $msg->status = "Unread";
+                $msg->save();
 
-            $messageAttachment = new MessageAttachment();
-            $messageAttachment->message_id = $msg->id;
-            $messageAttachment->attachment_name = $request->attachment;
-            $messageAttachment->attachment_path = setAssetPath('chat-file/' . $request->attachment);
-            $messageAttachment->save();
+                $messageSenderReceiver = new MessageSenderReceiver();
+                $messageSenderReceiver->message_id = $msg->id;
+                $messageSenderReceiver->sender_id = auth()->user()->id;
+                $messageSenderReceiver->receiver_id = $receiverId;
+                $messageSenderReceiver->save();
 
-            $message = [
-                'id' => $msg->id,
-                'sender' => auth()->user()->id,
-                'receiver' => $request->receiver_id,
-                'message_type' => $request->message_type,
-                'attachment_type' => $request->attachment_type,
-                'attachment_name' => $request->attachment,
-                'attachment_path' => setAssetPath('chat-file/' . $request->attachment),
-                "screen" => "chatinner"
-            ];
+                $messageAttachment = new MessageAttachment();
+                $messageAttachment->message_id = $msg->id;
+                $messageAttachment->attachment_name = $request->attachment;
+                $messageAttachment->attachment_path = setAssetPath('chat-file/' . $request->attachment);
+                $messageAttachment->save();
 
-            broadcast(new MessageSent($message))->toOthers();
+                $message = [
+                    'id' => $msg->id,
+                    'sender' => auth()->user()->id,
+                    'receiver' => $receiverId,
+                    'message_type' => $request->message_type,
+                    'attachment_type' => $request->attachment_type,
+                    'attachment_name' => $request->attachment,
+                    'attachment_path' => setAssetPath('chat-file/' . $request->attachment),
+                    "screen" => "chatinner"
+                ];
 
-            //Push Notification
-            $validationResults = validateToken($request->receiver_id);
-            $validTokens = [];
-            $invalidTokens = [];
-            foreach ($validationResults as $result) {
-                $validTokens = array_merge($validTokens, $result['valid']);
-                $invalidTokens = array_merge($invalidTokens, $result['invalid']);
-            }
-            if (count($invalidTokens) > 0) {
-                foreach ($invalidTokens as $singleInvalidToken) {
-                    userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
+                broadcast(new MessageSent($message))->toOthers();
+
+                //Push Notification
+                $validationResults = validateToken($receiverId);
+                $validTokens = [];
+                $invalidTokens = [];
+                foreach ($validationResults as $result) {
+                    $validTokens = array_merge($validTokens, $result['valid']);
+                    $invalidTokens = array_merge($invalidTokens, $result['invalid']);
                 }
-            }
+                if (count($invalidTokens) > 0) {
+                    foreach ($invalidTokens as $singleInvalidToken) {
+                        userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
+                    }
+                }
 
-            $notification = [
-                'title' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
-                'body' => $request->message_type,
-                'image' => setAssetPath('chat-file/' . $request->attachment),
-            ];
+                $notification = [
+                    'title' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
+                    'body' => $request->message_type,
+                    'image' => setAssetPath('chat-file/' . $request->attachment),
+                ];
 
-            if (count($validTokens) > 0) {
-                sendPushNotification($validTokens, $notification, $message);
+                if (count($validTokens) > 0) {
+                    sendPushNotification($validTokens, $notification, $message);
+                }
             }
 
             $data = [

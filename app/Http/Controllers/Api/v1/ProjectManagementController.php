@@ -8,6 +8,8 @@ use App\Mail\WorkHoursMail;
 use App\Models\Notes;
 use App\Models\User;
 use App\Models\WorkingHours;
+use App\Models\ProjectEvent;
+use App\Models\userDeviceToken;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -833,6 +835,501 @@ class ProjectManagementController extends Controller
                 'created_at' => date("Y-m-d H:i:s")
             ]);
             return response()->json(['status_code' => 500, 'message' => 'Something went wrong']);
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/v1/events-create-update",
+     *     summary="Event create or update",
+     *     tags={"Project Management"},
+     *     description="Event create or update",
+     *     operationId="eventsCreateUpdate",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Event Create or Update Request",
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"event_title", "event_description", "event_date", "event_time", "latitude", "longitude", "location_url", "location"},
+     *                 @OA\Property(
+     *                     property="id",
+     *                     type="string",
+     *                     example="",
+     *                     description="Event id used only update request"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="event_title",
+     *                     type="string",
+     *                     example="Test Event",
+     *                     description="Event Title"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="event_description",
+     *                     type="string",
+     *                     example="Enter Event Description",
+     *                     description="Event Description"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="event_date",
+     *                     type="string",
+     *                     example="",
+     *                     description="Event date"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="event_time",
+     *                     type="string",
+     *                     example="",
+     *                     description="Event Time"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="event_image",
+     *                     type="file",
+     *                     description="Event Image"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="latitude",
+     *                     type="string",
+     *                     example="",
+     *                     description="Event latitude"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="longitude",
+     *                     type="string",
+     *                     example="",
+     *                     description="Event longitude"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="location_url",
+     *                     type="string",
+     *                     example="",
+     *                     description="Event location URL"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="location",
+     *                     type="string",
+     *                     example="",
+     *                     description="Event location"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="users",
+     *                     type="string",
+     *                     example="1,2,3,4",
+     *                     description="Assign event for comma separated users id"
+     *                 ),
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+    public function eventsCreateUpdate(Request $request)
+    {
+        try {
+            $rules = [
+                'event_title' => 'required|string',
+                'event_description' => 'nullable|string',
+                'event_date' => 'required|string',
+                'event_time' => 'required|string',
+                'event_image' => 'nullable|image|mimes:jpeg,jpg,png,webp,svg|max:2048',
+                'latitude' => 'required|string',
+                'longitude' => 'required|string',
+                'location_url' => 'required|string',
+                'location' => 'required|string'
+            ];
+
+            $message = [
+                'event_title.required' => 'Event title is required.',
+                'event_title.string' => 'Event title must be an String.',
+                'event_description.string' => 'Event description must be an String.',
+                'event_date.required' => 'Event date is required.',
+                'event_date.string' => 'Event date must be an String.',
+                'event_time.required' => 'Event time is required.',
+                'event_time.string' => 'Event time must be an String.',
+                'event_image.image' => 'Event image must be an image file.',
+                'event_image.mimes' => 'Event image must be a JPEG, JPG, PNG,svg, or WebP file.',
+                'event_image.max' => 'Event image size must not exceed 2MB.',
+                'latitude.required' => 'The latitude is required.',
+                'latitude.string' => 'The latitude must be an string.',
+                'longitude.required' => 'The longitude is required.',
+                'longitude.string' => 'The longitude must be an string.',
+                'location_url.required' => 'The location url is required.',
+                'location_url.string' => 'The location url must be an string.',
+                'location.required' => 'The location is required.',
+                'location.string' => 'The location must be an string.'
+            ];
+
+            $validator = Validator::make($request->all(), $rules, $message);
+            if ($validator->fails()) {
+                $data = [
+                    'status_code' => 400,
+                    'message' => $validator->errors()->first(),
+                    'data' => ""
+                ];
+                return $this->sendJsonResponse($data);
+            }
+
+            $eventImageName = NULL;
+            if ($request->hasFile('event_image')) {
+                $eventImage = $request->file('event_image');
+                $eventImageName = imageUpload($eventImage, 'event-image');
+                if ($eventImageName == 'upload_failed') {
+                    $data = [
+                        'status_code' => 400,
+                        'message' => 'Event image upload failed',
+                        'data' => ""
+                    ];
+                    return $this->sendJsonResponse($data);
+                } elseif ($eventImageName == 'invalid_image') {
+                    $data = [
+                        'status_code' => 400,
+                        'message' => 'Please Select jpg, jpeg, png, webp, svg File',
+                        'data' => ""
+                    ];
+                    return $this->sendJsonResponse($data);
+                }
+
+                // Delete the old image if it exists
+                if(@$request->id)
+                {
+                    $event = ProjectEvent::find($request->id);
+                    if ($event->event_image && file_exists(public_path('event-image/' . $event->event_image))) {
+                        unlink(public_path('event-image/' . $event->event_image));
+                    }
+                }
+            }
+
+            $receiverIdsArray = $request->users ? explode(',', $request->users) : [];
+            $senderId = auth()->user()->id;
+            $receiverIdsArray[] = $senderId;
+            $uniqueIdsArray = array_unique($receiverIdsArray);
+            $mergedIds = implode(',', $uniqueIdsArray);
+
+            $event = $request->id ? ProjectEvent::find($request->id) : new ProjectEvent();
+            $isUpdate = $event->exists;
+            $event->user_id = auth()->user()->id;
+            $event->event_title = $request->event_title;
+            $event->event_description = $request->event_description;
+            $event->event_image = $eventImageName;
+            $event->event_date = Carbon::parse($request->event_date)->format('Y-m-d');
+            $event->event_time = Carbon::parse($request->event_time)->setTimezone('UTC')->format('H:i:s');
+            $event->latitude = $request->latitude;
+            $event->longitude = $request->longitude;
+            $event->location_url = $request->location_url;
+            $event->location = $request->location;
+            $event->users = $mergedIds;
+            $event->save();
+
+            $receiverIdsArray = $event->users ? explode(',', $event->users) : [];
+            $senderId = NULL;
+            if (in_array($event->created_by, $receiverIdsArray)) {
+                $senderId = $event->created_by;
+            }
+
+            foreach ($receiverIdsArray as $receiverId) {
+                $messageForNotification = [
+                    'id' => $event->id,
+                    'sender' => $senderId,
+                    'receiver' => $receiverId,
+                    'message_type' => "Event",
+                    'title' => $request->event_title,
+                    'description' => @$request->event_description ? $request->event_description : NULL,
+                    'date' => Carbon::parse($request->event_date)->format('Y-m-d'),
+                    'time' => Carbon::parse($request->event_time)->setTimezone('UTC')->format('H:i:s'),
+                    'users' => $mergedIds,
+                ];
+
+                //Push Notification
+                $validationResults = validateToken($receiverId);
+                $validTokens = [];
+                $invalidTokens = [];
+                foreach ($validationResults as $result) {
+                    $validTokens = array_merge($validTokens, $result['valid']);
+                    $invalidTokens = array_merge($invalidTokens, $result['invalid']);
+                }
+                if (count($invalidTokens) > 0) {
+                    foreach ($invalidTokens as $singleInvalidToken) {
+                        userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
+                    }
+                }
+
+                $notification = [
+                    'title' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
+                    'body' => 'Event: ' . @$request->event_title ? $request->event_title : '',
+                    'image' => "",
+                ];
+
+                if (count($validTokens) > 0) {
+                    sendPushNotification($validTokens, $notification, $messageForNotification);
+                }
+            }
+
+            $data = [
+                'status_code' => 200,
+                'message' => $isUpdate ? 'Event Updated successfully!' : 'Event Created Successfully!',
+                'data' => [
+                    'event' => $event
+                ]
+            ];
+            return $this->sendJsonResponse($data);
+
+        } catch (\Exception $e) {
+            Log::error(
+                [
+                    'method' => __METHOD__,
+                    'error' => [
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'message' => $e->getMessage()
+                    ],
+                    'created_at' => date("Y-m-d H:i:s")
+                ]
+            );
+            return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/v1/events-list",
+     *     summary="Event Listing",
+     *     tags={"Project Management"},
+     *     description="Event Listing",
+     *     operationId="eventsList",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="query",
+     *         example="1",
+     *         description="Enter User Id",
+     *         required=true,
+     *         @OA\Schema(
+     *             type="number",
+     *         )
+     *     ),
+     *     @OA\Parameter(
+     *         name="timezone",
+     *         in="query",
+     *         example="",
+     *         description="Enter Timezone",
+     *         required=false,
+     *         @OA\Schema(
+     *             type="string",
+     *         )
+     *     ),
+     *     @OA\Parameter(
+     *         name="filter",
+     *         in="query",
+     *         example="filter",
+     *         description="Event Title Filter",
+     *         required=false,
+     *         @OA\Schema(
+     *             type="string",
+     *         )
+     *     ),
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+    public function eventsList(Request $request)
+    {
+        try {
+            $rules = [
+                'id' => 'required|integer|exists:users,id',
+            ];
+
+            $message = [
+                'id.required' => 'User ID is required.',
+                'id.integer' => 'User ID must be an integer.',
+                'id.exists' => 'The specified user does not exist.',
+            ];
+
+            $validator = Validator::make($request->all(), $rules, $message);
+            if ($validator->fails()) {
+                $data = [
+                    'status_code' => 400,
+                    'message' => $validator->errors()->first(),
+                    'data' => ""
+                ];
+                return $this->sendJsonResponse($data);
+            }
+            $user = new User();
+            $userData = $user->find($request->id);
+
+            $timezone = @$request->timezone ? $request->timezone : 'UTC';
+            $eventTitle = $request->filter;
+
+            $eventList = ProjectEvent::where('created_by', auth()->user()->id)
+                        ->when($eventTitle, function ($query, $eventTitle) {
+                            return $query->where('event_title', 'like', "%{$eventTitle}%");
+                        })
+                        ->get()
+                        ->map(function($event) use ($timezone) {
+                            $event->event_date = Carbon::parse($event->event_date)->setTimezone($timezone)->format('Y-m-d H:i:s');
+                            $event->event_time = Carbon::parse($event->event_time)->setTimezone($timezone)->format('h:i a');
+
+                            $event->event_image = @$event->event_image ? setAssetPath('event-image/' . $event->event_image) : setAssetPath('assets/media/avatars/blank.png');
+
+                            $userList = [];
+                            if($event->users)
+                            {
+                                // Convert comma-separated string to array
+                                $userIds = explode(',', $event->users);
+
+                                // Get the current user's ID
+                                $currentUserId = auth()->user()->id;
+
+                                // Remove the current user's ID from the list of user IDs
+                                $userIds = array_filter($userIds, function($id) use ($currentUserId) {
+                                    return $id != $currentUserId;
+                                });
+
+                                // Get the user details based on the remaining user IDs
+                                $userList = User::whereIn('id', $userIds)->get(['id', 'first_name', 'last_name', 'country_code', 'mobile', 'profile'])
+                                ->map(function ($user) {
+                                    $user->profile = @$user->profile ? setAssetPath('user-profile/' . $user->profile) : setAssetPath('assets/media/avatars/blank.png');
+                                    return $user;
+                                });
+                            }
+
+                            // Assign the user array
+                            $event->usersArr = $userList;
+
+                            return $event;
+                        });
+            
+            $data = [
+                'status_code' => 200,
+                'message' => "Get Data Successfully!",
+                'data' => [
+                    'eventList' => $eventList,
+                ]
+            ];
+            return $this->sendJsonResponse($data);
+        } catch (\Exception $e) {
+            Log::error(
+                [
+                    'method' => __METHOD__,
+                    'error' => [
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'message' => $e->getMessage()
+                    ],
+                    'created_at' => date("Y-m-d H:i:s")
+                ]
+            );
+            return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/v1/events-delete",
+     *     summary="Delete Event",
+     *     tags={"Project Management"},
+     *     description="Delete Event",
+     *     operationId="eventsDelete",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="query",
+     *         example="1",
+     *         description="Enter User Id",
+     *         required=true,
+     *         @OA\Schema(
+     *             type="number",
+     *         )
+     *     ),
+     *     @OA\Parameter(
+     *         name="event_id",
+     *         in="query",
+     *         example="1",
+     *         description="Enter Event Id",
+     *         required=true,
+     *         @OA\Schema(
+     *             type="number",
+     *         )
+     *     ),
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+    public function eventsDelete(Request $request)
+    {
+        try {
+            $rules = [
+                'id' => 'required|integer|exists:users,id',
+            ];
+
+            $message = [
+                'id.required' => 'User ID is required.',
+                'id.integer' => 'User ID must be an integer.',
+                'id.exists' => 'The specified user does not exist.',
+            ];
+
+            $validator = Validator::make($request->all(), $rules, $message);
+            if ($validator->fails()) {
+                $data = [
+                    'status_code' => 400,
+                    'message' => $validator->errors()->first(),
+                    'data' => ""
+                ];
+                return $this->sendJsonResponse($data);
+            }
+            $user = new User();
+            $userData = $user->find($request->id);
+
+            ProjectEvent::where('created_by', auth()->user()->id)->where('id', $request->event_id)->delete();
+
+            $data = [
+                'status_code' => 200,
+                'message' => "Event Deleted Successfully!",
+                'data' => []
+            ];
+            return $this->sendJsonResponse($data);
+
+        } catch (\Exception $e) {
+            Log::error(
+                [
+                    'method' => __METHOD__,
+                    'error' => [
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'message' => $e->getMessage()
+                    ],
+                    'created_at' => date("Y-m-d H:i:s")
+                ]
+            );
+            return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
         }
     }
 }

@@ -80,6 +80,9 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
             Route::post('/edit-note', 'editNotes');
             Route::post('/delete-note', 'deleteNote');
             Route::post('/send-work-hours-email', 'sendWorkHoursEmail');
+            Route::post('/events-create-update', 'eventsCreateUpdate');
+            Route::post('/events-list', 'eventsList');
+            Route::post('/events-delete', 'eventsDelete');
         });
         Route::controller(GroupController::class)->group(function () {
             Route::Post('/group-list', 'groupList');
