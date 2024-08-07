@@ -2628,20 +2628,36 @@ class ChatController extends Controller
 
                 if ($sender && $sender->id != $loginUser) {
                     $profileUrl = $sender->profile ? setAssetPath('user-profile/' . $sender->profile) : setAssetPath('assets/media/avatars/blank.png');
+                    if ($messageSenderReceiver->updated_by == 1) {
+                        $response['taskStatus'] = true;
+                    }else 
+                    {
+                        $response['taskStatus'] = false;
+                    }
                     return [
                         'id' => $sender->id,
                         'name' => $sender->first_name . ' ' . $sender->last_name,
                         'profile' => $profileUrl,
+                        'taskStatus' => $response['taskStatus'],
                     ];
                 }
 
                 if ($receiver && $receiver->id != $loginUser) {
                     $profileUrl = $receiver->profile ? setAssetPath('user-profile/' . $receiver->profile) : setAssetPath('assets/media/avatars/blank.png');
+
+                    if ($messageSenderReceiver->updated_by == 1) {
+                        $response['taskStatus'] = true;
+                    }else{
+                        $response['taskStatus'] = false;
+                    }
+
                     return [
                         'id' => $receiver->id,
                         'name' => $receiver->first_name . ' ' . $receiver->last_name,
                         'profile' => $profileUrl,
+                        'taskStatus' => $response['taskStatus'],
                     ];
+
                 }
 
                 return null;
@@ -2799,4 +2815,133 @@ class ChatController extends Controller
             return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
         }
     }
+
+
+        /**
+     * @OA\Post(
+     *     path="/api/v1/sent-task-done",
+     *     summary="Task task done",
+     *     tags={"Messages"},
+     *     description="Task done",
+     *     operationId="taskDone",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Add Task Done Request",
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"type","user_id","summary"},
+     *                 @OA\Property(
+     *                     property="type",
+     *                     type="string",
+     *                     example="Receive",
+     *                     description="Enter Type (Receive)"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="user_id",
+     *                     type="string",
+     *                     example="1,2,3",
+     *                     description="Enter Comma Separated User Id"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="summary",
+     *                     type="string",
+     *                     example="Lorem Ipsum is simply dummy text of the printing and typesetting industry.",
+     *                     description="Enter Summary"
+     *                 ),
+     *             )
+     *         )
+     *     ),
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+
+     public function sentTaskDone(Request $request)
+    {
+        try {
+
+            $rules = [
+                'type' => 'required|string|in:Receive,Given,All Task',
+                'user_id' => 'required|string|regex:/^(\d+)(,\d+)*$/',
+                'summary' => 'required|string',
+            ];
+
+            $message = [
+                'type.required' => 'The type field is required.',
+                'type.string' => 'The type field must be a string.',
+                'type.in' => 'The selected type is invalid. Valid options are: Receive, Given, All Task.',
+                'user_id.required' => 'The user_id field is required.',
+                'user_id.string' => 'The user_id field must be a string.',
+                'user_id.regex' => 'The user_id field must be a comma-separated list of integers.',
+                'summary.required' => 'The summary field is required.',
+                'summary.string' => 'The summary field must be a string.',
+            ];
+
+
+            $validator = Validator::make($request->all(), $rules, $message);
+            if ($validator->fails()) {
+                return response()->json([
+                    'status_code' => 400,
+                    'message' => $validator->errors(),
+                    'data' => []
+                ]);
+            }
+
+            $recipient = explode(',', $request->user_id);
+            $loginUser = auth()->user()->id;
+
+            foreach ($recipient as $single) {
+                $user = User::where('id', $single)->first();
+                if (!empty($user) && $user !== 'null') {
+                    $type = $request->type;    
+                  
+                    $baseQuery = MessageSenderReceiver::with(['message', 'sender', 'receiver'])
+                        ->whereHas('message', function ($query) {
+                            $query->where('message_type', 'Task');
+                        });
+
+                    if ($type == 'Receive') {
+                        $userList = (clone $baseQuery)
+                            ->where('receiver_id', $loginUser)->where('sender_id', $single)
+                            ->update(['updated_by' => 1]);
+                    }
+                }
+            }
+        
+            $data = [
+                'status_code' => 200,
+                'message' => "Email Sent Successfully!",
+                'data' => []
+            ];
+            return $this->sendJsonResponse($data);
+        } catch (\Exception $e) {
+            Log::error(
+                [
+                    'method' => __METHOD__,
+                    'error' => [
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'message' => $e->getMessage()
+                    ],
+                    'created_at' => date("Y-m-d H:i:s")
+                ]
+            );
+            return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
+        }
+    }
+
 }
+
+
+
