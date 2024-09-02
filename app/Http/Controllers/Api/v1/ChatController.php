@@ -2951,15 +2951,27 @@ class ChatController extends Controller
         }
     }
    
+
     /**
      * @OA\Get(
-     *     path="/api/v1/meetings",
-     *     summary="Get Meeting Details",
-     *     description="Retrieve the details of meetings where the current authenticated user is either the creator or an assigned user.",
+     *     path="/api/meetings",
+     *     summary="Get meeting details",
+     *     description="Fetches meeting details based on the type (Receive or Given) and user ID.",
      *     tags={"Meetings"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="type",
+     *         in="query",
+     *         required=false,
+     *         description="Type of meetings to fetch. Can be 'Receive', 'Given', or omitted to fetch all meetings.",
+     *         @OA\Schema(
+     *             type="string",
+     *             enum={"Receive", "Given"}
+     *         )
+     *     ),
      *     @OA\Response(
      *         response=200,
-     *         description="Meetings fetched successfully",
+     *         description="Successful response",
      *         @OA\JsonContent(
      *             type="object",
      *             @OA\Property(property="status_code", type="integer", example=200),
@@ -2969,39 +2981,49 @@ class ChatController extends Controller
      *                 type="array",
      *                 @OA\Items(
      *                     type="object",
-     *                     @OA\Property(property="id", type="integer", example=1),
-     *                     @OA\Property(property="message_id", type="integer", example=2),
-     *                     @OA\Property(property="mode", type="string", example="Offline"),
-     *                     @OA\Property(property="title", type="string", example="Test Meeting title"),
-     *                     @OA\Property(property="description", type="string", example="Test Meeting Description"),
-     *                     @OA\Property(property="date", type="string", format="date", example="2024-06-12"),
-     *                     @OA\Property(property="start_time", type="string", format="time", example="12:30:00"),
-     *                     @OA\Property(property="end_time", type="string", format="time", example="14:00:00"),
-     *                     @OA\Property(property="meeting_url", type="string", example=""),
-     *                     @OA\Property(property="users", type="array", @OA\Items(type="integer")),
-     *                     @OA\Property(property="latitude", type="string", example=""),
-     *                     @OA\Property(property="longitude", type="string", example=""),
-     *                     @OA\Property(property="location_url", type="string", example=""),
-     *                     @OA\Property(property="location", type="string", example=""),
+     *                     @OA\Property(property="id", type="integer"),
+     *                     @OA\Property(property="message_id", type="integer"),
+     *                     @OA\Property(property="mode", type="string"),
+     *                     @OA\Property(property="title", type="string"),
+     *                     @OA\Property(property="description", type="string"),
+     *                     @OA\Property(property="date", type="string", format="date"),
+     *                     @OA\Property(property="start_time", type="string", format="date-time"),
+     *                     @OA\Property(property="end_time", type="string", format="date-time"),
+     *                     @OA\Property(property="meeting_url", type="string", format="uri"),
+     *                     @OA\Property(property="users", type="string"),
+     *                     @OA\Property(property="latitude", type="number", format="float"),
+     *                     @OA\Property(property="longitude", type="number", format="float"),
+     *                     @OA\Property(property="location_url", type="string", format="uri"),
+     *                     @OA\Property(property="location", type="string"),
      *                     @OA\Property(
      *                         property="created_by",
      *                         type="object",
-     *                         @OA\Property(property="id", type="integer", example=2),
-     *                         @OA\Property(property="name", type="string", example="John Doe"),
-     *                         @OA\Property(property="email", type="string", example="john.doe@example.com")
+     *                         @OA\Property(property="id", type="integer"),
+     *                         @OA\Property(property="name", type="string"),
+     *                         @OA\Property(property="email", type="string", format="email")
      *                     ),
      *                     @OA\Property(
      *                         property="assigned_users",
      *                         type="array",
      *                         @OA\Items(
      *                             type="object",
-     *                             @OA\Property(property="id", type="integer", example=2),
-     *                             @OA\Property(property="name", type="string", example="Jane Smith"),
-     *                             @OA\Property(property="email", type="string", example="jane.smith@example.com")
+     *                             @OA\Property(property="id", type="integer"),
+     *                             @OA\Property(property="name", type="string"),
+     *                             @OA\Property(property="email", type="string", format="email")
      *                         )
      *                     )
      *                 )
      *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Invalid type provided",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="status_code", type="integer", example=400),
+     *             @OA\Property(property="message", type="string", example="Invalid type provided"),
+     *             @OA\Property(property="data", type="array", items={})
      *         )
      *     ),
      *     @OA\Response(
@@ -3011,7 +3033,7 @@ class ChatController extends Controller
      *             type="object",
      *             @OA\Property(property="status_code", type="integer", example=404),
      *             @OA\Property(property="message", type="string", example="No Meetings Data Found"),
-     *             @OA\Property(property="data", type="array", @OA\Items(type="object"))
+     *             @OA\Property(property="data", type="array", items={})
      *         )
      *     ),
      *     @OA\Response(
@@ -3020,56 +3042,90 @@ class ChatController extends Controller
      *         @OA\JsonContent(
      *             type="object",
      *             @OA\Property(property="status_code", type="integer", example=500),
-     *             @OA\Property(property="message", type="string", example="Something went wrong")
+     *             @OA\Property(property="message", type="string", example="Something went wrong"),
+     *             @OA\Property(property="data", type="array", items={})
      *         )
-     *     ),
-     *     security={
-     *         {"bearerAuth": {}}
-     *     }
+     *     )
      * )
      */
-   
-     public function getMeetingDetails(Request $request)
-    {
-        try {
-            $userId = auth()->user()->id; // Get the ID of the currently authenticated user
+        public function getMeetingDetails(Request $request)
+        {
+            try {
+                $userId = auth()->user()->id; // Get the ID of the currently authenticated user
+                $type = $request->input('type'); // Type can be 'Receive', 'Given', or omitted
 
-            // Find the meeting details based on user ID, ensuring the message_type is "Meeting"
-            $meetingDetails = DB::table('message_meeting as mm')
-                ->join('message as m', 'mm.message_id', '=', 'm.id')
-                ->leftJoin('users as mu', 'm.created_by', '=', 'mu.id')
-                ->where('m.message_type', 'Meeting')
-                ->where(function($query) use ($userId) {
-                    $query->where('mm.created_by', $userId)
-                        ->orWhere('mu.id', $userId);
-                })
-                ->select(
-                    'mm.id',
-                    'mm.message_id',
-                    'mm.mode',
-                    'mm.title',
-                    'mm.description',
-                    'mm.date',
-                    'mm.start_time',
-                    'mm.end_time',
-                    'mm.meeting_url',
-                    'mm.users',
-                    'mm.latitude',
-                    'mm.longitude',
-                    'mm.location_url',
-                    'mm.location',
-                    'mm.created_by',
-                    'mm.updated_by',
-                    'mm.deleted_by',
-                    'mm.created_at',
-                    'mm.updated_at',
-                    'mm.deleted_at',
-                    'm.created_by as creator_id'
-                )
-                ->get();
+                // Start the query
+                $meetingDetailsQuery = DB::table('message_meeting as mm')
+                    ->join('message as m', 'mm.message_id', '=', 'm.id')
+                    ->leftJoin('users as mu', 'm.created_by', '=', 'mu.id')
+                    ->leftJoin('message_sender_receiver as msr', 'mm.message_id', '=', 'msr.message_id')
+                    ->where('m.message_type', 'Meeting')
+                    ->select(
+                        'mm.id',
+                        'mm.message_id',
+                        'mm.mode',
+                        'mm.title',
+                        'mm.description',
+                        'mm.date',
+                        'mm.start_time',
+                        'mm.end_time',
+                        'mm.meeting_url',
+                        'mm.users',
+                        'mm.latitude',
+                        'mm.longitude',
+                        'mm.location_url',
+                        'mm.location',
+                        'mm.created_by',
+                        'mm.updated_by',
+                        'mm.deleted_by',
+                        'mm.created_at',
+                        'mm.updated_at',
+                        'mm.deleted_at',
+                        'm.created_by as creator_id'
+                    );
 
+                // Apply filter based on the type if provided
+                if ($type === 'Receive') {
+                    $meetingDetailsQuery->where('msr.receiver_id', $userId);
+                } elseif ($type === 'Given') {
+                    $meetingDetailsQuery->where('msr.sender_id', $userId);
+                } elseif ($type !== null) {
+                    // If type is provided but not valid, return 400 response
+                    return response()->json([
+                        'status_code' => 400,
+                        'message' => 'Invalid type provided',
+                        'data' => [],
+                    ]);
+                }
+                
+                // Group by meeting ID
+                $meetingDetails = $meetingDetailsQuery
+                    ->groupBy(
+                        'mm.id',
+                        'mm.message_id',
+                        'mm.mode',
+                        'mm.title',
+                        'mm.description',
+                        'mm.date',
+                        'mm.start_time',
+                        'mm.end_time',
+                        'mm.meeting_url',
+                        'mm.users',
+                        'mm.latitude',
+                        'mm.longitude',
+                        'mm.location_url',
+                        'mm.location',
+                        'mm.created_by',
+                        'mm.updated_by',
+                        'mm.deleted_by',
+                        'mm.created_at',
+                        'mm.updated_at',
+                        'mm.deleted_at',
+                        'm.created_by'
+                    )
+                    ->get();
+                
                 if ($meetingDetails->isEmpty()) {
-                    // Return a response indicating no meetings were found
                     return response()->json([
                         'status_code' => 404,
                         'message' => 'No Meetings Data Found',
@@ -3077,49 +3133,47 @@ class ChatController extends Controller
                     ]);
                 }
 
-            $meetingDetails = $meetingDetails->map(function ($item) {
-                // Ensure 'users' column is not null or empty
-                if (!empty($item->users)) {
-                    // Split assigned user IDs
-                    $assignedUserIds = explode(',', $item->users);
+                // Process the meeting details
+                $meetingDetails = $meetingDetails->map(function ($item) {
+                    // Ensure 'users' column is not null or empty
+                    if (!empty($item->users)) {
+                        $assignedUserIds = explode(',', $item->users);
+                        
+                        // Fetch user details for the meeting creator and assigned users
+                        $creatorUser = User::find($item->creator_id);
+                        $assignedUsers = User::whereIn('id', $assignedUserIds)->get();
                     
-                    // Fetch user details for the meeting creator and assigned users
-                    $creatorUser = User::find($item->creator_id);
-                    $assignedUsers = User::whereIn('id', $assignedUserIds)->get();
-                
-                    // Add creator details to the meeting object
-                    $item->created_by = $creatorUser;
-                    $item->assigned_users = $assignedUsers;
-                } else {
-                    // Handle cases where there are no assigned users
-                    $item->created_by = User::find($item->creator_id);
-                    $item->assigned_users = collect(); // Empty collection
-                }
-                
-                // Remove temporary columns
-                unset($item->creator_id);
-                return $item;
-            });          
-            
-            return response()->json([
-                'status_code' => 200,
-                'message' => 'Meetings fetched successfully',
-                'data' => $meetingDetails,
-            ]);
+                        $item->created_by = $creatorUser;
+                        $item->assigned_users = $assignedUsers;
+                    } else {
+                        $item->created_by = User::find($item->creator_id);
+                        $item->assigned_users = collect(); // Empty collection
+                    }
+                    
+                    unset($item->creator_id);
 
-        } catch (\Exception $e) {
-            \Log::error([
-                'method' => __METHOD__,
-                'error' => [
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                    'message' => $e->getMessage()
-                ],
-                'created_at' => now()->format("Y-m-d H:i:s")
-            ]);
-            return response()->json(['status_code' => 500, 'message' => 'Something went wrong']);
+                    return $item;
+                });
+
+                return response()->json([
+                    'status_code' => 200,
+                    'message' => 'Meetings fetched successfully',
+                    'data' => $meetingDetails,
+                ]);
+            
+            } catch (\Exception $e) {
+                \Log::error([
+                    'method' => __METHOD__,
+                    'error' => [
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'message' => $e->getMessage()
+                    ],
+                    'created_at' => now()->format("Y-m-d H:i:s")
+                ]);
+                return response()->json(['status_code' => 500, 'message' => 'Something went wrong']);
+            }
         }
-    }
 }
 
 
