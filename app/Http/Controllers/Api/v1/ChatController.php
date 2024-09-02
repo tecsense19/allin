@@ -2950,7 +2950,176 @@ class ChatController extends Controller
             return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
         }
     }
+   
+    /**
+     * @OA\Get(
+     *     path="/api/v1/meetings",
+     *     summary="Get Meeting Details",
+     *     description="Retrieve the details of meetings where the current authenticated user is either the creator or an assigned user.",
+     *     tags={"Meetings"},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Meetings fetched successfully",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="status_code", type="integer", example=200),
+     *             @OA\Property(property="message", type="string", example="Meetings fetched successfully"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     type="object",
+     *                     @OA\Property(property="id", type="integer", example=1),
+     *                     @OA\Property(property="message_id", type="integer", example=2),
+     *                     @OA\Property(property="mode", type="string", example="Offline"),
+     *                     @OA\Property(property="title", type="string", example="Test Meeting title"),
+     *                     @OA\Property(property="description", type="string", example="Test Meeting Description"),
+     *                     @OA\Property(property="date", type="string", format="date", example="2024-06-12"),
+     *                     @OA\Property(property="start_time", type="string", format="time", example="12:30:00"),
+     *                     @OA\Property(property="end_time", type="string", format="time", example="14:00:00"),
+     *                     @OA\Property(property="meeting_url", type="string", example=""),
+     *                     @OA\Property(property="users", type="array", @OA\Items(type="integer")),
+     *                     @OA\Property(property="latitude", type="string", example=""),
+     *                     @OA\Property(property="longitude", type="string", example=""),
+     *                     @OA\Property(property="location_url", type="string", example=""),
+     *                     @OA\Property(property="location", type="string", example=""),
+     *                     @OA\Property(
+     *                         property="created_by",
+     *                         type="object",
+     *                         @OA\Property(property="id", type="integer", example=2),
+     *                         @OA\Property(property="name", type="string", example="John Doe"),
+     *                         @OA\Property(property="email", type="string", example="john.doe@example.com")
+     *                     ),
+     *                     @OA\Property(
+     *                         property="assigned_users",
+     *                         type="array",
+     *                         @OA\Items(
+     *                             type="object",
+     *                             @OA\Property(property="id", type="integer", example=2),
+     *                             @OA\Property(property="name", type="string", example="Jane Smith"),
+     *                             @OA\Property(property="email", type="string", example="jane.smith@example.com")
+     *                         )
+     *                     )
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="No meetings data found",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="status_code", type="integer", example=404),
+     *             @OA\Property(property="message", type="string", example="No Meetings Data Found"),
+     *             @OA\Property(property="data", type="array", @OA\Items(type="object"))
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Internal server error",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="status_code", type="integer", example=500),
+     *             @OA\Property(property="message", type="string", example="Something went wrong")
+     *         )
+     *     ),
+     *     security={
+     *         {"bearerAuth": {}}
+     *     }
+     * )
+     */
+   
+     public function getMeetingDetails(Request $request)
+    {
+        try {
+            $userId = auth()->user()->id; // Get the ID of the currently authenticated user
 
+            // Find the meeting details based on user ID, ensuring the message_type is "Meeting"
+            $meetingDetails = DB::table('message_meeting as mm')
+                ->join('message as m', 'mm.message_id', '=', 'm.id')
+                ->leftJoin('users as mu', 'm.created_by', '=', 'mu.id')
+                ->where('m.message_type', 'Meeting')
+                ->where(function($query) use ($userId) {
+                    $query->where('mm.created_by', $userId)
+                        ->orWhere('mu.id', $userId);
+                })
+                ->select(
+                    'mm.id',
+                    'mm.message_id',
+                    'mm.mode',
+                    'mm.title',
+                    'mm.description',
+                    'mm.date',
+                    'mm.start_time',
+                    'mm.end_time',
+                    'mm.meeting_url',
+                    'mm.users',
+                    'mm.latitude',
+                    'mm.longitude',
+                    'mm.location_url',
+                    'mm.location',
+                    'mm.created_by',
+                    'mm.updated_by',
+                    'mm.deleted_by',
+                    'mm.created_at',
+                    'mm.updated_at',
+                    'mm.deleted_at',
+                    'm.created_by as creator_id'
+                )
+                ->get();
+
+                if ($meetingDetails->isEmpty()) {
+                    // Return a response indicating no meetings were found
+                    return response()->json([
+                        'status_code' => 404,
+                        'message' => 'No Meetings Data Found',
+                        'data' => [],
+                    ]);
+                }
+
+            $meetingDetails = $meetingDetails->map(function ($item) {
+                // Ensure 'users' column is not null or empty
+                if (!empty($item->users)) {
+                    // Split assigned user IDs
+                    $assignedUserIds = explode(',', $item->users);
+                    
+                    // Fetch user details for the meeting creator and assigned users
+                    $creatorUser = User::find($item->creator_id);
+                    $assignedUsers = User::whereIn('id', $assignedUserIds)->get();
+                
+                    // Add creator details to the meeting object
+                    $item->created_by = $creatorUser;
+                    $item->assigned_users = $assignedUsers;
+                } else {
+                    // Handle cases where there are no assigned users
+                    $item->created_by = User::find($item->creator_id);
+                    $item->assigned_users = collect(); // Empty collection
+                }
+                
+                // Remove temporary columns
+                unset($item->creator_id);
+                return $item;
+            });          
+            
+            return response()->json([
+                'status_code' => 200,
+                'message' => 'Meetings fetched successfully',
+                'data' => $meetingDetails,
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => now()->format("Y-m-d H:i:s")
+            ]);
+            return response()->json(['status_code' => 500, 'message' => 'Something went wrong']);
+        }
+    }
 }
 
 
