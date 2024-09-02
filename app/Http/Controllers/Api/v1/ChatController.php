@@ -2954,7 +2954,7 @@ class ChatController extends Controller
 
     /**
      * @OA\Get(
-     *     path="/api/meetings",
+     *     path="/api/v1/meetings",
      *     summary="Get meeting details",
      *     description="Fetches meeting details based on the type (Receive or Given) and user ID.",
      *     tags={"Meetings"},
