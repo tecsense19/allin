@@ -3061,6 +3061,7 @@ class ChatController extends Controller
                     ->leftJoin('message_sender_receiver as msr', 'mm.message_id', '=', 'msr.message_id')
                     ->where('m.message_type', 'Meeting')
                     ->where('mm.created_by', $userId)
+                    ->orderBy('mm.created_at', 'desc') // Sorting by created_at in descending order
                     ->select(
                         'mm.id',
                         'mm.message_id',
@@ -3134,7 +3135,7 @@ class ChatController extends Controller
                     ]);
                 }
 
-                // // Process the meeting details
+                // Process the meeting details
                 $meetingDetails = $meetingDetails->map(function ($item) {
                     // Ensure 'users' column is not null or empty
                     if (!empty($item->users)) {
