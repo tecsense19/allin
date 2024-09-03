@@ -3048,135 +3048,138 @@ class ChatController extends Controller
      *     )
      * )
      */
-        public function getMeetingDetails(Request $request)
-        {
-            try {
-                $userId = auth()->user()->id; // Get the ID of the currently authenticated user
-                $type = $request->input('type'); // Type can be 'Receive', 'Given', or omitted
+    public function getMeetingDetails(Request $request)
+    {
+        try {
+            $userId = auth()->user()->id; // Get the ID of the currently authenticated user
+            $type = $request->input('type'); // Type can be 'Receive', 'Given', or omitted
 
-                // Start the query
-                $meetingDetailsQuery = DB::table('message_meeting as mm')
-                    ->join('message as m', 'mm.message_id', '=', 'm.id')
-                    ->leftJoin('users as mu', 'm.created_by', '=', 'mu.id')
-                    ->leftJoin('message_sender_receiver as msr', 'mm.message_id', '=', 'msr.message_id')
-                    ->where('m.message_type', 'Meeting')
-                    ->where('mm.created_by', $userId)
-                    ->orderBy('mm.created_at', 'desc') // Sorting by created_at in descending order
-                    ->select(
-                        'mm.id',
-                        'mm.message_id',
-                        'mm.mode',
-                        'mm.title',
-                        'mm.description',
-                        'mm.date',
-                        'mm.start_time',
-                        'mm.end_time',
-                        'mm.meeting_url',
-                        'mm.users',
-                        'mm.latitude',
-                        'mm.longitude',
-                        'mm.location_url',
-                        'mm.location',
-                        'mm.created_by',
-                        'mm.updated_by',
-                        'mm.deleted_by',
-                        'mm.created_at',
-                        'mm.updated_at',
-                        'mm.deleted_at',
-                        'm.created_by as creator_id'
-                    );
+            // Start the query
+            $meetingDetailsQuery = DB::table('message_meeting as mm')
+                ->join('message as m', 'mm.message_id', '=', 'm.id')
+                ->leftJoin('users as mu', 'm.created_by', '=', 'mu.id')
+                ->leftJoin('message_sender_receiver as msr', 'mm.message_id', '=', 'msr.message_id')
+                ->where('m.message_type', 'Meeting')
+                ->where(function ($query) use ($userId) {
+                    $query->where('mm.created_by', $userId)
+                          ->orWhere('mm.users', 'like', "%$userId%");
+                })
+                ->orderBy('mm.created_at', 'desc') // Sorting by created_at in descending order
+                ->select(
+                    'mm.id',
+                    'mm.message_id',
+                    'mm.mode',
+                    'mm.title',
+                    'mm.description',
+                    'mm.date',
+                    'mm.start_time',
+                    'mm.end_time',
+                    'mm.meeting_url',
+                    'mm.users',
+                    'mm.latitude',
+                    'mm.longitude',
+                    'mm.location_url',
+                    'mm.location',
+                    'mm.created_by',
+                    'mm.updated_by',
+                    'mm.deleted_by',
+                    'mm.created_at',
+                    'mm.updated_at',
+                    'mm.deleted_at',
+                    'm.created_by as creator_id'
+                );
 
-                // Apply filter based on the type if provided
-                if ($type === 'Receive') {
-                    $meetingDetailsQuery->where('msr.receiver_id', $userId);
-                } elseif ($type === 'Given') {
-                    $meetingDetailsQuery->where('msr.sender_id', $userId);
-                } elseif ($type !== null) {
-                    // If type is provided but not valid, return 400 response
-                    return response()->json([
-                        'status_code' => 400,
-                        'message' => 'Invalid type provided',
-                        'data' => [],
-                    ]);
-                }
-                
-                // Group by meeting ID
-                $meetingDetails = $meetingDetailsQuery
-                    ->groupBy(
-                        'mm.id',
-                        'mm.message_id',
-                        'mm.mode',
-                        'mm.title',
-                        'mm.description',
-                        'mm.date',
-                        'mm.start_time',
-                        'mm.end_time',
-                        'mm.meeting_url',
-                        'mm.users',
-                        'mm.latitude',
-                        'mm.longitude',
-                        'mm.location_url',
-                        'mm.location',
-                        'mm.created_by',
-                        'mm.updated_by',
-                        'mm.deleted_by',
-                        'mm.created_at',
-                        'mm.updated_at',
-                        'mm.deleted_at',
-                        'm.created_by'
-                    )
-                    ->get();
-                
-                if ($meetingDetails->isEmpty()) {
-                    return response()->json([
-                        'status_code' => 404,
-                        'message' => 'No Meetings Data Found',
-                        'data' => [],
-                    ]);
-                }
-
-                // Process the meeting details
-                $meetingDetails = $meetingDetails->map(function ($item) {
-                    // Ensure 'users' column is not null or empty
-                    if (!empty($item->users)) {
-                        $assignedUserIds = explode(',', $item->users);
-                        
-                        // Fetch user details for the meeting creator and assigned users
-                        $creatorUser = User::find($item->creator_id);
-                        $assignedUsers = User::whereIn('id', $assignedUserIds)->get();
-                    
-                        $item->created_by = $creatorUser;
-                        $item->assigned_users = $assignedUsers;
-                    } else {
-                        $item->created_by = User::find($item->creator_id);
-                        $item->assigned_users = collect(); // Empty collection
-                    }
-                    
-                    unset($item->creator_id);
-
-                    return $item;
-                });
-                
-
+            // Apply filter based on the type if provided
+            if ($type === 'Receive') {
+                $meetingDetailsQuery->where('msr.receiver_id', $userId);
+            } elseif ($type === 'Given') {
+                $meetingDetailsQuery->where('msr.sender_id', $userId);
+            } elseif ($type !== null) {
+                // If type is provided but not valid, return 400 response
                 return response()->json([
-                    'status_code' => 200,
-                    'message' => 'Meetings fetched successfully',
-                    'data' => $meetingDetails,
+                    'status_code' => 400,
+                    'message' => 'Invalid type provided',
+                    'data' => [],
                 ]);
-            
-            } catch (\Exception $e) {
-                \Log::error([
-                    'method' => __METHOD__,
-                    'error' => [
-                        'file' => $e->getFile(),
-                        'line' => $e->getLine(),
-                        'message' => $e->getMessage()
-                    ],
-                    'created_at' => now()->format("Y-m-d H:i:s")
-                ]);
-                return response()->json(['status_code' => 500, 'message' => 'Something went wrong']);
             }
+            
+            // Group by meeting ID
+            $meetingDetails = $meetingDetailsQuery
+                ->groupBy(
+                    'mm.id',
+                    'mm.message_id',
+                    'mm.mode',
+                    'mm.title',
+                    'mm.description',
+                    'mm.date',
+                    'mm.start_time',
+                    'mm.end_time',
+                    'mm.meeting_url',
+                    'mm.users',
+                    'mm.latitude',
+                    'mm.longitude',
+                    'mm.location_url',
+                    'mm.location',
+                    'mm.created_by',
+                    'mm.updated_by',
+                    'mm.deleted_by',
+                    'mm.created_at',
+                    'mm.updated_at',
+                    'mm.deleted_at',
+                    'm.created_by'
+                )
+                ->get();
+            
+            if ($meetingDetails->isEmpty()) {
+                return response()->json([
+                    'status_code' => 404,
+                    'message' => 'No Meetings Data Found',
+                    'data' => [],
+                ]);
+            }
+
+            // Process the meeting details
+            $meetingDetails = $meetingDetails->map(function ($item) {
+                // Ensure 'users' column is not null or empty
+                if (!empty($item->users)) {
+                    $assignedUserIds = explode(',', $item->users);
+                    
+                    // Fetch user details for the meeting creator and assigned users
+                    $creatorUser = User::find($item->creator_id);
+                    $assignedUsers = User::whereIn('id', $assignedUserIds)->get();
+                
+                    $item->created_by = $creatorUser;
+                    $item->assigned_users = $assignedUsers;
+                } else {
+                    $item->created_by = User::find($item->creator_id);
+                    $item->assigned_users = collect(); // Empty collection
+                }
+                
+                unset($item->creator_id);
+
+                return $item;
+            });
+            
+
+            return response()->json([
+                'status_code' => 200,
+                'message' => 'Meetings fetched successfully',
+                'data' => $meetingDetails,
+            ]);
+        
+        } catch (\Exception $e) {
+            \Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => now()->format("Y-m-d H:i:s")
+            ]);
+            return response()->json(['status_code' => 500, 'message' => 'Something went wrong']);
         }
+    }
 }
 
 
