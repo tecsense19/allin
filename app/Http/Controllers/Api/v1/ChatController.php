@@ -3299,7 +3299,7 @@ class ChatController extends Controller
                     // Store file information in the user_documents table
                     $userDocument = new UserDocument();
                     $userDocument->attachment_name = $attachmentName;
-                    $userDocument->attachment_path = setAssetPath('public/document-file/' . $attachmentName);
+                    $userDocument->attachment_path = setAssetPath('document-file/' . $attachmentName);
                     $userDocument->created_by = auth()->user()->id;
                     $userDocument->save();
 
@@ -3309,7 +3309,7 @@ class ChatController extends Controller
                         'data' => [
                             'attachment_name' => $attachmentName,
                             'file_type' => $extension,
-                            'attachment_path' => setAssetPath('public/document-file/' . $attachmentName),
+                            'attachment_path' => setAssetPath('document-file/' . $attachmentName),
                             'attachment_type' => 'scan'
                         ]
                     ]);
