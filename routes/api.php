@@ -56,7 +56,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
             Route::post('/message-task-chat', 'messageTaskChat');
             Route::post('/message-location', 'messageLocation');
             Route::post('/message-meeting', 'messageMeeting');
-            Route::post('/file-upload', 'fileUpload');
+            Route::post('/file-upload', 'fileUpload');            
             Route::post('/read-unread-message', 'changeMessageStatus');
             Route::post('/delete-message', 'deleteMessage');
             Route::post('/clear-message', 'clearMessage');
@@ -68,7 +68,10 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
             Route::post('/task-users-list', 'taskUserList');
             Route::post('/sent-task-summary-email', 'sentTaskSummaryEmail');
             Route::post('/sent-task-done', 'sentTaskDone'); 
-            Route::get('/meetings', 'getMeetingDetails');                        
+            Route::get('/meetings', 'getMeetingDetails');    
+            Route::post('/file-scan-upload', 'fileScanUpload'); 
+            Route::get('/user-documents', 'getUserDocuments'); 
+            
         });
         Route::controller(ProjectManagementController::class)->group(function () {
             Route::post('/add-work-hours', 'addWorkHours');

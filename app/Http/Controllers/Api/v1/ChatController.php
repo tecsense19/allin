@@ -17,6 +17,7 @@ use App\Models\MessageTaskChat;
 use App\Models\Reminder;
 use App\Models\User;
 use App\Models\userDeviceToken;
+use App\Models\UserDocument;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -1126,6 +1127,7 @@ class ChatController extends Controller
             return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
         }
     }
+
     /**
      * @OA\Post(
      *     path="/api/v1/file-upload",
@@ -1150,19 +1152,20 @@ class ChatController extends Controller
      *             )
      *         )
      *     ),
-     *      @OA\Response(
+     *     @OA\Response(
      *         response=200,
      *         description="json schema",
      *         @OA\MediaType(
-     *             mediaType="application/json",
-     *         ),
+     *             mediaType="application/json"
+     *         )
      *     ),
      *     @OA\Response(
      *         response=404,
      *         description="Invalid Request"
-     *     ),
+     *     )
      * )
      */
+
     public function fileUpload(Request $request)
     {
         try {
@@ -3180,6 +3183,222 @@ class ChatController extends Controller
             return response()->json(['status_code' => 500, 'message' => 'Something went wrong']);
         }
     }
+
+        /**
+         * @OA\Post(
+         *     path="/api/v1/file-scan-upload",
+         *     summary="Upload a file",
+         *     description="Uploads a file and stores its information in the database",
+         *     tags={"Files"},
+         *     security={{"bearerAuth":{}}},
+         *     @OA\RequestBody(
+         *         required=true,
+         *         @OA\MediaType(
+         *             mediaType="multipart/form-data",
+         *             @OA\Schema(
+         *                 type="object",
+         *                 required={"file", "attachment_type"},
+         *                 @OA\Property(
+         *                     property="file",
+         *                     description="File to upload",
+         *                     type="string",
+         *                     format="binary"
+         *                 ),
+         *                 @OA\Property(
+         *                     property="attachment_type",
+         *                     description="Type of the attachment",
+         *                     type="string",
+         *                     example="scan"
+         *                 )
+         *             )
+         *         )
+         *     ),
+         *     @OA\Response(
+         *         response=200,
+         *         description="File Uploaded Successfully!",
+         *         @OA\JsonContent(
+         *             @OA\Property(property="status_code", type="integer", example=200),
+         *             @OA\Property(property="message", type="string", example="File Uploaded Successfully!"),
+         *             @OA\Property(
+         *                 property="data",
+         *                 type="object",
+         *                 @OA\Property(property="attachment_name", type="string", example="file_name_123456.jpg"),
+         *                 @OA\Property(property="file_type", type="string", example="jpg"),
+         *                 @OA\Property(property="attachment_path", type="string", example="https://yourdomain.com/chat-file/file_name_123456.jpg"),
+         *                 @OA\Property(
+         *                     property="attachment_type",
+         *                     type="string",
+         *                     default="scan",
+         *                     description="Type of the attachment"
+         *                 )
+         *             )
+         *         )
+         *     ),
+         *     @OA\Response(
+         *         response=400,
+         *         description="Bad Request",
+         *         @OA\JsonContent(
+         *             @OA\Property(property="status_code", type="integer", example=400),
+         *             @OA\Property(property="message", type="string", example="File is required."),
+         *             @OA\Property(property="data", type="string", example="")
+         *         )
+         *     ),
+         *     @OA\Response(
+         *         response=500,
+         *         description="Internal Server Error",
+         *         @OA\JsonContent(
+         *             @OA\Property(property="status_code", type="integer", example=500),
+         *             @OA\Property(property="message", type="string", example="Something went wrong")
+         *         )
+         *     )
+         * )
+         */
+        public function fileScanUpload(Request $request)
+        {
+            try {
+                $rules = [
+                    'file' => 'required|file',
+                    'attachment_type' => 'required|string|in:scan'
+                ];
+
+                $message = [
+                    'file.required' => 'File is required.',
+                    'file.file' => 'File must be a valid file.',
+                    'attachment_type.required' => 'Attachment type is required.',
+                    'attachment_type.in' => 'Attachment type must be "scan".'
+                ];
+
+                $validator = Validator::make($request->all(), $rules, $message);
+                if ($validator->fails()) {
+                    return $this->sendJsonResponse([
+                        'status_code' => 400,
+                        'message' => $validator->errors()->first(),
+                        'data' => ""
+                    ]);
+                }
+
+                if ($request->hasFile('file') && $request->input('attachment_type') === 'scan') {
+                    $file = $request->file('file');
+                    $extension = strtolower($file->getClientOriginalExtension());
+                    $originalNameWithExt = $file->getClientOriginalName();
+                    $originalName = pathinfo($originalNameWithExt, PATHINFO_FILENAME);
+                    $originalName = create_slug($originalName);
+                    $attachmentName = $originalName . '_' . time() . '.' . $extension;
+                    $attachmentPath = 'document-file/' . $attachmentName;
+                    $destinationPath = public_path('document-file/');
+                    if (!file_exists($destinationPath)) {
+                        mkdir($destinationPath, 0777, true);
+                    }
+                    $file->move($destinationPath, $attachmentName);
+
+                    if (in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
+                        $optimizerChain = OptimizerChainFactory::create();
+                        $optimizerChain->optimize($destinationPath . $attachmentName);
+                    }
+
+                    // Store file information in the user_documents table
+                    $userDocument = new UserDocument();
+                    $userDocument->attachment_name = $attachmentName;
+                    $userDocument->attachment_path = setAssetPath('public/document-file/' . $attachmentName);
+                    $userDocument->created_by = auth()->user()->id;
+                    $userDocument->save();
+
+                    return $this->sendJsonResponse([
+                        'status_code' => 200,
+                        'message' => 'File Uploaded Successfully!',
+                        'data' => [
+                            'attachment_name' => $attachmentName,
+                            'file_type' => $extension,
+                            'attachment_path' => setAssetPath('public/document-file/' . $attachmentName),
+                            'attachment_type' => 'scan'
+                        ]
+                    ]);
+                } else {
+                    return $this->sendJsonResponse([
+                        'status_code' => 400,
+                        'message' => 'File is required or attachment type is invalid.',
+                        'data' => ""
+                    ]);
+                }
+            } catch (\Exception $e) {
+                Log::error([
+                    'method' => __METHOD__,
+                    'error' => [
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'message' => $e->getMessage()
+                    ],
+                    'created_at' => now()->format("Y-m-d H:i:s")
+                ]);
+                return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
+            }
+        }
+
+     /**
+     * @OA\Get(
+     *     path="/api/v1/user-documents",
+     *     summary="Get user documents",
+     *     description="Retrieves a list of documents created by the currently authenticated user",
+     *     tags={"Documents"},
+     *     operationId="getUserDocuments",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="User documents retrieved successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status_code", type="integer", example=200),
+     *             @OA\Property(property="message", type="string", example="Documents retrieved successfully"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     type="object",
+     *                     @OA\Property(property="id", type="integer"),
+     *                     @OA\Property(property="attachment_name", type="string"),
+     *                     @OA\Property(property="attachment_path", type="string"),
+     *                     @OA\Property(property="created_by", type="integer"),
+     *                     @OA\Property(property="created_at", type="string", format="date-time"),
+     *                     @OA\Property(property="updated_at", type="string", format="date-time")
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Internal Server Error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status_code", type="integer", example=500),
+     *             @OA\Property(property="message", type="string", example="Something went wrong")
+     *         )
+     *     )
+     * )
+     */
+    public function getUserDocuments(Request $request)
+    {
+        try {
+            $userId = auth()->user()->id; // Get the ID of the currently authenticated user
+
+            $documents = UserDocument::where('created_by', $userId)->get();
+
+            return response()->json([
+                'status_code' => 200,
+                'message' => 'Documents retrieved successfully',
+                'data' => $documents
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => now()->format("Y-m-d H:i:s")
+            ]);
+            return response()->json(['status_code' => 500, 'message' => 'Something went wrong'], 500);
+        }
+    }
+
 }
 
 
