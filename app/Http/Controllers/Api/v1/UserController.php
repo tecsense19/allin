@@ -223,8 +223,8 @@ class UserController extends Controller
                 'country_code' => 'required|string|max:255|regex:/^\+\d{1,4}$/',
                 'mobile' => 'required|string|regex:/^\d{6,14}$/',
                 'otp' => 'required|numeric|min:000000|max:999999',
-                'profile' => 'nullable|image|mimes:jpeg,jpg,png,webp,svg|max:2048',
-                'cover_image' => 'nullable|image|mimes:jpeg,jpg,png,webp,svg|max:2048',
+                'profile' => 'nullable|image|mimes:jpeg,jpg,png,webp,svg|max:10000',
+                'cover_image' => 'nullable|image|mimes:jpeg,jpg,png,webp,svg|max:10000',
                 'device_token' => 'required|string'
             ];
 
@@ -896,18 +896,27 @@ class UserController extends Controller
                 ];
             });
 
-        // Fetch groups
-        $groups = Group::where('status', 'Active')->get()->map(function ($group) {
-            return [
-                'id' => $group->id,
-                'name' => $group->name,
-                'profile' => @$group->profile_pic ? setAssetPath('user-profile/' . $group->profile_pic) : setAssetPath('assets/media/avatars/blank.png'),
-                'last_message' => null, // Groups may not have individual messages like users
-                'last_message_date' => null, // You can modify this if groups have messages
-                'unread_message_count' => 0, // Or you can implement group unread message count logic
-                'type' => 'group' // Identifying this entry as a group
-            ];
-        });
+            // Fetch groups where the user is the creator or a member
+            $groups = Group::where('status', 'Active')
+                ->whereIn('id', function ($query) use ($login_user_id) {
+                    $query->select('group_id')
+                        ->from('group_members')
+                        ->where('user_id', $login_user_id) // User is a member of the group
+                        ->orWhere('created_by', $login_user_id); // User created the group
+                })
+                ->get()
+                ->map(function ($group) {
+                    return [
+                        'id' => $group->id,
+                        'name' => $group->name,
+                        'profile' => @$group->profile_pic ? setAssetPath('user-profile/' . $group->profile_pic) : setAssetPath('assets/media/avatars/blank.png'),
+                        'last_message' => null, // Groups may not have individual messages like users
+                        'last_message_date' => null, // You can modify this if groups have messages
+                        'unread_message_count' => 0, // Or you can implement group unread message count logic
+                        'type' => 'group' // Identifying this entry as a group
+                    ];
+                });
+
 
         // Merge and sort by last_message_date
         $allEntries = $users->merge($groups)->sortByDesc('last_message_date')->values();

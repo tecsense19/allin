@@ -67,20 +67,30 @@ class GroupController extends Controller
 
      public function groupList(Request $request)
      {
-         try {
-            $groups = Group::all()->map(function ($group) {
-                $group->profile_pic = setAssetPath('user-profile/'.$group->profile_pic);
-                $group->cover_image = setAssetPath('user-profile/'.$group->cover_image);
-                return $group;
-            });
-            
-            $data = [
-                'status_code' => 200,
-                'message' => 'Group names fetched successfully',
-                'data' => $groups
-            ];
-            
-            return response()->json($data, 200);            
+        try {
+                $login_user_id = auth()->user()->id;
+        
+                // Retrieve groups where the logged-in user is either the creator or a member
+                $groups = Group::whereIn('id', function ($query) use ($login_user_id) {
+                        $query->select('group_id')
+                            ->from('group_members')
+                            ->where('user_id', $login_user_id) // User is a member of the group
+                            ->orWhere('created_by', $login_user_id); // User created the group
+                    })
+                    ->get()
+                    ->map(function ($group) {
+                        $group->profile_pic = setAssetPath('user-profile/' . $group->profile_pic);
+                        $group->cover_image = setAssetPath('user-profile/' . $group->cover_image);
+                        return $group;
+                    });
+        
+                $data = [
+                    'status_code' => 200,
+                    'message' => 'Group names fetched successfully',
+                    'data' => $groups
+                ];
+        
+                return response()->json($data, 200);
          } catch (\Exception $e) {
              Log::error([
                  'method' => __METHOD__,
@@ -93,7 +103,7 @@ class GroupController extends Controller
              ]);
              return response()->json(['status_code' => 500, 'message' => 'Something went wrong'], 500);
          }
-     }
+     }     
 
     /**
      * @OA\Post(
