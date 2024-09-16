@@ -249,10 +249,10 @@ class UserController extends Controller
                 'otp.max' => 'OTP must be at most 6 digits long.',
                 'profile.image' => 'Profile image must be an image file.',
                 'profile.mimes' => 'Profile image must be a JPEG, JPG, PNG,svg, or WebP file.',
-                'profile.max' => 'Profile image size must not exceed 2MB.',
+                'profile.max' => 'Profile image size must not exceed 10MB.',
                 'cover_image.image' => 'Cover image must be an image file.',
                 'cover_image.mimes' => 'Cover image must be a JPEG, JPG, PNG,svg, or WebP file.',
-                'cover_image.max' => 'Cover image size must not exceed 2MB.',
+                'cover_image.max' => 'Cover image size must not exceed 10MB.',
                 'device_token.required' => 'Device token is required.'
             ];
 
@@ -901,9 +901,11 @@ class UserController extends Controller
                 ->whereIn('id', function ($query) use ($login_user_id) {
                     $query->select('group_id')
                         ->from('group_members')
-                        ->where('user_id', $login_user_id) // User is a member of the group
-                        ->orWhere('created_by', $login_user_id); // User created the group
-                })
+                        ->where('user_id', $login_user_id) // User is a member of the group  
+                        ->whereNull('deleted_at')                      
+                        ->orWhere('created_by', $login_user_id) // User created the group
+                        ->whereNull('deleted_at');
+                })                
                 ->get()
                 ->map(function ($group) {
                     return [

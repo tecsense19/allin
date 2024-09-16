@@ -75,8 +75,10 @@ class GroupController extends Controller
                         $query->select('group_id')
                             ->from('group_members')
                             ->where('user_id', $login_user_id) // User is a member of the group
-                            ->orWhere('created_by', $login_user_id); // User created the group
-                    })
+                            ->whereNull('deleted_at')                            
+                            ->orWhere('created_by', $login_user_id) // User created the group
+                            ->whereNull('deleted_at');
+                    })                    
                     ->get()
                     ->map(function ($group) {
                         $group->profile_pic = setAssetPath('user-profile/' . $group->profile_pic);
