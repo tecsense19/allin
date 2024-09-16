@@ -68,13 +68,19 @@ class GroupController extends Controller
      public function groupList(Request $request)
      {
          try {
-             $groups = Group::all(['id', 'name']);
-             $data = [
-                 'status_code' => 200,
-                 'message' => 'Group names fetched successfully',
-                 'data' => $groups
-             ];
-             return response()->json($data, 200);
+            $groups = Group::all()->map(function ($group) {
+                $group->profile_pic = setAssetPath('user-profile/'.$group->profile_pic);
+                $group->cover_image = setAssetPath('user-profile/'.$group->cover_image);
+                return $group;
+            });
+            
+            $data = [
+                'status_code' => 200,
+                'message' => 'Group names fetched successfully',
+                'data' => $groups
+            ];
+            
+            return response()->json($data, 200);            
          } catch (\Exception $e) {
              Log::error([
                  'method' => __METHOD__,

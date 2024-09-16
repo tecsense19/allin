@@ -9,6 +9,7 @@ use App\Models\MessageSenderReceiver;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\userDeviceToken;
+use App\Models\Group;
 use App\Models\UserOtp;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
@@ -697,122 +698,247 @@ class UserController extends Controller
      *     ),
      * )
      */
+    // public function userList(Request $request)
+    // {
+    //     try {
+    //         $login_user_id = auth()->user()->id;
+    //         $deletedUsers = deleteChatUsers::where('user_id', $login_user_id)->pluck('deleted_user_id');
+    //         $users = User::where('id', '!=', $login_user_id)
+    //             ->where('role', 'User')
+    //             ->where('status', 'Active')
+    //             ->where(function ($q) use ($request) {
+    //                 if (@$request->search) {
+    //                     $q->where(function ($qq) use ($request) {
+    //                         $searchTerm = '%' . $request->search . '%';
+
+    //                         $qq->where('first_name', 'LIKE', $searchTerm)
+    //                             ->orWhere('last_name', 'LIKE', $searchTerm)
+    //                             ->orWhere('mobile', 'LIKE', $searchTerm)
+    //                             ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", [$searchTerm])
+    //                             ->orWhereRaw("CONCAT(first_name, last_name) LIKE ?", [$searchTerm]);
+    //                     });
+    //                 }
+    //             })
+    //             ->whereNotIn('id', $deletedUsers)
+    //             ->whereNull('deleted_at')
+    //             ->with(['sentMessages' => function ($query) use ($login_user_id) {
+    //                 $query->where('receiver_id', $login_user_id)
+    //                     ->whereNull('deleted_at');
+    //             }, 'receivedMessages' => function ($query) use ($login_user_id) {
+    //                 $query->where('sender_id', $login_user_id)
+    //                     ->whereNull('deleted_at');
+    //             }])
+    //             ->get()
+    //             ->map(function ($user) use ($login_user_id, $request) {
+    //                 $lastMessage = null;
+    //                 $messages = $user->sentMessages->merge($user->receivedMessages)->sortByDesc('created_at');
+    //                 $filteredMessages = $messages->reject(function ($message) {
+    //                     return $message->message && $message->message->message_type == 'Task Chat';
+    //                 });
+
+    //                 $lastMessage = $filteredMessages->first();
+    //                 if ($lastMessage && $lastMessage->message) {
+    //                     if ($lastMessage && $lastMessage->message) {
+    //                         if($lastMessage->message->message_type == 'Text'){
+    //                             $msg = $lastMessage->message->message;
+    //                         }else{
+    //                             $msg = $lastMessage->message->message_type;
+    //                         }
+    //                         $lastMessageContent = @$msg ? $msg : null;
+    //                         //$lastMessageContent = $lastMessage->message->message ?? $lastMessage->message->message_type ?? null;
+    //                         if ($lastMessage->created_at && $request->timezone) {
+    //                             $lastMessageDate = Carbon::parse($lastMessage->created_at)->setTimezone($request->timezone)->format('Y-m-d H:i:s');
+    //                         } elseif ($lastMessage->created_at) {
+    //                             $lastMessageDate = Carbon::parse($lastMessage->created_at)->format('Y-m-d H:i:s');
+    //                         } else {
+    //                             $lastMessageDate = null;
+    //                         }
+    //                     } else {
+    //                         $lastMessageContent = null;
+    //                         $lastMessageDate = null;
+    //                     }
+    //                 } else {
+    //                     $lastMessageContent = null;
+    //                     $lastMessageDate = null;
+    //                 }
+
+    //                 // Count unread messages, excluding deleted messages
+    //                 $unreadMessageCount = MessageSenderReceiver::where(function ($query) use ($user, $login_user_id) {
+    //                     $query->where('sender_id', $user->id)
+    //                         ->where('receiver_id', $login_user_id);
+    //                 })
+
+    //                     ->whereHas('message', function ($q) {
+    //                         $q->where('status', 'Unread')
+    //                             ->where('message_type', '!=', 'Task Chat')
+    //                             ->whereNull('deleted_at');
+    //                     })
+    //                     ->count();
+
+    //                 return [
+    //                     'id' => $user->id,
+    //                     'first_name' => $user->first_name,
+    //                     'last_name' => $user->last_name,
+    //                     'country_code' => $user->country_code,
+    //                     'mobile' => $user->mobile,
+    //                     'profile' => @$user->profile ? setAssetPath('user-profile/' . $user->profile) : setAssetPath('assets/media/avatars/blank.png'),
+    //                     'last_message' => $lastMessageContent,
+    //                     'last_message_date' => $lastMessageDate,
+    //                     'unread_message_count' => $unreadMessageCount,
+    //                 ];
+    //             })
+    //             ->sortByDesc('last_message_date')
+    //             ->values();
+
+
+    //         $data = [
+    //             'status_code' => 200,
+    //             'message' => "Get Data Successfully.",
+    //             'data' => [
+    //                 'userList' => $users
+    //             ]
+    //         ];
+    //         return $this->sendJsonResponse($data);
+    //     } catch (\Exception $e) {
+    //         Log::error(
+    //             [
+    //                 'method' => __METHOD__,
+    //                 'error' => [
+    //                     'file' => $e->getFile(),
+    //                     'line' => $e->getLine(),
+    //                     'message' => $e->getMessage()
+    //                 ],
+    //                 'created_at' => date("Y-m-d H:i:s")
+    //             ]
+    //         );
+    //         return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
+    //     }
+    // }
+
+
     public function userList(Request $request)
     {
-        try {
-            $login_user_id = auth()->user()->id;
-            $deletedUsers = deleteChatUsers::where('user_id', $login_user_id)->pluck('deleted_user_id');
-            $users = User::where('id', '!=', $login_user_id)
-                ->where('role', 'User')
-                ->where('status', 'Active')
-                ->where(function ($q) use ($request) {
-                    if (@$request->search) {
-                        $q->where(function ($qq) use ($request) {
-                            $searchTerm = '%' . $request->search . '%';
+    try {
+        $login_user_id = auth()->user()->id;
+        $deletedUsers = deleteChatUsers::where('user_id', $login_user_id)->pluck('deleted_user_id');
 
-                            $qq->where('first_name', 'LIKE', $searchTerm)
-                                ->orWhere('last_name', 'LIKE', $searchTerm)
-                                ->orWhere('mobile', 'LIKE', $searchTerm)
-                                ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", [$searchTerm])
-                                ->orWhereRaw("CONCAT(first_name, last_name) LIKE ?", [$searchTerm]);
-                        });
-                    }
-                })
-                ->whereNotIn('id', $deletedUsers)
-                ->whereNull('deleted_at')
-                ->with(['sentMessages' => function ($query) use ($login_user_id) {
-                    $query->where('receiver_id', $login_user_id)
-                        ->whereNull('deleted_at');
-                }, 'receivedMessages' => function ($query) use ($login_user_id) {
-                    $query->where('sender_id', $login_user_id)
-                        ->whereNull('deleted_at');
-                }])
-                ->get()
-                ->map(function ($user) use ($login_user_id, $request) {
-                    $lastMessage = null;
-                    $messages = $user->sentMessages->merge($user->receivedMessages)->sortByDesc('created_at');
-                    $filteredMessages = $messages->reject(function ($message) {
-                        return $message->message && $message->message->message_type == 'Task Chat';
+        // Fetch users
+        $users = User::where('id', '!=', $login_user_id)
+            ->where('role', 'User')
+            ->where('status', 'Active')
+            ->where(function ($q) use ($request) {
+                if (@$request->search) {
+                    $q->where(function ($qq) use ($request) {
+                        $searchTerm = '%' . $request->search . '%';
+                        $qq->where('first_name', 'LIKE', $searchTerm)
+                            ->orWhere('last_name', 'LIKE', $searchTerm)
+                            ->orWhere('mobile', 'LIKE', $searchTerm)
+                            ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", [$searchTerm])
+                            ->orWhereRaw("CONCAT(first_name, last_name) LIKE ?", [$searchTerm]);
                     });
+                }
+            })
+            ->whereNotIn('id', $deletedUsers)
+            ->whereNull('deleted_at')
+            ->with(['sentMessages' => function ($query) use ($login_user_id) {
+                $query->where('receiver_id', $login_user_id)
+                    ->whereNull('deleted_at');
+            }, 'receivedMessages' => function ($query) use ($login_user_id) {
+                $query->where('sender_id', $login_user_id)
+                    ->whereNull('deleted_at');
+            }])
+            ->get()
+            ->map(function ($user) use ($login_user_id, $request) {
+                $lastMessage = null;
+                $messages = $user->sentMessages->merge($user->receivedMessages)->sortByDesc('created_at');
+                $filteredMessages = $messages->reject(function ($message) {
+                    return $message->message && $message->message->message_type == 'Task Chat';
+                });
 
-                    $lastMessage = $filteredMessages->first();
-                    if ($lastMessage && $lastMessage->message) {
-                        if ($lastMessage && $lastMessage->message) {
-                            if($lastMessage->message->message_type == 'Text'){
-                                $msg = $lastMessage->message->message;
-                            }else{
-                                $msg = $lastMessage->message->message_type;
-                            }
-                            $lastMessageContent = @$msg ? $msg : null;
-                            //$lastMessageContent = $lastMessage->message->message ?? $lastMessage->message->message_type ?? null;
-                            if ($lastMessage->created_at && $request->timezone) {
-                                $lastMessageDate = Carbon::parse($lastMessage->created_at)->setTimezone($request->timezone)->format('Y-m-d H:i:s');
-                            } elseif ($lastMessage->created_at) {
-                                $lastMessageDate = Carbon::parse($lastMessage->created_at)->format('Y-m-d H:i:s');
-                            } else {
-                                $lastMessageDate = null;
-                            }
-                        } else {
-                            $lastMessageContent = null;
-                            $lastMessageDate = null;
-                        }
-                    } else {
-                        $lastMessageContent = null;
-                        $lastMessageDate = null;
-                    }
+                $lastMessage = $filteredMessages->first();
+                if ($lastMessage && $lastMessage->message) {
+                    $msg = ($lastMessage->message->message_type == 'Text') 
+                        ? $lastMessage->message->message 
+                        : $lastMessage->message->message_type;
+                    
+                    $lastMessageContent = @$msg ? $msg : null;
+                    $lastMessageDate = $lastMessage->created_at 
+                        ? Carbon::parse($lastMessage->created_at)->setTimezone($request->timezone ?? 'UTC')->format('Y-m-d H:i:s')
+                        : null;
+                } else {
+                    $lastMessageContent = null;
+                    $lastMessageDate = null;
+                }
 
-                    // Count unread messages, excluding deleted messages
-                    $unreadMessageCount = MessageSenderReceiver::where(function ($query) use ($user, $login_user_id) {
-                        $query->where('sender_id', $user->id)
-                            ->where('receiver_id', $login_user_id);
-                    })
-
-                        ->whereHas('message', function ($q) {
-                            $q->where('status', 'Unread')
-                                ->where('message_type', '!=', 'Task Chat')
-                                ->whereNull('deleted_at');
-                        })
-                        ->count();
-
-                    return [
-                        'id' => $user->id,
-                        'first_name' => $user->first_name,
-                        'last_name' => $user->last_name,
-                        'country_code' => $user->country_code,
-                        'mobile' => $user->mobile,
-                        'profile' => @$user->profile ? setAssetPath('user-profile/' . $user->profile) : setAssetPath('assets/media/avatars/blank.png'),
-                        'last_message' => $lastMessageContent,
-                        'last_message_date' => $lastMessageDate,
-                        'unread_message_count' => $unreadMessageCount,
-                    ];
+                // Count unread messages, excluding deleted messages
+                $unreadMessageCount = MessageSenderReceiver::where(function ($query) use ($user, $login_user_id) {
+                    $query->where('sender_id', $user->id)
+                        ->where('receiver_id', $login_user_id);
                 })
-                ->sortByDesc('last_message_date')
-                ->values();
+                ->whereHas('message', function ($q) {
+                    $q->where('status', 'Unread')
+                        ->where('message_type', '!=', 'Task Chat')
+                        ->whereNull('deleted_at');
+                })
+                ->count();
 
+                return [
+                    'id' => $user->id,
+                    'first_name' => $user->first_name,
+                    'last_name' => $user->last_name,
+                    'country_code' => $user->country_code,
+                    'mobile' => $user->mobile,
+                    'profile' => @$user->profile ? setAssetPath('user-profile/' . $user->profile) : setAssetPath('assets/media/avatars/blank.png'),
+                    'last_message' => $lastMessageContent,
+                    'last_message_date' => $lastMessageDate,
+                    'unread_message_count' => $unreadMessageCount,
+                    'type' => 'user' // Identifying this entry as a user
+                ];
+            });
 
-            $data = [
-                'status_code' => 200,
-                'message' => "Get Data Successfully.",
-                'data' => [
-                    'userList' => $users
-                ]
+        // Fetch groups
+        $groups = Group::where('status', 'Active')->get()->map(function ($group) {
+            return [
+                'id' => $group->id,
+                'name' => $group->name,
+                'profile' => @$group->profile_pic ? setAssetPath('user-profile/' . $group->profile_pic) : setAssetPath('assets/media/avatars/blank.png'),
+                'last_message' => null, // Groups may not have individual messages like users
+                'last_message_date' => null, // You can modify this if groups have messages
+                'unread_message_count' => 0, // Or you can implement group unread message count logic
+                'type' => 'group' // Identifying this entry as a group
             ];
+        });
+
+        // Merge and sort by last_message_date
+        $allEntries = $users->merge($groups)->sortByDesc('last_message_date')->values();
+
+        $data = [
+            'status_code' => 200,
+            'message' => "Data fetched successfully.",
+            'data' => [
+                'userList' => $allEntries
+            ]
+        ];
+
             return $this->sendJsonResponse($data);
         } catch (\Exception $e) {
-            Log::error(
-                [
-                    'method' => __METHOD__,
-                    'error' => [
-                        'file' => $e->getFile(),
-                        'line' => $e->getLine(),
-                        'message' => $e->getMessage()
-                    ],
-                    'created_at' => date("Y-m-d H:i:s")
-                ]
-            );
-            return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => date("Y-m-d H:i:s")
+            ]);
+
+            return $this->sendJsonResponse([
+                'status_code' => 500,
+                'message' => 'Something went wrong.'
+            ]);
         }
     }
+
 
     /**
      * @OA\Post(
