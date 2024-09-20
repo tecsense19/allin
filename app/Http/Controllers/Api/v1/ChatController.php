@@ -349,6 +349,7 @@ class ChatController extends Controller
             return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
         }
     }
+
     /**
      * @OA\Post(
      *     path="/api/v1/message-task",
@@ -363,7 +364,7 @@ class ChatController extends Controller
      *         @OA\MediaType(
      *             mediaType="multipart/form-data",
      *             @OA\Schema(
-     *                 required={"message_type","receiver_id","task_name"},
+     *                 required={"message_type", "receiver_id", "task_name", "date", "time"},
      *                 @OA\Property(
      *                     property="message_type",
      *                     type="string",
@@ -376,24 +377,41 @@ class ChatController extends Controller
      *                     example="1,2,3,4",
      *                     description="Comma-separated IDs of the receiver"
      *                 ),
-     *                 @OA\Property(
+     *                @OA\Property(
      *                     property="task_name",
-     *                     type="string",
-     *                     example="CRUD Module",
-     *                     description="Task Name"
+     *                     type="string",                     
+     *                     example="Task name",
+     *                     description="Date of the task"
      *                 ),
      *                 @OA\Property(
-     *                     property="task_description",
+     *                     property="checkbox",
+     *                     type="array",
+     *                     @OA\Items(
+     *                         type="string",
+     *                         example="CRUD Module"
+     *                     ),
+     *                     description="Array of checkbox"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="date",
      *                     type="string",
-     *                     example="",
-     *                     description="Task Description"
+     *                     format="date",
+     *                     example="2024-09-19",
+     *                     description="Date of the task"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="time",
+     *                     type="string",
+     *                     format="time",
+     *                     example="14:30",
+     *                     description="Time of the task"
      *                 ),
      *             )
      *         )
      *     ),
-     *      @OA\Response(
+     *     @OA\Response(
      *         response=200,
-     *         description="json schema",
+     *         description="Message Sent Successfully",
      *         @OA\MediaType(
      *             mediaType="application/json",
      *         ),
@@ -404,117 +422,248 @@ class ChatController extends Controller
      *     ),
      * )
      */
-    public function messageTask(Request $request)
-    {
-        try {
-            $rules = [
-                'message_type' => 'required|string',
-                'receiver_id' => 'required|string',
-                'task_name' => 'required|string',
-            ];
-
-            $message = [
-                'message_type.required' => 'The message type is required.',
-                'message_type.string' => 'The message type must be a string.',
-                'receiver_id.required' => 'The receiver ID is required.',
-                'receiver_id.string' => 'The receiver ID must be an string.',
-                'task_name.required' => 'The Task Name is required.',
-                'task_name.string' => 'The Task Name must be an string.',
-            ];
-
-            $validator = Validator::make($request->all(), $rules, $message);
-            if ($validator->fails()) {
-                $data = [
-                    'status_code' => 400,
-                    'message' => $validator->errors()->first(),
-                    'data' => ""
-                ];
-                return $this->sendJsonResponse($data);
-            }
-
-            $msg = new Message();
-            $msg->message_type = $request->message_type;
-            $msg->status = "Unread";
-            $msg->save();
-
-            $receiverIdsArray = explode(',', $request->receiver_id);
-            $senderId = auth()->user()->id;
-
-            $receiverIdsArray[] = $senderId;
-            $uniqueIdsArray = array_unique($receiverIdsArray);
-            $mergedIds = implode(',', $uniqueIdsArray);
-
-            $messageTask = new MessageTask();
-            $messageTask->message_id = $msg->id;
-            $messageTask->task_name = $request->task_name;
-            $messageTask->task_description = @$request->task_description ? $request->task_description : NULL;
-            $messageTask->users = $mergedIds;
-            $messageTask->save();
-
-            foreach ($receiverIdsArray as $receiverId) {
-                $messageSenderReceiver = new MessageSenderReceiver();
-                $messageSenderReceiver->message_id = $msg->id;
-                $messageSenderReceiver->sender_id = $senderId;
-                $messageSenderReceiver->receiver_id = $receiverId;
-                $messageSenderReceiver->save();
-
-                $message = [
-                    'id' => $msg->id,
-                    'sender' => auth()->user()->id,
-                    'receiver' => $receiverId,
-                    'message_type' => $request->message_type,
-                    'task_name' => $request->task_name,
-                    'task_description' => @$request->task_description ? $request->task_description : NULL,
-                    "screen" => "chatinner"
-                ];
-
-                broadcast(new MessageSent($message))->toOthers();
 
 
-                //Push Notification
-                $validationResults = validateToken($receiverId);
-                $validTokens = [];
-                $invalidTokens = [];
-                foreach ($validationResults as $result) {
-                    $validTokens = array_merge($validTokens, $result['valid']);
-                    $invalidTokens = array_merge($invalidTokens, $result['invalid']);
-                }
-                if (count($invalidTokens) > 0) {
-                    foreach ($invalidTokens as $singleInvalidToken) {
-                        userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
-                    }
-                }
+     public function messageTask(Request $request)
+     {
+         try {            
+             $rules = [
+                 'message_type' => 'required|string',
+                 'receiver_id' => 'required|string',          
+                 'task_name' => 'required|string', // Validating each task_name element                 
+             ];
+     
+             $message = [
+                 'message_type.required' => 'The message type is required.',
+                 'message_type.string' => 'The message type must be a string.',
+                 'receiver_id.required' => 'The receiver ID is required.',
+                 'receiver_id.string' => 'The receiver ID must be a string.', 
+                 'task_name.required' => 'The Task Name is required.',              
+             ];
+     
+             $validator = Validator::make($request->all(), $rules, $message);
+             if ($validator->fails()) {
+                 $data = [
+                     'status_code' => 400,
+                     'message' => $validator->errors()->first(),
+                     'data' => ""
+                 ];
+                 return $this->sendJsonResponse($data);
+             }
+                 
+             $msg = new Message();
+             $msg->message_type = $request->message_type;
+             $msg->status = "Unread";
+             $msg->date = $request->date; // Save date
+             $msg->time = $request->time; // Save time
+             $msg->save();           
+     
+             $receiverIdsArray = explode(',', $request->receiver_id);
+             $senderId = auth()->user()->id;
+     
+             $receiverIdsArray[] = $senderId;
+             $uniqueIdsArray = array_unique($receiverIdsArray);
+             $mergedIds = implode(',', $uniqueIdsArray);
 
-                $notification = [
-                    'title' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
-                    'body' => 'Task : ' . $request->task_name,
-                    'image' => "",
-                ];
 
-                if (count($validTokens) > 0) {
-                    sendPushNotification($validTokens, $notification, $message);
-                }
-            }
+             $task_name_Array = explode(',', $request->checkbox);             
+             $task_name_UArray = array_unique($task_name_Array);
 
-            $data = [
-                'status_code' => 200,
-                'message' => 'Message Sent Successfully!',
-                'data' => ""
-            ];
-            return $this->sendJsonResponse($data);
-        } catch (\Exception $e) {
-            Log::error([
-                'method' => __METHOD__,
-                'error' => [
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                    'message' => $e->getMessage()
-                ],
-                'created_at' => now()->format("Y-m-d H:i:s")
-            ]);
-            return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
-        }
-    }
+             if (empty($task_name_UArray)) {
+                 // If the array is empty, create a MessageTask entry with null data
+                 $messageTask = new MessageTask();
+                 $messageTask->message_id = $msg->id;
+                 $messageTask->task_name = null; // or a default value
+                 $messageTask->checkbox = null; // or a default value
+                 $messageTask->users = $mergedIds;
+                 $messageTask->save();
+             } else {
+                 foreach ($task_name_UArray as $taskName) { // Loop through multiple task names
+                     $messageTask = new MessageTask();
+                     $messageTask->message_id = $msg->id;
+                     $messageTask->task_name = $request->task_name;
+                     $messageTask->checkbox = $taskName; // Save each task name
+                     $messageTask->users = $mergedIds;
+                     $messageTask->save();
+                 }
+             }
+             
+             foreach ($receiverIdsArray as $receiverId) {
+                 $messageSenderReceiver = new MessageSenderReceiver();
+                 $messageSenderReceiver->message_id = $msg->id;
+                 $messageSenderReceiver->sender_id = $senderId;
+                 $messageSenderReceiver->receiver_id = $receiverId;
+                 $messageSenderReceiver->save();
+     
+                 $message = [
+                     'id' => $msg->id,
+                     'sender' => auth()->user()->id,
+                     'receiver' => $receiverId,
+                     'message_type' => $request->message_type,
+                     'task_name' => $request->task_name, // You may want to send all task names here
+                     "screen" => "chatinner"
+                 ];
+     
+                 broadcast(new MessageSent($message))->toOthers();
+     
+                 // Push Notification
+                 $validationResults = validateToken($receiverId);
+                 $validTokens = [];
+                 $invalidTokens = [];
+                 foreach ($validationResults as $result) {
+                     $validTokens = array_merge($validTokens, $result['valid']);
+                     $invalidTokens = array_merge($invalidTokens, $result['invalid']);
+                 }
+                 if (count($invalidTokens) > 0) {
+                     foreach ($invalidTokens as $singleInvalidToken) {
+                         userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
+                     }
+                 }
+     
+                 $notification = [
+                     'title' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
+                     'body' => 'Tasks: ' . $request->task_name, // Multiple task names
+                     'image' => "",
+                 ];
+     
+                 if (count($validTokens) > 0) {
+                     sendPushNotification($validTokens, $notification, $message);
+                 }
+             }
+     
+             $data = [
+                 'status_code' => 200,
+                 'message' => 'Message Sent Successfully!',
+                 'data' => ""
+             ];
+             return $this->sendJsonResponse($data);
+         } catch (\Exception $e) {
+             Log::error([
+                 'method' => __METHOD__,
+                 'error' => [
+                     'file' => $e->getFile(),
+                     'line' => $e->getLine(),
+                     'message' => $e->getMessage()
+                 ],
+                 'created_at' => now()->format("Y-m-d H:i:s")
+             ]);
+             return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
+         }
+     }
+     
+
+    // public function messageTask(Request $request)
+    // {
+    //     try {
+    //         $rules = [
+    //             'message_type' => 'required|string',
+    //             'receiver_id' => 'required|string',
+    //             'task_name' => 'required|string',
+    //         ];
+
+    //         $message = [
+    //             'message_type.required' => 'The message type is required.',
+    //             'message_type.string' => 'The message type must be a string.',
+    //             'receiver_id.required' => 'The receiver ID is required.',
+    //             'receiver_id.string' => 'The receiver ID must be an string.',
+    //             'task_name.required' => 'The Task Name is required.',
+    //             'task_name.string' => 'The Task Name must be an string.',
+    //         ];
+
+    //         $validator = Validator::make($request->all(), $rules, $message);
+    //         if ($validator->fails()) {
+    //             $data = [
+    //                 'status_code' => 400,
+    //                 'message' => $validator->errors()->first(),
+    //                 'data' => ""
+    //             ];
+    //             return $this->sendJsonResponse($data);
+    //         }
+
+    //         $msg = new Message();
+    //         $msg->message_type = $request->message_type;
+    //         $msg->status = "Unread";
+    //         $msg->save();
+
+    //         $receiverIdsArray = explode(',', $request->receiver_id);
+    //         $senderId = auth()->user()->id;
+
+    //         $receiverIdsArray[] = $senderId;
+    //         $uniqueIdsArray = array_unique($receiverIdsArray);
+    //         $mergedIds = implode(',', $uniqueIdsArray);
+
+    //         $messageTask = new MessageTask();
+    //         $messageTask->message_id = $msg->id;
+    //         $messageTask->task_name = $request->task_name;
+    //         $messageTask->task_description = @$request->task_description ? $request->task_description : NULL;
+    //         $messageTask->users = $mergedIds;
+    //         $messageTask->save();
+
+    //         foreach ($receiverIdsArray as $receiverId) {
+    //             $messageSenderReceiver = new MessageSenderReceiver();
+    //             $messageSenderReceiver->message_id = $msg->id;
+    //             $messageSenderReceiver->sender_id = $senderId;
+    //             $messageSenderReceiver->receiver_id = $receiverId;
+    //             $messageSenderReceiver->save();
+
+    //             $message = [
+    //                 'id' => $msg->id,
+    //                 'sender' => auth()->user()->id,
+    //                 'receiver' => $receiverId,
+    //                 'message_type' => $request->message_type,
+    //                 'task_name' => $request->task_name,
+    //                 'task_description' => @$request->task_description ? $request->task_description : NULL,
+    //                 "screen" => "chatinner"
+    //             ];
+
+    //             broadcast(new MessageSent($message))->toOthers();
+
+
+    //             //Push Notification
+    //             $validationResults = validateToken($receiverId);
+    //             $validTokens = [];
+    //             $invalidTokens = [];
+    //             foreach ($validationResults as $result) {
+    //                 $validTokens = array_merge($validTokens, $result['valid']);
+    //                 $invalidTokens = array_merge($invalidTokens, $result['invalid']);
+    //             }
+    //             if (count($invalidTokens) > 0) {
+    //                 foreach ($invalidTokens as $singleInvalidToken) {
+    //                     userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
+    //                 }
+    //             }
+
+    //             $notification = [
+    //                 'title' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
+    //                 'body' => 'Task : ' . $request->task_name,
+    //                 'image' => "",
+    //             ];
+
+    //             if (count($validTokens) > 0) {
+    //                 sendPushNotification($validTokens, $notification, $message);
+    //             }
+    //         }
+
+    //         $data = [
+    //             'status_code' => 200,
+    //             'message' => 'Message Sent Successfully!',
+    //             'data' => ""
+    //         ];
+    //         return $this->sendJsonResponse($data);
+    //     } catch (\Exception $e) {
+    //         Log::error([
+    //             'method' => __METHOD__,
+    //             'error' => [
+    //                 'file' => $e->getFile(),
+    //                 'line' => $e->getLine(),
+    //                 'message' => $e->getMessage()
+    //             ],
+    //             'created_at' => now()->format("Y-m-d H:i:s")
+    //         ]);
+    //         return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
+    //     }
+    // }
+
     /**
      * @OA\Post(
      *     path="/api/v1/message-task-chat",

@@ -1070,7 +1070,7 @@ class UserController extends Controller
                 ->with([
                     'message',
                     'message.attachment:id,message_id,attachment_name,attachment_path',
-                    'message.task:id,message_id,task_name,task_description',
+                    'message.task:id,message_id,task_name,task_checked',
                     'message.location:id,message_id,latitude,longitude,location_url',
                     'message.meeting:id,message_id,mode,title,description,date,start_time,end_time,meeting_url,users,latitude,longitude,location_url,location',
                     'message.reminder:id,message_id,title,description,date,time,users'
@@ -1094,8 +1094,29 @@ class UserController extends Controller
                         $messageDetails = $message->message->meeting;
                         break;
                     case 'Task':
-                        $messageDetails = $message->message->task;
-                        break;
+                            $taskDetails = DB::table('message_task')
+                                ->select('id', 'message_id', 'task_name', 'checkbox', 'task_checked')
+                                ->where('message_id', $message->message->id)
+                                ->get();
+                            $taskDetails_task = DB::table('message_task')
+                                ->select('id', 'message_id', 'task_name', 'checkbox', 'task_checked')
+                                ->where('message_id', $message->message->id)
+                                ->first();
+                        
+                            // Prepare the messageDetails array with task information
+                            $messageDetails = [
+                                'task_name' => $taskDetails_task->task_name, // Assuming task_name is available here
+                                'tasks' => $taskDetails->map(function ($task) {
+                                    return [
+                                        'id' => $task->id,
+                                        'message_id' => $task->message_id,
+                                        'checkbox' => $task->checkbox,
+                                        'task_checked' => (bool) $task->task_checked, // Convert to boolean
+                                    ];
+                                })->toArray(), // Convert to array if needed
+                            ];
+                        
+                        break;                        
                     case 'Reminder':
                         $messageDetails = $message->message->reminder;
                         break;
@@ -1192,6 +1213,174 @@ class UserController extends Controller
                 ]
             );
             return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
+        }
+    }
+
+   
+
+    /**
+     * @OA\Post(
+     *     path="/api/v1/tasks/update",
+     *     tags={"Update Tasks"},
+     *     summary="Update multiple tasks based on message ID",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 @OA\Property(property="message_id", type="integer", example=1132),
+     *                 @OA\Property(
+     *                     property="task_ids",
+     *                     type="array",
+     *                     @OA\Items(type="integer", example=71)
+     *                 ),
+     *                 @OA\Property(property="task_name", type="string", example="Main Task Name"),
+     *                 @OA\Property(
+     *                     property="checkbox",
+     *                     type="array",
+     *                     @OA\Items(type="string", example="Task 1 Checkbox")
+     *                 ),
+     *                 @OA\Property(
+     *                     property="task_checked",
+     *                     type="array",
+     *                     @OA\Items(type="boolean", example=true)
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Tasks updated successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status_code", type="integer", example=200),
+     *             @OA\Property(property="message", type="string", example="Tasks updated successfully!"),
+     *             @OA\Property(property="data", type="object",
+     *                 @OA\Property(property="message_id", type="integer", example=1132),
+     *                 @OA\Property(property="task_ids", type="array",
+     *                     @OA\Items(type="integer", example=71)
+     *                 ),
+     *                 @OA\Property(property="task_name", type="string", example="Main Task Name"),
+     *                 @OA\Property(property="checkbox", type="array",
+     *                     @OA\Items(type="string", example="Task 1 Checkbox")
+     *                 ),
+     *                 @OA\Property(property="task_checked", type="array",
+     *                     @OA\Items(type="boolean", example=true)
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Validation error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status_code", type="integer", example=400),
+     *             @OA\Property(property="message", type="string", example="Message ID is required."),
+     *             @OA\Property(property="data", type="string", example="")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Task not found or not updated",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status_code", type="integer", example=404),
+     *             @OA\Property(property="message", type="string", example="Task not found or not updated"),
+     *             @OA\Property(property="data", type="string", example="")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Server error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status_code", type="integer", example=500),
+     *             @OA\Property(property="message", type="string", example="Something went wrong")
+     *         )
+     *     )
+     * )
+     */
+    public function updateTask(Request $request)
+    {
+        try {          
+            // Validation for form-data input
+            $rules = [
+                'message_id' => 'required|integer',
+                'task_ids.*' => 'integer|exists:message_task,id', // Ensure each task ID exists
+                'task_name' => 'required|string',
+                'checkbox.*' => 'string', // Each checkbox item should be a string
+                'task_checked.*' => 'boolean', // Each task_checked item should be a boolean
+            ];
+
+            $messages = [
+                'message_id.required' => 'Message ID is required.',
+                'task_ids.required' => 'Task IDs are required.',
+                'task_ids.*.exists' => 'One or more specified tasks do not exist.',
+                'task_name.required' => 'Task name is required.',
+            ];
+
+            // Validate the form-data input
+            $validator = Validator::make($request->all(), $rules, $messages);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'status_code' => 400,
+                    'message' => $validator->errors()->first(),
+                    'data' => ""
+                ]);
+            }
+            $taskIds = $request->input('task_ids');
+            $taskIdsString = explode(',', $taskIds);
+
+            $checkbox = $request->input('checkbox');
+            $checkbox_names = explode(',', $checkbox);
+
+            $task_checked = $request->input('task_checked');
+
+            // Check if $task_checked is a string; if so, convert it to an array
+            if (is_string($task_checked)) {
+                $task_checked = explode(',', $task_checked); // Split string into array
+            }
+            
+            // Convert boolean values to integers
+            $task_checked_truflas = array_map(function($value) {
+                return filter_var($value, FILTER_VALIDATE_BOOLEAN) ? 1 : 0; // Convert to 1 or 0
+            }, $task_checked);
+            
+            // // Print the result for debugging
+            // print_r($task_checked_truflas);
+            // die;
+            
+            // Update each task
+            foreach ($taskIdsString as $index => $taskId) {
+
+              
+                DB::table('message_task')
+                    ->where('id', $taskId)
+                    ->update([
+                        'task_name' => $request->input('task_name'), // This may be the same for all tasks, or you can modify as needed
+                        'checkbox' => $checkbox_names[$index], // Assuming checkbox aligns with task_ids
+                        'task_checked' =>  $task_checked_truflas[$index], // Assuming task_checked aligns with task_ids
+                    ]);
+            }
+            return response()->json([
+                'status_code' => 200,
+                'message' => "Tasks updated successfully!"               
+            ]);
+        } catch (\Exception $e) {
+            // Log the error details
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => date("Y-m-d H:i:s")
+            ]);
+
+            return response()->json([
+                'status_code' => 500,
+                'message' => 'Something went wrong',
+            ]);
         }
     }
 

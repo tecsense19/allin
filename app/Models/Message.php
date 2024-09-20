@@ -18,6 +18,8 @@ class Message extends Model
         'message_type',
         'attachment_type',
         'message',
+        'date',
+        'time',
         'status',
         'created_by',
         'updated_by',
