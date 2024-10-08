@@ -54,6 +54,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
         });
         Route::controller(ChatController::class)->group(function () {
             Route::post('/text-message', 'textMessage');
+            Route::post('/update-text-message', 'updatetextMessage');            
             Route::post('/group-text-message', 'groupTextMessage');
             Route::post('/file-upload-message', 'fileUploadMessage');
             Route::post('/message-task', 'messageTask');
@@ -95,11 +96,13 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
         });
         Route::controller(GroupController::class)->group(function () {
             Route::Post('/group-list', 'groupList');
+            Route::Post('/group-member-search', 'groupMemberSearch');
             Route::post('/create-group', 'createGroup');
             Route::post('/edit-group', 'editGroup');
             Route::post('/user-list-for-group', 'userListForGroup');
             Route::post('/add-group-user', 'addGroupUser');
             Route::post('/remove-group-user', 'removeGroupUser');
+            Route::delete('/group-delete', 'deleteGroup');            
         });
     });
 });

@@ -180,6 +180,131 @@ class ChatController extends Controller
         }
     }
     
+
+    /**
+     * @OA\Post(
+     *     path="/api/v1/update-text-message",
+     *     summary="Update an existing message",
+     *     tags={"Messages"},
+     *     description="Update the content of an existing message by its message ID.",
+     *     operationId="updateMessage",
+     *     security={{"bearerAuth":{}}}, 
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Update Message Request",
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"message_id", "message"},
+     *                 @OA\Property(
+     *                     property="message_id",
+     *                     type="integer",
+     *                     example=1,
+     *                     description="ID of the message to be updated"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="message",
+     *                     type="string",
+     *                     example="This is an updated test message.",
+     *                     description="Updated content of the message",
+     *                     nullable=true
+     *                 ),
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Message not found"
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Invalid Request"
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Unauthorized to update message"
+     *     ),
+     * )
+     */
+
+    public function updateTextMessage(Request $request)
+    {
+        try {
+            $rules = [
+                'message_id' => 'required|integer|exists:message,id',
+                'message' => 'required|string',
+            ];
+
+            $messages = [
+                'message_id.required' => 'The message ID is required.',
+                'message_id.integer' => 'The message ID must be an integer.',
+                'message_id.exists' => 'The message ID does not exist.',
+                'message.required' => 'The message content is required.',
+                'message.string' => 'The message content must be a string.',
+            ];
+
+            $validator = Validator::make($request->all(), $rules, $messages);
+            if ($validator->fails()) {
+                return $this->sendJsonResponse([
+                    'status_code' => 400,
+                    'message' => $validator->errors()->first(),
+                    'data' => ""
+                ]);
+            }        
+
+            $msg = Message::where('id', $request->message_id)            
+            ->first();
+            
+            if (!$msg) {
+                return response()->json(['status_code' => 404, 'message' => 'Message not found'], 404);
+            }
+
+            // Check if the logged-in user is both the sender and creator of the message
+            $messageSenderReceiver = MessageSenderReceiver::where('message_id', $msg->id)
+                ->where('sender_id', auth()->user()->id)  // Ensure the logged-in user is the sender
+                ->first();
+
+            if (!$messageSenderReceiver) {
+                return response()->json(['status_code' => 403, 'message' => 'You are not authorized to edit this message'], 403);
+            }
+
+            // Update the message content
+            $msg->message = $request->message;
+            $msg->save();
+
+            $data = [
+                'status_code' => 200,
+                'message' => 'Message updated successfully!',
+                'data' => [
+                    'id' => $msg->id,
+                    'updated_message' => $msg->message,
+                ]
+            ];
+            return $this->sendJsonResponse($data);
+
+        } catch (\Exception $e) {
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => now()->format("Y-m-d H:i:s")
+            ]);
+
+            return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
+        }
+    }
+
+
     
     /**
      * @OA\Post(

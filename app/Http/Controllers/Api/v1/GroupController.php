@@ -82,7 +82,7 @@ class GroupController extends Controller
                     ->get()
                     ->map(function ($group) {
                         $group->profile_pic = setAssetPath('user-profile/' . $group->profile_pic);
-                        $group->cover_image = setAssetPath('user-profile/' . $group->cover_image);
+                        $group->cover_image = setAssetPath('user-profile-cover-image/' . $group->cover_image);
                         return $group;
                     });
         
@@ -106,6 +106,147 @@ class GroupController extends Controller
              return response()->json(['status_code' => 500, 'message' => 'Something went wrong'], 500);
          }
      }     
+
+
+     /**
+     * @OA\Post(
+     *     path="/api/v1/group-member-search",
+     *     summary="Search group members by name",
+     *     description="Get list of group members based on the search term",
+     *     tags={"Group Chat"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="group_id",
+     *         in="query",
+     *         required=true,
+     *         @OA\Schema(
+     *             type="integer",
+     *             example=1
+     *         ),
+     *         description="The ID of the group for which members are fetched"
+     *     ),
+     *     @OA\Parameter(
+     *         name="search_term",
+     *         in="query",
+     *         description="Search term for group member names",
+     *         required=false,
+     *         @OA\Schema(
+     *             type="string"
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Group members fetched successfully",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(
+     *                 property="status_code",
+     *                 type="integer",
+     *                 example=200
+     *             ),             
+     *             @OA\Property(
+     *                 property="message",
+     *                 type="string",
+     *                 example="Group members fetched successfully"
+     *             ),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     type="object",
+     *                     @OA\Property(property="group_name", type="string", example="Group Name"),
+     *                     @OA\Property(
+     *                         property="members",
+     *                         type="array",
+     *                         @OA\Items(
+     *                             type="object",
+     *                             @OA\Property(property="member_name", type="string", example="John Doe"),
+     *                             @OA\Property(property="profile_pic", type="string", example="path-to-profile-pic")
+     *                         )
+     *                     )
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Internal Server Error",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(
+     *                 property="status_code",
+     *                 type="integer",
+     *                 example=500
+     *             ),
+     *             @OA\Property(
+     *                 property="message",
+     *                 type="string",
+     *                 example="Something went wrong"
+     *             )
+     *         )
+     *     )
+     * )
+     */
+    public function groupMemberSearch(Request $request)
+    {
+        try {
+            $login_user_id = auth()->user()->id;
+            $group_id = $request->input('group_id');
+            $searchTerm = $request->input('search_term');
+            
+            // Check if the group_id is provided
+            if (!$group_id) {
+                return response()->json(['status_code' => 400, 'message' => 'Group ID ( group_id ) is required'], 400);
+            }
+            
+            // Find users based on group_id and optional search term for both first and last names
+            $groupMembers = User::join('group_members', 'users.id', '=', 'group_members.user_id')
+                ->where('group_members.group_id', $group_id)
+                ->when($searchTerm, function ($query, $searchTerm) {
+                    return $query->where(function ($query) use ($searchTerm) {
+                        $query->where('users.first_name', 'LIKE', '%' . $searchTerm . '%')
+                              ->orWhere('users.last_name', 'LIKE', '%' . $searchTerm . '%');
+                    });
+                })
+                ->whereNull('users.deleted_at') // Ensure the users are not soft-deleted
+                ->get(['users.*']); // Fetch all user fields or customize as needed
+            
+            // Map through the group members to set profile_pic and cover_image paths
+            $groupMembers = $groupMembers->map(function ($user) {
+                // Set profile_pic path only if it's not empty
+                if (!empty($user->profile)) {
+                    $user->profile = setAssetPath('user-profile/' . $user->profile);
+                }
+            
+                // Set cover_image path only if it's not empty
+                if (!empty($user->cover_image)) {
+                    $user->cover_image = setAssetPath('user-profile-cover-image/' . $user->cover_image);
+                }
+            
+                return $user;
+            });
+            
+            $data = [
+                'status_code' => 200,
+                'message' => 'Group members fetched successfully',
+                'data' => $groupMembers
+            ];
+            
+            return response()->json($data, 200);            
+            } catch (\Exception $e) {
+                Log::error([
+                    'method' => __METHOD__,
+                    'error' => [
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'message' => $e->getMessage()
+                    ],
+                    'created_at' => now()->format("Y-m-d H:i:s")
+                ]);
+                return response()->json(['status_code' => 500, 'message' => 'Something went wrong'], 500);
+            }
+    }
+
 
     /**
      * @OA\Post(
@@ -411,7 +552,7 @@ class GroupController extends Controller
                         'data' => ""
                     ]);
                 }
-                $group->profile_pic = $profileImageName;
+                $group->profile_pic = setAssetPath('user-profile/' . $profileImageName);
             }
 
             // Handle cover image upload
@@ -430,8 +571,8 @@ class GroupController extends Controller
                         'message' => 'Please select a valid image file (jpg, jpeg, png, webp, svg)',
                         'data' => ""
                     ]);
-                }
-                $group->cover_image = $coverImageName;
+                }            
+                $group->cover_image = setAssetPath('user-profile-cover-image/' . $coverImageName);
             }
 
             // Update group details
@@ -736,6 +877,139 @@ class GroupController extends Controller
             return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
         }
     }
+
+    /**
+     * Delete a group by ID.
+     *
+     * @OA\Delete(
+     *     path="/api/v1/group-delete",
+     *     summary="Delete a group by ID",
+     *     description="Delete a group by its group_id, only if the logged-in user is the creator.",
+     *     tags={"Group Chat"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="group_id",
+     *         in="query",
+     *         required=true,
+     *         @OA\Schema(
+     *             type="integer",
+     *             example=1
+     *         ),
+     *         description="The ID of the group to be deleted"
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Group deleted successfully",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(
+     *                 property="status_code",
+     *                 type="integer",
+     *                 example=200
+     *             ),
+     *             @OA\Property(
+     *                 property="message",
+     *                 type="string",
+     *                 example="Group deleted successfully"
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Unauthorized",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(
+     *                 property="status_code",
+     *                 type="integer",
+     *                 example=403
+     *             ),
+     *             @OA\Property(
+     *                 property="message",
+     *                 type="string",
+     *                 example="You are not authorized to delete this group"
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Group not found",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(
+     *                 property="status_code",
+     *                 type="integer",
+     *                 example=404
+     *             ),
+     *             @OA\Property(
+     *                 property="message",
+     *                 type="string",
+     *                 example="Group not found"
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Internal Server Error",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(
+     *                 property="status_code",
+     *                 type="integer",
+     *                 example=500
+     *             ),
+     *             @OA\Property(
+     *                 property="message",
+     *                 type="string",
+     *                 example="Something went wrong"
+     *             )
+     *         )
+     *     )
+     * )
+     */
+
+    public function deleteGroup(Request $request)
+    {
+        try {
+            $login_user_id = auth()->user()->id;
+            $group_id = $request->input('group_id');
+
+            // Check if the group_id is provided
+            if (!$group_id) {
+                return response()->json(['status_code' => 400, 'message' => 'Group ID (group_id) is required'], 400);
+            }
+
+            // Find the group by ID
+            $group = Group::where('id', $group_id)->whereNull('deleted_at')->first();
+
+            // Check if group exists
+            if (!$group) {
+                return response()->json(['status_code' => 404, 'message' => 'Group not found'], 404);
+            }
+
+            // Check if the logged-in user is the creator of the group
+            if ($group->created_by != $login_user_id) {
+                return response()->json(['status_code' => 403, 'message' => 'You are not authorized to delete this group'], 403);
+            }
+
+            // Perform soft delete (set deleted_at)
+            $group->delete();
+
+            return response()->json(['status_code' => 200, 'message' => 'Group deleted successfully'], 200);
+        } catch (\Exception $e) {
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => now()->format("Y-m-d H:i:s")
+            ]);
+            return response()->json(['status_code' => 500, 'message' => 'Something went wrong'], 500);
+        }
+    }
+
 
 
 }
