@@ -1021,7 +1021,7 @@ class ProjectManagementController extends Controller
             $event->user_id = auth()->user()->id;
             $event->event_title = $request->event_title;
             $event->event_description = $request->event_description;
-            $event->event_image = $eventImageName;
+            $event->event_image = @$eventImageName ? setAssetPath('event-image/' . $eventImageName) : setAssetPath('assets/media/avatars/blank.png');
             $event->event_date = Carbon::parse($request->event_date)->format('Y-m-d');
             $event->event_time = Carbon::parse($request->event_time)->setTimezone('UTC')->format('H:i:s');
             $event->latitude = $request->latitude;
