@@ -44,6 +44,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
             Route::post('/users-mobile-numbers', 'userMobileNumbers');
             Route::post('/user-list', 'userList');
             Route::post('/user-details', 'userDetails');
+            Route::post('/user-group-details', 'userGroupDetails');
             Route::post('/edit-profile', 'editProfile');
             Route::post('/delete-chat-user', 'deleteChatUsers');
             Route::post('/deleted-user-list', 'deletedUserList');
@@ -53,6 +54,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
         });
         Route::controller(ChatController::class)->group(function () {
             Route::post('/text-message', 'textMessage');
+            Route::post('/group-text-message', 'groupTextMessage');
             Route::post('/file-upload-message', 'fileUploadMessage');
             Route::post('/message-task', 'messageTask');
             Route::post('/message-task-chat', 'messageTaskChat');
@@ -70,9 +72,11 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
             Route::post('/task-users-list', 'taskUserList');
             Route::post('/sent-task-summary-email', 'sentTaskSummaryEmail');
             Route::post('/sent-task-done', 'sentTaskDone'); 
+            Route::post('/sent-meeting-done', 'sentMeetingDone'); 
             Route::get('/meetings', 'getMeetingDetails');    
             Route::post('/file-scan-upload', 'fileScanUpload'); 
             Route::get('/user-documents', 'getUserDocuments'); 
+            Route::post('/message-task-notification', 'message_task_notification');   
             
         });
         Route::controller(ProjectManagementController::class)->group(function () {

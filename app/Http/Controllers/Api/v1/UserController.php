@@ -10,6 +10,8 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\userDeviceToken;
 use App\Models\Group;
+use App\Models\GroupMembers;
+use App\Models\MessageTask;
 use App\Models\UserOtp;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
@@ -816,7 +818,142 @@ class UserController extends Controller
     // }
 
 
-    public function userList(Request $request)
+    // public function userList(Request $request)
+    // {
+    // try {
+    //     $login_user_id = auth()->user()->id;
+    //     $deletedUsers = deleteChatUsers::where('user_id', $login_user_id)->pluck('deleted_user_id');
+
+    //     // Fetch users
+    //     $users = User::where('id', '!=', $login_user_id)
+    //         ->where('role', 'User')
+    //         ->where('status', 'Active')
+    //         ->where(function ($q) use ($request) {
+    //             if (@$request->search) {
+    //                 $q->where(function ($qq) use ($request) {
+    //                     $searchTerm = '%' . $request->search . '%';
+    //                     $qq->where('first_name', 'LIKE', $searchTerm)
+    //                         ->orWhere('last_name', 'LIKE', $searchTerm)
+    //                         ->orWhere('mobile', 'LIKE', $searchTerm)
+    //                         ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", [$searchTerm])
+    //                         ->orWhereRaw("CONCAT(first_name, last_name) LIKE ?", [$searchTerm]);
+    //                 });
+    //             }
+    //         })
+    //         ->whereNotIn('id', $deletedUsers)
+    //         ->whereNull('deleted_at')
+    //         ->with(['sentMessages' => function ($query) use ($login_user_id) {
+    //             $query->where('receiver_id', $login_user_id)
+    //                 ->whereNull('deleted_at');
+    //         }, 'receivedMessages' => function ($query) use ($login_user_id) {
+    //             $query->where('sender_id', $login_user_id)
+    //                 ->whereNull('deleted_at');
+    //         }])
+    //         ->get()
+    //         ->map(function ($user) use ($login_user_id, $request) {
+    //             $lastMessage = null;
+    //             $messages = $user->sentMessages->merge($user->receivedMessages)->sortByDesc('created_at');
+    //             $filteredMessages = $messages->reject(function ($message) {
+    //                 return $message->message && $message->message->message_type == 'Task Chat';
+    //             });
+
+    //             $lastMessage = $filteredMessages->first();
+    //             if ($lastMessage && $lastMessage->message) {
+    //                 $msg = ($lastMessage->message->message_type == 'Text') 
+    //                     ? $lastMessage->message->message 
+    //                     : $lastMessage->message->message_type;
+                    
+    //                 $lastMessageContent = @$msg ? $msg : null;
+    //                 $lastMessageDate = $lastMessage->created_at 
+    //                     ? Carbon::parse($lastMessage->created_at)->setTimezone($request->timezone ?? 'UTC')->format('Y-m-d H:i:s')
+    //                     : null;
+    //             } else {
+    //                 $lastMessageContent = null;
+    //                 $lastMessageDate = null;
+    //             }
+
+    //             // Count unread messages, excluding deleted messages
+    //             $unreadMessageCount = MessageSenderReceiver::where(function ($query) use ($user, $login_user_id) {
+    //                 $query->where('sender_id', $user->id)
+    //                     ->where('receiver_id', $login_user_id);
+    //             })
+    //             ->whereHas('message', function ($q) {
+    //                 $q->where('status', 'Unread')
+    //                     ->where('message_type', '!=', 'Task Chat')
+    //                     ->whereNull('deleted_at');
+    //             })
+    //             ->count();
+
+    //             return [
+    //                 'id' => $user->id,
+    //                 'first_name' => $user->first_name,
+    //                 'last_name' => $user->last_name,
+    //                 'country_code' => $user->country_code,
+    //                 'mobile' => $user->mobile,
+    //                 'profile' => @$user->profile ? setAssetPath('user-profile/' . $user->profile) : setAssetPath('assets/media/avatars/blank.png'),
+    //                 'last_message' => $lastMessageContent,
+    //                 'last_message_date' => $lastMessageDate,
+    //                 'unread_message_count' => $unreadMessageCount,
+    //                 'type' => 'user' // Identifying this entry as a user
+    //             ];
+    //         });
+
+    //         // Fetch groups where the user is the creator or a member
+    //         $groups = Group::where('status', 'Active')
+    //             ->whereIn('id', function ($query) use ($login_user_id) {
+    //                 $query->select('group_id')
+    //                     ->from('group_members')
+    //                     ->where('user_id', $login_user_id) // User is a member of the group  
+    //                     ->whereNull('deleted_at')                      
+    //                     ->orWhere('created_by', $login_user_id) // User created the group
+    //                     ->whereNull('deleted_at');
+    //             })                
+    //             ->get()
+    //             ->map(function ($group) {
+    //                 return [
+    //                     'id' => $group->id,
+    //                     'name' => $group->name,
+    //                     'profile' => @$group->profile_pic ? setAssetPath('user-profile/' . $group->profile_pic) : setAssetPath('assets/media/avatars/blank.png'),
+    //                     'last_message' => null, // Groups may not have individual messages like users
+    //                     'last_message_date' => null, // You can modify this if groups have messages
+    //                     'unread_message_count' => 0, // Or you can implement group unread message count logic
+    //                     'type' => 'group' // Identifying this entry as a group
+    //                 ];
+    //             });
+
+
+    //     // Merge and sort by last_message_date
+    //     $allEntries = $users->merge($groups)->sortByDesc('last_message_date')->values();
+
+    //     $data = [
+    //         'status_code' => 200,
+    //         'message' => "Data fetched successfully.",
+    //         'data' => [
+    //             'userList' => $allEntries
+    //         ]
+    //     ];
+
+    //         return $this->sendJsonResponse($data);
+    //     } catch (\Exception $e) {
+    //         Log::error([
+    //             'method' => __METHOD__,
+    //             'error' => [
+    //                 'file' => $e->getFile(),
+    //                 'line' => $e->getLine(),
+    //                 'message' => $e->getMessage()
+    //             ],
+    //             'created_at' => date("Y-m-d H:i:s")
+    //         ]);
+
+    //         return $this->sendJsonResponse([
+    //             'status_code' => 500,
+    //             'message' => 'Something went wrong.'
+    //         ]);
+    //     }
+    // }
+    
+    
+     public function userList(Request $request)
     {
     try {
         $login_user_id = auth()->user()->id;
@@ -855,6 +992,11 @@ class UserController extends Controller
                     return $message->message && $message->message->message_type == 'Task Chat';
                 });
 
+                 // Exclude group messages (where group_id is not null)
+                $filteredMessages = $messages->filter(function ($message) {
+                    return is_null($message->message->group_id); // Exclude messages with group_id
+                });
+
                 $lastMessage = $filteredMessages->first();
                 if ($lastMessage && $lastMessage->message) {
                     $msg = ($lastMessage->message->message_type == 'Text') 
@@ -878,6 +1020,7 @@ class UserController extends Controller
                 ->whereHas('message', function ($q) {
                     $q->where('status', 'Unread')
                         ->where('message_type', '!=', 'Task Chat')
+                        ->whereNull('group_id') // Exclude messages with group_id
                         ->whereNull('deleted_at');
                 })
                 ->count();
@@ -896,8 +1039,7 @@ class UserController extends Controller
                 ];
             });
 
-            // Fetch groups where the user is the creator or a member
-            $groups = Group::where('status', 'Active')
+                $groups = Group::where('status', 'Active')
                 ->whereIn('id', function ($query) use ($login_user_id) {
                     $query->select('group_id')
                         ->from('group_members')
@@ -905,19 +1047,47 @@ class UserController extends Controller
                         ->whereNull('deleted_at')                      
                         ->orWhere('created_by', $login_user_id) // User created the group
                         ->whereNull('deleted_at');
-                })                
+                })
                 ->get()
-                ->map(function ($group) {
+                ->map(function ($group) use ($login_user_id, $request) {
+                    // Fetch the last message in the group
+                    $lastMessage = Message::where('group_id', $group->id)
+                        ->whereNull('deleted_at')
+                        ->where('message_type', '!=', 'Task Chat')
+                        ->orderByDesc('created_at')
+                        ->first();
+
+                    // Get the content and date of the last message
+                    $lastMessageContent = $lastMessage
+                        ? (($lastMessage->message_type == 'Text') ? $lastMessage->message : $lastMessage->message_type)
+                        : null;
+
+                    $lastMessageDate = $lastMessage && $lastMessage->created_at
+                        ? Carbon::parse($lastMessage->created_at)->setTimezone($request->timezone ?? 'UTC')->format('Y-m-d H:i:s')
+                        : null;
+
+                    // Count unread messages in the group
+                    $unreadgroupMessageCount = MessageSenderReceiver::whereHas('message', function ($q) use ($group, $login_user_id) {
+                        $q->where('group_id', $group->id)
+                        ->where('status', 'Unread')
+                        ->where('message_type', '!=', 'Task Chat')
+                        ->whereNull('deleted_at');
+                    })
+                    ->where('receiver_id', $login_user_id)
+                    ->count();
+
+
                     return [
                         'id' => $group->id,
                         'name' => $group->name,
                         'profile' => @$group->profile_pic ? setAssetPath('user-profile/' . $group->profile_pic) : setAssetPath('assets/media/avatars/blank.png'),
-                        'last_message' => null, // Groups may not have individual messages like users
-                        'last_message_date' => null, // You can modify this if groups have messages
-                        'unread_message_count' => 0, // Or you can implement group unread message count logic
+                        'last_message' => $lastMessageContent,
+                        'last_message_date' => $lastMessageDate,
+                        'unread_message_count' => $unreadgroupMessageCount,
                         'type' => 'group' // Identifying this entry as a group
                     ];
                 });
+
 
 
         // Merge and sort by last_message_date
@@ -1023,7 +1193,8 @@ class UserController extends Controller
      * )
      */
 
-    public function userDetails(Request $request)
+   
+   public function userDetails(Request $request)
     {
         try {
             $rules = [
@@ -1059,25 +1230,32 @@ class UserController extends Controller
                 'Reminder'
             ];
             $messages = MessageSenderReceiver::where(function ($query) use ($loginUser, $userId) {
-                $query->where('sender_id', $loginUser)->where('receiver_id', $userId);
-            })->orWhere(function ($query) use ($loginUser, $userId) {
-                $query->where('sender_id', $userId)->where('receiver_id', $loginUser);
+                $query->where(function ($q) use ($loginUser, $userId) {
+                    $q->where('sender_id', $loginUser)
+                      ->where('receiver_id', $userId);
+                })->orWhere(function ($q) use ($loginUser, $userId) {
+                    $q->where('sender_id', $userId)
+                      ->where('receiver_id', $loginUser);
+                });
             })
-                ->whereNull('deleted_at')
-                ->whereHas('message', function ($q) {
-                    $q->where('message_type', '!=', 'Task Chat');
-                })
-                ->with([
-                    'message',
-                    'message.attachment:id,message_id,attachment_name,attachment_path',
-                    'message.task:id,message_id,task_name,task_checked',
-                    'message.location:id,message_id,latitude,longitude,location_url',
-                    'message.meeting:id,message_id,mode,title,description,date,start_time,end_time,meeting_url,users,latitude,longitude,location_url,location',
-                    'message.reminder:id,message_id,title,description,date,time,users'
-                ])
-                ->orderByDesc('created_at')
-                ->skip($start)
-                ->take($limit)->get();
+            ->whereNull('deleted_at')
+            ->whereHas('message', function ($q) {
+                $q->where('message_type', '!=', 'Task Chat')
+                  ->whereNull('group_id') // Ensure that group_id is null
+                  ->whereNull('deleted_at'); // Ensure the message is not deleted
+            })
+            ->with([
+                'message',
+                'message.attachment:id,message_id,attachment_name,attachment_path',
+                'message.task:id,message_id,task_name,task_checked,task_checked_users',
+                'message.location:id,message_id,latitude,longitude,location_url',
+                'message.meeting:id,message_id,mode,title,description,date,start_time,end_time,meeting_url,users,latitude,longitude,location_url,location,accepted_users,decline_users',
+                'message.reminder:id,message_id,title,description,date,time,users'
+            ])
+            ->orderByDesc('created_at')
+            ->skip($start)
+            ->take($limit)
+            ->get();
             $groupedChat = $messages->map(function ($message) use ($loginUser, $request) {
                 $messageDetails = [];
                 switch ($message->message->message_type) {
@@ -1093,30 +1271,163 @@ class UserController extends Controller
                     case 'Meeting':
                         $messageDetails = $message->message->meeting;
                         break;
-                    case 'Task':
-                            $taskDetails = DB::table('message_task')
-                                ->select('id', 'message_id', 'task_name', 'checkbox', 'task_checked')
+                    case 'Task':                                              
+                        $taskDetails = DB::table('message_task')
+                                ->select('id', 'message_id', 'task_name', 'users', 'checkbox', 'task_checked', 'task_checked_users')
                                 ->where('message_id', $message->message->id)
+                                ->whereNull('deleted_at') // Ensure to get only not deleted rows
                                 ->get();
                             $taskDetails_task = DB::table('message_task')
-                                ->select('id', 'message_id', 'task_name', 'checkbox', 'task_checked')
+                                ->select('id', 'message_id', 'task_name', 'users','checkbox', 'task_checked', 'task_checked_users')
                                 ->where('message_id', $message->message->id)
-                                ->first();
-                        
+                                ->first();                            
                             // Prepare the messageDetails array with task information
+                            $users = explode(',', $taskDetails_task->users);
+                            $userList = User::whereIn('id', $users)->get(['id', 'first_name', 'last_name', 'country_code', 'mobile', 'profile']);
+                            $userList = $userList->map(function ($user) use ($taskDetails, $message) {
+                                $user->profile = @$user->profile ? setAssetPath('user-profile/' . $user->profile) : setAssetPath('assets/media/avatars/blank.png');                                
+                                    // // Initialize an empty string to hold the task IDs
+                                    // $user->task_ids = '';
+                                    // $allTaskId = [];
+                                    // $doneTaskId = [];
+
+                                    // // Loop through each task to check if the user has checked it
+                                    // foreach ($taskDetails as $task) {
+                                    //     $checkedUsers = explode(',', $task->task_checked_users);
+                                        
+                                    //     // Remove the first empty element (if there is any)
+                                    //     if (empty($checkedUsers[0])) {
+                                    //         array_shift($checkedUsers);
+                                    //     }
+
+                                    //     // Remove the $message->message->created_by ID from the checked users list
+                                    //     $checkedUsers = array_diff($checkedUsers, [$message->message->created_by]);
+
+                                    //     // Check if the user ID is in the checked users list
+                                    //     if (in_array($user->id, $checkedUsers)) {
+                                    //         // If yes, append the task ID to the user's task_ids string
+                                    //         $user->task_ids .= $task->id . ','; // Append with a comma
+                                    //         $doneTaskId[] = $task->id;
+                                    //     }
+
+                                    //     // Add all task IDs, including those created by others
+                                    //     $allTaskId[] = $task->id;
+                                    // }
+
+                                    // // Remove the trailing comma if task_ids is not empty
+                                    // if (!empty($user->task_ids)) {
+                                    //     $user->task_ids = rtrim($user->task_ids, ','); // Remove the last comma
+                                    // }
+
+                                    // // Calculate pending tasks by removing the done tasks from all tasks
+                                    // $pendingTaskId = array_diff($allTaskId, $doneTaskId);
+                                                                    
+                                    // // If the current user is the one who created the message, set task_done status
+                                    // if ($user->id == $message->message->created_by) {                                        
+                                    //     $user->task_done = empty($pendingTaskId) ? true : false;
+                                    // }                                    
+                                   
+                                    // // Initialize an empty array to hold task IDs
+                                    // $taskids = [];
+
+                                    // // Loop through each task to collect task IDs
+                                    // foreach ($taskDetails as $task) {
+                                    //     $taskids[] = $task->id;
+                                    // }
+                                    
+
+                                    // Initialize an empty string to hold the task IDs
+                                    $user->task_ids = '';
+                                    $allTaskId = [];
+                                    $doneTaskId = [];
+                                    $allTasksCheckedByOthers = true; // Flag to track if all tasks are checked by other users
+                                
+
+                                    // Loop through each task to check if the user has checked it
+                                    foreach ($taskDetails as $task) {
+                                        $checkedUsers = explode(',', $task->task_checked_users);
+                                      
+                                        
+                                        // Remove the first empty element (if there is any)
+                                        if (empty($checkedUsers[0])) {
+                                            array_shift($checkedUsers);
+                                        }
+
+                                        // Remove the $message->message->created_by ID from the checked users list when checking other users' task status
+                                        $checkedByOthers = array_diff($checkedUsers, [$message->message->created_by]);
+
+                                        // If the user ID is in the checked users list, mark the task as done for the user
+                                        if (in_array($user->id, $checkedUsers)) {
+                                            $user->task_ids .= $task->id . ','; // Append with a comma
+                                            $doneTaskId[] = $task->id;
+                                        }
+   
+                                        $assignedUsers = explode(',', $task->users);                                       
+                                        // If not all other users have checked this task, mark the flag as false
+                                        if (empty($checkedByOthers) || count($checkedByOthers) < count($assignedUsers) - 1) {
+
+                                          
+                                            $allTasksCheckedByOthers = false; // At least one task is not checked by all other users
+                                        }                                 
+                                        // Add all task IDs, including those created by others
+                                        $allTaskId[] = $task->id;
+                                    }
+
+                                
+
+                                    // Remove the trailing comma if task_ids is not empty
+                                    if (!empty($user->task_ids)) {
+                                        $user->task_ids = rtrim($user->task_ids, ','); // Remove the last comma
+                                    }
+
+                                    // Calculate pending tasks by removing the done tasks from all tasks
+                                    $pendingTaskId = array_diff($allTaskId, $doneTaskId);
+
+                                    // If the current user is the one who created the message, set task_done status based on all other users' task completion
+                                    if ($user->id == $message->message->created_by) {
+                                        // Check if all tasks are done by other users
+                                        $user->task_done = $allTasksCheckedByOthers ? true : false;
+                                    } else{
+                                        $user->task_done = false;   
+                                    }
+
+                                    // Initialize an empty array to hold task IDs
+                                    $taskids = [];
+
+                                    // Loop through each task to collect task IDs
+                                    foreach ($taskDetails as $task) {
+                                        $taskids[] = $task->id;
+                                    }
+                                  
+                                    return $user;
+                            });                                                      
                             $messageDetails = [
-                                'task_name' => $taskDetails_task->task_name, // Assuming task_name is available here
+                                'task_name' => $taskDetails_task->task_name,
+                                'date' => $message->message->date,
+                                'time' => $message->message->time,
+                                'users' => $userList,// Assuming task_name is available here
                                 'tasks' => $taskDetails->map(function ($task) {
+
+                                // Assuming $task->task_checked_users contains ",131,132"
+                                $checkedUsers = explode(',', $task->task_checked_users);
+
+                                // Remove the first empty element (if there is any)
+                                if ($checkedUsers[0] === '') {
+                                    array_shift($checkedUsers);
+                                }
+
+                                // Convert the array back to a string
+                                $task->task_checked_users = implode(',', $checkedUsers);
                                     return [
                                         'id' => $task->id,
                                         'message_id' => $task->message_id,
                                         'checkbox' => $task->checkbox,
                                         'task_checked' => (bool) $task->task_checked, // Convert to boolean
+                                        'task_checked_users' => $task->task_checked_users,
                                     ];
                                 })->toArray(), // Convert to array if needed
-                            ];
-                        
-                        break;                        
+                            ];                        
+                        break;                                             
                     case 'Reminder':
                         $messageDetails = $message->message->reminder;
                         break;
@@ -1215,10 +1526,513 @@ class UserController extends Controller
             return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
         }
     }
+    
+      // public function userDetails(Request $request)
+    // {
+    //     try {
+    //         $rules = [
+    //             'id' => 'required|integer|exists:users,id',
+    //         ];
 
+    //         $message = [
+    //             'id.required' => 'User ID is required.',
+    //             'id.integer' => 'User ID must be an integer.',
+    //             'id.exists' => 'The specified user does not exist.',
+    //         ];
+    //         $start = @$request->start ? $request->start : 0;
+    //         $limit = @$request->limit ? $request->limit : 15;
+    //         $validator = Validator::make($request->all(), $rules, $message);
+    //         if ($validator->fails()) {
+    //             $data = [
+    //                 'status_code' => 400,
+    //                 'message' => $validator->errors()->first(),
+    //                 'data' => ""
+    //             ];
+    //             return $this->sendJsonResponse($data);
+    //         }
+    //         $user = new User();
+    //         $userData = $user->find($request->id);
+    //         $userData->profile = @$userData->profile ? setAssetPath('user-profile/' . $userData->profile) : setAssetPath('assets/media/avatars/blank.png');
+    //         $userData->cover_image = @$userData->cover_image ? setAssetPath('user-profile-cover-image/' . $userData->cover_image) : setAssetPath('assets/media/misc/image.png');
+
+    //         $loginUser = auth()->user()->id;
+    //         $userId = $request->id;
+    //         $filter = [
+    //             'Task',
+    //             'Meeting',
+    //             'Reminder'
+    //         ];
+    //         $messages = MessageSenderReceiver::where(function ($query) use ($loginUser, $userId) {
+    //             $query->where('sender_id', $loginUser)->where('receiver_id', $userId);
+    //         })->orWhere(function ($query) use ($loginUser, $userId) {
+    //             $query->where('sender_id', $userId)->where('receiver_id', $loginUser);
+    //         })
+    //             ->whereNull('deleted_at')
+    //             ->whereHas('message', function ($q) {
+    //                 $q->where('message_type', '!=', 'Task Chat');
+    //             })
+    //             ->with([
+    //                 'message',
+    //                 'message.attachment:id,message_id,attachment_name,attachment_path',
+    //                 'message.task:id,message_id,task_name,task_checked',
+    //                 'message.location:id,message_id,latitude,longitude,location_url',
+    //                 'message.meeting:id,message_id,mode,title,description,date,start_time,end_time,meeting_url,users,latitude,longitude,location_url,location,accepted_users,decline_users',
+    //                 'message.reminder:id,message_id,title,description,date,time,users'
+    //             ])
+    //             ->orderByDesc('created_at')
+    //             ->skip($start)
+    //             ->take($limit)->get();
+    //         $groupedChat = $messages->map(function ($message) use ($loginUser, $request) {
+    //             $messageDetails = [];
+    //             switch ($message->message->message_type) {
+    //                 case 'Text':
+    //                     $messageDetails = $message->message->message;
+    //                     break;
+    //                 case 'Attachment':
+    //                     $messageDetails = $message->message->attachment;
+    //                     break;
+    //                 case 'Location':
+    //                     $messageDetails = $message->message->location;
+    //                     break;
+    //                 case 'Meeting':
+    //                     $messageDetails = $message->message->meeting;
+    //                     break;
+    //                 case 'Task':
+    //                      $taskDetails = DB::table('message_task')
+    //                             ->select('id', 'message_id', 'task_name', 'users', 'checkbox', 'task_checked', 'task_checked_users')
+    //                             ->where('message_id', $message->message->id)
+    //                             ->whereNull('deleted_at') // Ensure to get only not deleted rows
+    //                             ->get();
+    //                         $taskDetails_task = DB::table('message_task')
+    //                             ->select('id', 'message_id', 'task_name', 'users','checkbox', 'task_checked', 'task_checked_users')
+    //                             ->where('message_id', $message->message->id)
+    //                             ->first();                            
+    //                       // Prepare the messageDetails array with task information
+    //                         $users = explode(',', $taskDetails_task->users);
+    //                         $userList = User::whereIn('id', $users)->get(['id', 'first_name', 'last_name', 'country_code', 'mobile', 'profile']);
+
+    //                         $userList = $userList->map(function ($user) use ($taskDetails) {
+    //                             $user->profile = @$user->profile ? setAssetPath('user-profile/' . $user->profile) : setAssetPath('assets/media/avatars/blank.png');                                
+    //                                 // Initialize an empty string to hold the task IDs
+    //                                 $user->task_ids = '';
+
+    //                                 // Loop through each task to check if the user has checked it
+    //                                 foreach ($taskDetails as $task) {
+    //                                     $checkedUsers = explode(',', $task->task_checked_users);
+                                        
+    //                                     // Remove the first empty element (if there is any)
+    //                                     if (empty($checkedUsers[0])) {
+    //                                         array_shift($checkedUsers);
+    //                                     }
+
+    //                                     // Check if the user ID is in the checked users list
+    //                                     if (in_array($user->id, $checkedUsers)) {
+    //                                         // If yes, append the task ID to the user's task_ids string
+    //                                         $user->task_ids .= $task->id . ','; // Append with a comma
+    //                                     }
+    //                                 }
+
+    //                                 // Remove the trailing comma if task_ids is not empty
+    //                                 if (!empty($user->task_ids)) {
+    //                                     $user->task_ids = rtrim($user->task_ids, ','); // Remove the last comma
+    //                                 }
+
+    //                                 return $user;
+
+    //                         });   
+                            
+                       
+    //                         $messageDetails = [
+    //                             'task_name' => $taskDetails_task->task_name,
+    //                             'date' => $message->message->date,
+    //                             'time' => $message->message->time,
+    //                             'users' => $userList,// Assuming task_name is available here
+    //                             'tasks' => $taskDetails->map(function ($task) {
+
+    //                             // Assuming $task->task_checked_users contains ",131,132"
+    //                             $checkedUsers = explode(',', $task->task_checked_users);
+
+    //                             // Remove the first empty element (if there is any)
+    //                             if ($checkedUsers[0] === '') {
+    //                                 array_shift($checkedUsers);
+    //                             }
+
+    //                             // Convert the array back to a string
+    //                             $task->task_checked_users = implode(',', $checkedUsers);
+    //                                 return [
+    //                                     'id' => $task->id,
+    //                                     'message_id' => $task->message_id,
+    //                                     'checkbox' => $task->checkbox,
+    //                                     'task_checked' => (bool) $task->task_checked, // Convert to boolean
+    //                                     'task_checked_users' => $task->task_checked_users,
+    //                                 ];
+    //                             })->toArray(), // Convert to array if needed
+    //                         ];
+                        
+    //                     break;                                                  
+    //                 case 'Reminder':
+    //                     $messageDetails = $message->message->reminder;
+    //                     break;
+    //                 case 'Contact':
+    //                     $messageDetails = $message->message->message;
+    //                     break;
+    //             }
+    //             if($message->message->message_type == 'Meeting' || $message->message->message_type == 'Reminder'){
+    //                 $users = explode(',',$messageDetails->users);
+    //                 $userList = User::whereIn('id', $users)->get(['id','first_name','last_name','country_code','mobile','profile']);
+    //                 $userList = $userList->map(function ($user) {
+    //                     $user->profile = @$user->profile ? setAssetPath('user-profile/' . $user->profile) : setAssetPath('assets/media/avatars/blank.png');
+    //                     return $user;
+    //                 });
+    //                 $messageDetails->users = $userList;
+    //                 $messageDetails->date = @$request->timezone ? Carbon::parse($messageDetails->date)->format('d-m-Y') : Carbon::parse($messageDetails->date)->format('Y-m-d H:i:s');
+    //                 if($message->message->message_type == 'Reminder'){
+    //                     $messageDetails->time = @$request->timezone ? Carbon::parse($messageDetails->time)->format('h:i a') : Carbon::parse($messageDetails->time)->format('h:i a');
+    //                 }elseif($message->message->message_type == 'Meeting'){
+    //                     $messageDetails->start_time = @$request->timezone ? Carbon::parse($messageDetails->start_time)->format('h:i a') : Carbon::parse($messageDetails->start_time)->format('h:i a');
+    //                     $messageDetails->end_time = @$request->timezone ? Carbon::parse($messageDetails->end_time)->format('h:i a') : Carbon::parse($messageDetails->end_time)->format('h:i a');
+    //                 }
+    //             }
+    //             return [
+    //                 'messageId' => $message->message->id,
+    //                 'messageType' => $message->message->message_type,
+    //                 'attachmentType' => $message->message->attachment_type,
+    //                 'date' => @$request->timezone ? Carbon::parse($message->message->created_at)->setTimezone($request->timezone)->format('Y-m-d H:i:s') : Carbon::parse($message->message->created_at)->format('Y-m-d H:i:s'),
+    //                 'time' => @$request->timezone ? Carbon::parse($message->message->created_at)->setTimezone($request->timezone)->format('h:i a') : Carbon::parse($message->message->created_at)->format('h:i a'),
+    //                 'sentBy' => ($message->sender_id == $loginUser) ? 'loginUser' : 'User',
+    //                 'messageDetails' => $messageDetails,
+    //             ];
+    //         })->groupBy(function ($message) {
+    //             $carbonDate = Carbon::parse($message['date']);
+    //             if ($carbonDate->isToday()) {
+    //                 return 'Today';
+    //             } elseif ($carbonDate->isYesterday()) {
+    //                 return 'Yesterday';
+    //             } else {
+    //                 return $carbonDate->format('d M Y');
+    //             }
+    //         })->map(function ($messages, $date) {
+    //             $sortedMessages = $messages->sort(function ($a, $b) {
+    //                 $timeA = strtotime($a['time']);
+    //                 $timeB = strtotime($b['time']);
+
+    //                 if ($timeA == $timeB) {
+    //                     return $a['messageId'] <=> $b['messageId'];
+    //                 }
+
+    //                 return $timeA <=> $timeB;
+    //             })->values();
+
+    //             return [$date => $sortedMessages];
+    //         });
+    //         $reversedGroupedChat = array_reverse($groupedChat->toArray());
+
+    //         $chat = [];
+    //         foreach ($reversedGroupedChat as $item) {
+    //             foreach ($item as $date => $messages) {
+    //                 if ($request->filter == 'filter') {
+    //                     $msgArr = [];
+    //                     foreach ($messages as $single) {
+    //                         if (in_array($single['messageType'], $filter)) {
+    //                             $msgArr[] = $single;
+    //                             $chat[$date] = $msgArr;
+    //                         }
+    //                     }
+    //                     // $chat[$date] = $msgArr;
+    //                 } else {
+    //                     $chat[$date] = $messages;
+    //                 }
+    //             }
+    //         }
+    //         $data = [
+    //             'status_code' => 200,
+    //             'message' => "Get Data Successfully!",
+    //             'data' => [
+    //                 'userData' => $userData,
+    //                 'chat' => $chat,
+    //             ]
+    //         ];
+    //         return $this->sendJsonResponse($data);
+    //     } catch (\Exception $e) {
+    //         Log::error(
+    //             [
+    //                 'method' => __METHOD__,
+    //                 'error' => [
+    //                     'file' => $e->getFile(),
+    //                     'line' => $e->getLine(),
+    //                     'message' => $e->getMessage()
+    //                 ],
+    //                 'created_at' => date("Y-m-d H:i:s")
+    //             ]
+    //         );
+    //         return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
+    //     }
+    // }
+
+
+ /**
+     * @OA\Post(
+     *     path="/api/v1/user-group-details",
+     *     summary="User Group Details",
+     *     tags={"User"},
+     *     description="User Group Details",
+     *     operationId="userGroupDetails",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="group_id",
+     *         in="query",
+     *         example="2",
+     *         description="Enter groupId",
+     *         required=true,
+     *         @OA\Schema(
+     *             type="number",
+     *         )
+     *     ),
+     *     @OA\Parameter(
+     *         name="start",
+     *         in="query",
+     *         example="0",
+     *         description="Enter Start",
+     *         required=true,
+     *         @OA\Schema(
+     *             type="number",
+     *         )
+     *     ),
+     *     @OA\Parameter(
+     *         name="limit",
+     *         in="query",
+     *         example="10",
+     *         description="Enter Limit",
+     *         required=false,
+     *         @OA\Schema(
+     *             type="number",
+     *         )
+     *     ),
+     *     @OA\Parameter(
+     *         name="timezone",
+     *         in="query",
+     *         example="",
+     *         description="Enter Timezone",
+     *         required=false,
+     *         @OA\Schema(
+     *             type="string",
+     *         )
+     *     ),
+     *     @OA\Parameter(
+     *         name="filter",
+     *         in="query",
+     *         example="filter",
+     *         description="Enter Message type",
+     *         required=false,
+     *         @OA\Schema(
+     *             type="string",
+     *         )
+     *     ),
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+
+     public function userGroupDetails(Request $request)
+     {
+         try {
+             $rules = [
+                 'group_id' => 'required|integer',
+             ];
+ 
+             $message = [
+                 'group_id.required' => 'User group_id is required.',
+                 'group_id.integer' => 'User group_id must be an integer.',                 
+             ];
+             $start = $request->start ?? 0;
+             $limit = $request->limit ?? 15;             
+             $validator = Validator::make($request->all(), $rules, $message);
+             if ($validator->fails()) {
+                 $data = [
+                     'status_code' => 400,
+                     'message' => $validator->errors()->first(),
+                     'data' => ""
+                 ];
+                 return $this->sendJsonResponse($data);
+             }   
+             $loginUser = auth()->user()->id;  
+             $members = GroupMembers::where('group_id', $request->group_id)->get();
+             if ($members->isEmpty()) {
+                 return $this->sendJsonResponse(['status_code' => 404, 'message' => 'No members found in this group.']);
+             }
+             foreach($members as $value) 
+             {
+                $user = new User();
+                $userData = $user->find(auth()->user()->id);
+                $userData->profile = @$userData->profile ? setAssetPath('user-profile/' . $userData->profile) : setAssetPath('assets/media/avatars/blank.png');
+                $userData->cover_image = @$userData->cover_image ? setAssetPath('user-profile-cover-image/' . $userData->cover_image) : setAssetPath('assets/media/misc/image.png');  
+                
+                $group = new Group();
+                $groupData = $group->find($request->group_id);
+                $groupData->profile_pic = @$groupData->profile_pic ? setAssetPath('user-profile/' . $groupData->profile_pic) : setAssetPath('assets/media/avatars/blank.png');
+                $groupData->cover_image = @$groupData->cover_image ? setAssetPath('user-profile/' . $groupData->cover_image) : setAssetPath('assets/media/avatars/blank.png');
+                         
+             $userId = $value->user_id;
+             $filter = [
+                 'Task',
+                 'Meeting',
+                 'Reminder'
+             ];
+             $messages = MessageSenderReceiver::where(function ($query) use ($loginUser, $userId) {
+                $query->where('receiver_id', $userId);
+            })
+           
+            ->whereNull('deleted_at')
+            ->whereHas('message', function ($q) use ($request) {
+                $q->where('message_type', '!=', 'Task Chat');
+                if ($request->group_id) {
+                    $q->where('group_id', $request->group_id);
+                }
+            })
+            ->with([ /* your relations */ ])
+            ->orderByDesc('created_at')
+            ->skip($start)
+            ->take($limit);
+                    
+            $messages = $messages->get();
+
+        }
+             $groupedChat = $messages->map(function ($message) use ($loginUser, $request) {
+                 $messageDetails = [];
+                 switch ($message->message->message_type) {
+                     case 'Text':
+                         $messageDetails = $message->message->message;
+                         
+                         break;
+                     case 'Attachment':
+                         $messageDetails = $message->message->attachment;
+                         break;
+                     case 'Location':
+                         $messageDetails = $message->message->location;
+                         break;
+                     case 'Meeting':
+                         $messageDetails = $message->message->meeting;
+                         break;
+                     case 'Task':                           
+                        $messageDetails = $message->message->Task;                                           
+                         break;                                             
+                     case 'Reminder':
+                         $messageDetails = $message->message->reminder;
+                         break;
+                     case 'Contact':
+                         $messageDetails = $message->message->message;
+                         break;
+                 }
+                 
+                 $senderName = @$message->sender->first_name .' '. @$message->sender->last_name;                 
+                 $senderProfile = @$message->sender->profile ? setAssetPath('user-profile/' . $message->sender->profile) : setAssetPath('assets/media/avatars/blank.png');                 
+
+                 if($message->message->message_type == 'Meeting' || $message->message->message_type == 'Reminder'){
+                     $users = explode(',',$messageDetails->users);
+                     $userList = User::whereIn('id', $users)->get(['id','first_name','last_name','country_code','mobile','profile']);
+                     $userList = $userList->map(function ($user) {
+                         $user->profile = @$user->profile ? setAssetPath('user-profile/' . $user->profile) : setAssetPath('assets/media/avatars/blank.png');
+                         return $user;
+                     });
+                     $messageDetails->users = $userList;
+                     $messageDetails->date = @$request->timezone ? Carbon::parse($messageDetails->date)->format('d-m-Y') : Carbon::parse($messageDetails->date)->format('Y-m-d H:i:s');
+                     if($message->message->message_type == 'Reminder'){
+                         $messageDetails->time = @$request->timezone ? Carbon::parse($messageDetails->time)->format('h:i a') : Carbon::parse($messageDetails->time)->format('h:i a');
+                     }elseif($message->message->message_type == 'Meeting'){
+                         $messageDetails->start_time = @$request->timezone ? Carbon::parse($messageDetails->start_time)->format('h:i a') : Carbon::parse($messageDetails->start_time)->format('h:i a');
+                         $messageDetails->end_time = @$request->timezone ? Carbon::parse($messageDetails->end_time)->format('h:i a') : Carbon::parse($messageDetails->end_time)->format('h:i a');
+                     }
+                 }
+                 return [
+                     'messageId' => $message->message->id,
+                     'messageType' => $message->message->message_type,
+                     'attachmentType' => $message->message->attachment_type,
+                     'date' => @$request->timezone ? Carbon::parse($message->message->created_at)->setTimezone($request->timezone)->format('Y-m-d H:i:s') : Carbon::parse($message->message->created_at)->format('Y-m-d H:i:s'),
+                     'time' => @$request->timezone ? Carbon::parse($message->message->created_at)->setTimezone($request->timezone)->format('h:i a') : Carbon::parse($message->message->created_at)->format('h:i a'),
+                     'sentBy' => ($message->sender_id == auth()->user()->id) ? 'loginUser' : 'User',
+                     'senderName' => $senderName,
+                     'senderProfile' => $senderProfile,
+                     'messageDetails' => $messageDetails,
+                 ];
+             })->groupBy(function ($message) {
+                 $carbonDate = Carbon::parse($message['date']);
+                 if ($carbonDate->isToday()) {
+                     return 'Today';
+                 } elseif ($carbonDate->isYesterday()) {
+                     return 'Yesterday';
+                 } else {
+                     return $carbonDate->format('d M Y');
+                 }
+             })->map(function ($messages, $date) {
+                 $sortedMessages = $messages->sort(function ($a, $b) {
+                     $timeA = strtotime($a['time']);
+                     $timeB = strtotime($b['time']);
+ 
+                     if ($timeA == $timeB) {
+                         return $a['messageId'] <=> $b['messageId'];
+                     }
+ 
+                     return $timeA <=> $timeB;
+                 })->values();
+ 
+                 return [$date => $sortedMessages];
+             });
+          
+             $reversedGroupedChat = array_reverse($groupedChat->toArray());
+ 
+             $chat = [];
+             foreach ($reversedGroupedChat as $item) {
+                 foreach ($item as $date => $messages) {
+                     if ($request->filter == 'filter') {
+                         $msgArr = [];
+                         foreach ($messages as $single) {
+                             if (in_array($single['messageType'], $filter)) {
+                                 $msgArr[] = $single;
+                                 $chat[$date] = $msgArr;
+                             }
+                         }
+                         // $chat[$date] = $msgArr;
+                     } else {
+                         $chat[$date] = $messages;
+                     }
+                 }
+             }
+             $data = [
+                 'status_code' => 200,
+                 'message' => "Get Data Successfully!",
+                 'data' => [
+                     'groupData' => $groupData,
+                     'groupChat' => $chat,
+                 ]
+             ];
+             return $this->sendJsonResponse($data);
+         } catch (\Exception $e) {
+             Log::error(
+                 [
+                     'method' => __METHOD__,
+                     'error' => [
+                         'file' => $e->getFile(),
+                         'line' => $e->getLine(),
+                         'message' => $e->getMessage()
+                     ],
+                     'created_at' => date("Y-m-d H:i:s")
+                 ]
+             );
+             return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
+         }
+     }
    
-
-    /**
+  
+      /**
      * @OA\Post(
      *     path="/api/v1/tasks/update",
      *     tags={"Update Tasks"},
@@ -1245,6 +2059,11 @@ class UserController extends Controller
      *                     property="task_checked",
      *                     type="array",
      *                     @OA\Items(type="boolean", example=true)
+     *                 ),
+     *                 @OA\Property(
+     *                     property="receiver_id",
+     *                     type="string",
+     *                     example="user1@example.com,user2@example.com" 
      *                 )
      *             )
      *         )
@@ -1266,7 +2085,8 @@ class UserController extends Controller
      *                 ),
      *                 @OA\Property(property="task_checked", type="array",
      *                     @OA\Items(type="boolean", example=true)
-     *                 )
+     *                 ),
+     *                 @OA\Property(property="receiver_id", type="string", example="user1@example.com,user2@example.com")
      *             )
      *         )
      *     ),
@@ -1298,22 +2118,24 @@ class UserController extends Controller
      *     )
      * )
      */
-    public function updateTask(Request $request)
+
+
+         public function updateTask(Request $request)
     {
-        try {          
+        try {
             // Validation for form-data input
             $rules = [
                 'message_id' => 'required|integer',
-                'task_ids.*' => 'integer|exists:message_task,id', // Ensure each task ID exists
+                'task_ids.*' => 'integer', // Ensure task IDs are integers (removing exists check)
                 'task_name' => 'required|string',
                 'checkbox.*' => 'string', // Each checkbox item should be a string
                 'task_checked.*' => 'boolean', // Each task_checked item should be a boolean
+                'receiver_id' => 'sometimes|string' // Optional parameter for assigned users
             ];
 
             $messages = [
                 'message_id.required' => 'Message ID is required.',
                 'task_ids.required' => 'Task IDs are required.',
-                'task_ids.*.exists' => 'One or more specified tasks do not exist.',
                 'task_name.required' => 'Task name is required.',
             ];
 
@@ -1327,6 +2149,9 @@ class UserController extends Controller
                     'data' => ""
                 ]);
             }
+
+            $loginUser = auth()->user()->id;
+
             $taskIds = $request->input('task_ids');
             $taskIdsString = explode(',', $taskIds);
 
@@ -1339,31 +2164,129 @@ class UserController extends Controller
             if (is_string($task_checked)) {
                 $task_checked = explode(',', $task_checked); // Split string into array
             }
-            
+
             // Convert boolean values to integers
-            $task_checked_truflas = array_map(function($value) {
+            $task_checked_truflas = array_map(function ($value) {
                 return filter_var($value, FILTER_VALIDATE_BOOLEAN) ? 1 : 0; // Convert to 1 or 0
             }, $task_checked);
-            
-            // // Print the result for debugging
-            // print_r($task_checked_truflas);
-            // die;
-            
-            // Update each task
-            foreach ($taskIdsString as $index => $taskId) {
 
-              
-                DB::table('message_task')
-                    ->where('id', $taskId)
-                    ->update([
-                        'task_name' => $request->input('task_name'), // This may be the same for all tasks, or you can modify as needed
-                        'checkbox' => $checkbox_names[$index], // Assuming checkbox aligns with task_ids
-                        'task_checked' =>  $task_checked_truflas[$index], // Assuming task_checked aligns with task_ids
-                    ]);
+            // Get receiver_id if provided
+            $assignUsers = $request->input('receiver_id', ''); // Default to empty string if not provided
+
+            // Update existing tasks or create new ones
+            foreach ($taskIdsString as $index => $taskId) {
+                $taskData = [
+                    'task_name' => $request->input('task_name'),
+                    'checkbox' => $checkbox_names[$index] ?? '', // Default to empty if not set
+                    'task_checked' => $task_checked_truflas[$index] ?? 0, // Default to 0 if not set                    
+                    'users' => $assignUsers,
+                ];
+
+                // Check if task ID exists
+                $existingTask = DB::table('message_task')->where('id', $taskId)->first();
+
+                if ($existingTask) {
+
+                    $existingTaskIds = MessageTask::where('message_id', $request->message_id)->pluck('id')->toArray();
+
+                    // Delete tasks that are not included in the new task_ids
+                    $tasksToDelete = array_diff($existingTaskIds, $taskIdsString);
+                    if (!empty($tasksToDelete)) {
+                        MessageTask::whereIn('id', $tasksToDelete)->delete();
+                    }
+                    // If exists, update the task
+                    if ($task_checked_truflas[$index] == 1) {
+                        // Get current task_checked_users
+                        $task_checked_users = explode(',', $existingTask->task_checked_users ?? '');
+
+                        // Check if loginUser is already in task_checked_users
+                        if (!in_array($loginUser, $task_checked_users)) {
+                            // Add loginUser to the array
+                            $task_checked_users[] = $loginUser;
+                        }
+
+                        // Convert the array back to a string
+                        $task_checked_users_string = implode(',', $task_checked_users);
+
+                        // Update task with new checked users
+                        $taskData['task_checked_users'] = $task_checked_users_string;
+                    }
+
+                    DB::table('message_task')->where('id', $taskId)->update($taskData);
+                    $assignUsersArray = explode(',', $assignUsers);  // Split into an array
+                    $messageId = $request->message_id;  // Assuming you get the message_id from the request
+                    $loginUser = $request->user()->id;  // Assuming the sender is the logged-in user
+
+                    foreach ($assignUsersArray as $receiverId) {
+                        // Check if the message with the sender and receiver already exists
+                        $exists = MessageSenderReceiver::where('message_id', $messageId)
+                                                    ->where('receiver_id', (int) $receiverId)
+                                                    ->exists();
+
+                        // If the receiver is not already present, create a new entry
+                        if (!$exists) {
+                            $messageSenderReceiver = new MessageSenderReceiver();
+                            $messageSenderReceiver->message_id = $messageId;
+                            $messageSenderReceiver->sender_id = $loginUser;
+                            $messageSenderReceiver->receiver_id = (int) $receiverId;  // Convert to integer
+                            $messageSenderReceiver->save();
+                        }
+                    }
+                     // Now delete entries that are not in the current assignUsersArray
+                    MessageSenderReceiver::where('message_id', $messageId)
+                    ->where('sender_id', $loginUser)
+                    ->whereNotIn('receiver_id', $assignUsersArray)  // Remove receivers not in the current array
+                    ->delete();
+                } else {
+            
+                // Fetch existing checkbox names from the database
+                    $existingCheckboxes = MessageTask::where('message_id', $request->message_id)
+                    ->pluck('checkbox') // Get the list of existing checkboxes
+                    ->toArray();
+
+                    // Loop through the checkbox names and create a new task for each new checkbox
+                    foreach ($checkbox_names as $checkbox_name) {
+                    if (!in_array($checkbox_name, $existingCheckboxes)) {
+                       
+                        MessageTask::create([
+                            'message_id' => $request->message_id,
+                            'task_name' => $request->input('task_name'),
+                            'checkbox' => $checkbox_name, // Use the current checkbox name
+                            'task_checked_users' => $loginUser, // Set current user as checked
+                            'users' => $assignUsers // Add new parameter for assigned users
+                        ]);
+                        }
+                    }
+
+                    $assignUsersArray = explode(',', $assignUsers);  // Split into an array
+                    $messageId = $request->message_id;  // Assuming you get the message_id from the request
+                    $loginUser = $request->user()->id;  // Assuming the sender is the logged-in user
+
+                    foreach ($assignUsersArray as $receiverId) {
+                        // Check if the message with the sender and receiver already exists
+                        $exists = MessageSenderReceiver::where('message_id', $messageId)
+                                                    ->where('sender_id', $loginUser)
+                                                    ->where('receiver_id', (int) $receiverId)
+                                                    ->exists();
+
+                        // If the receiver is not already present, create a new entry
+                        if (!$exists) {
+                            $messageSenderReceiver = new MessageSenderReceiver();
+                            $messageSenderReceiver->message_id = $messageId;
+                            $messageSenderReceiver->sender_id = $loginUser;
+                            $messageSenderReceiver->receiver_id = (int) $receiverId;  // Convert to integer
+                            $messageSenderReceiver->save();
+                        }
+                    }
+
+                              
+                }
             }
+            $created_by = MessageTask::where('message_id', $request->message_id)->first();
             return response()->json([
                 'status_code' => 200,
-                'message' => "Tasks updated successfully!"               
+                'message' => "Tasks updated successfully!",
+                'created_by' => $created_by->created_by
             ]);
         } catch (\Exception $e) {
             // Log the error details
@@ -1383,7 +2306,6 @@ class UserController extends Controller
             ]);
         }
     }
-
     /**
      * @OA\Post(
      *     path="/api/v1/edit-profile",

@@ -7,6 +7,7 @@ use App\Exports\chatExport;
 use App\Http\Controllers\Controller;
 use App\Mail\taskMail;
 use App\Models\Message;
+use App\Models\GroupMembers;
 use App\Models\MessageAttachment;
 use App\Models\MessageLocation;
 use App\Models\MessageMeeting;
@@ -178,6 +179,171 @@ class ChatController extends Controller
             return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
         }
     }
+    
+    
+    /**
+     * @OA\Post(
+     *     path="/api/v1/group-text-message",
+     *     summary="Add a new group message",
+     *     tags={"Messages"},
+     *     description="Create a new group message along with its sender, receiver group, and push notifications.",
+     *     operationId="groupTextMessage",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Add Group Message Request",
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"message_type", "group_id", "message"},
+     *                 @OA\Property(
+     *                     property="message_type",
+     *                     type="string",
+     *                     example="text",
+     *                     description="Type of the message"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="message",
+     *                     type="string",
+     *                     example="This is a group message.",
+     *                     description="Content of the message",
+     *                     nullable=true
+     *                 ),
+     *                 @OA\Property(
+     *                     property="group_id",
+     *                     type="integer",
+     *                     example="1",
+     *                     description="ID of the group"
+     *                 ),
+     *             )
+     *         )
+     *     ),
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+
+    public function groupTextMessage(Request $request)
+    {
+        try {
+            $rules = [
+                'message_type' => 'required|string',
+                'message' => 'required|string',
+                'group_id' => 'required|integer',
+            ];
+
+            $messages = [
+                'message_type.required' => 'The message type is required.',
+                'message_type.string' => 'The message type must be a string.',
+                'message.required' => 'The message content is required.',
+                'message.string' => 'The message content must be a string.',
+                'group_id.required' => 'The group ID is required.',
+                'group_id.integer' => 'The group ID must be an integer.',
+            ];
+
+            $validator = Validator::make($request->all(), $rules, $messages);
+            if ($validator->fails()) {
+                $data = [
+                    'status_code' => 400,
+                    'message' => $validator->errors()->first(),
+                    'data' => ""
+                ];
+                return $this->sendJsonResponse($data);
+            }
+
+            // Create the message
+            $msg = new Message();
+            $msg->message_type = $request->message_type;
+            $msg->group_id = $request->group_id; 
+            $msg->message = $request->message;
+            $msg->status = "Unread";
+            $msg->save();
+
+            // Fetch group members
+            $groupMembers = GroupMembers::where('group_id', $request->group_id)->pluck('user_id')->toArray();
+            if (empty($groupMembers)) {
+                return $this->sendJsonResponse(['status_code' => 404, 'message' => 'No members found in this group']);
+            }
+
+            // Send the message to all group members
+            foreach ($groupMembers as $memberId) {
+                $messageSenderReceiver = new MessageSenderReceiver();
+                $messageSenderReceiver->message_id = $msg->id;
+                $messageSenderReceiver->sender_id = auth()->user()->id;
+                $messageSenderReceiver->receiver_id = $memberId;
+                $messageSenderReceiver->save();
+            }
+
+            // Create message payload for broadcasting and notifications
+            $message = [
+                'id' => $msg->id,
+                'sender' => auth()->user()->id,
+                'group_id' => $request->group_id,
+                'message_type' => $request->message_type,
+                'message' => $request->message,
+                "screen" => "groupchat"
+            ];
+
+            // Pusher: Broadcast the message to group members
+            broadcast(new MessageSent($message))->toOthers();
+
+            // Push Notification
+            $validTokens = [];
+            $invalidTokens = [];
+
+            foreach ($groupMembers as $memberId) {
+                $validationResults = validateToken($memberId);
+                foreach ($validationResults as $result) {
+                    $validTokens = array_merge($validTokens, $result['valid']);
+                    $invalidTokens = array_merge($invalidTokens, $result['invalid']);
+                }
+            }
+
+            if (count($invalidTokens) > 0) {
+                foreach ($invalidTokens as $singleInvalidToken) {
+                    userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
+                }
+            }
+
+            $notification = [
+                'title' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
+                'body' => $request->message,
+                'image' => '',
+            ];
+
+            if (count($validTokens) > 0) {
+                sendPushNotification($validTokens, $notification, $message);
+            }
+
+            $data = [
+                'status_code' => 200,
+                'message' => 'Group Message Sent Successfully!',
+                'data' => ""
+            ];
+            return $this->sendJsonResponse($data);
+        } catch (\Exception $e) {
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => now()->format("Y-m-d H:i:s")
+            ]);
+            return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
+        }
+    }
+    
     /**
      * @OA\Post(
      *     path="/api/v1/file-upload-message",
@@ -2737,8 +2903,8 @@ class ChatController extends Controller
      * )
      */
 
-
-    public function taskUserList(Request $request)
+ 
+  public function taskUserList(Request $request)
     {
         try {
 
@@ -2784,33 +2950,95 @@ class ChatController extends Controller
                     })
                     ->get();
             }
+           
             $result = $userList->map(function ($messageSenderReceiver) use ($loginUser) {
                 $sender = $messageSenderReceiver->sender;
-                $receiver = $messageSenderReceiver->receiver;
+                $receiver = $messageSenderReceiver->receiver;         
+             // Fetch the last message with task type
+             $lastMessage = MessageSenderReceiver::with(['message', 'sender', 'receiver'])
+             ->whereHas('message', function ($query) {
+                 $query->where('message_type', 'Task');
+             })
+             ->orderBy('id', 'desc')
+             ->first();
+                
+        
 
-                if ($sender && $sender->id != $loginUser) {
+                if ($sender && $sender->id != $loginUser) {   
+                    $totalTasks = MessageTask::where('message_id', $lastMessage->message_id)->count();                  
                     $profileUrl = $sender->profile ? setAssetPath('user-profile/' . $sender->profile) : setAssetPath('assets/media/avatars/blank.png');
-                    if ($messageSenderReceiver->updated_by == 1) {
+
+                    if ($lastMessage) {
+                        // Fetch tasks related to the last message and that are marked as checked
+                        $completedTasks = MessageTask::where('message_id', $lastMessage->message_id)
+                            ->whereRaw('FIND_IN_SET(?, task_checked_users)', [$sender->id])
+                            ->get();
+                    
+                        // Initialize counters
+                        $completedCount = 0;
+           
+                        // Iterate through tasks to filter based on checked users
+                        foreach ($completedTasks as $task) {
+                            $taskCheckedUsers = explode(',', $task->task_checked_users);  // Split the string by comma
+                            $specificUserId = $sender->id;  // Example: Check if user 121 has completed the task
+                    
+                            if (in_array($specificUserId, $taskCheckedUsers)) {
+                                // This task is completed by the specific user
+                                $completedCount++; // Increment the completed counter
+                            }
+                        }
+                    }
+
+                    if ($messageSenderReceiver->updated_by == 1) {                        
+                      
                         $response['taskStatus'] = true;
+                        $response['totalTasks'] = $totalTasks;
                     }else 
                     {
                         $response['taskStatus'] = false;
+                        $response['totalTasks'] = $totalTasks;
                     }
                     return [
                         'id' => $sender->id,
                         'name' => $sender->first_name . ' ' . $sender->last_name,
                         'profile' => $profileUrl,
                         'taskStatus' => $response['taskStatus'],
+                        'totalTasks' => $response['totalTasks'],
+                        'completedCount' => $completedCount,
                     ];
                 }
 
                 if ($receiver && $receiver->id != $loginUser) {
+                    $totalTasks = MessageTask::where('message_id', $lastMessage->message_id)->count();  
+                    
+                    if ($lastMessage) {
+                        // Fetch tasks related to the last message and that are marked as checked
+                        $completedTasks = MessageTask::where('message_id', $lastMessage->message_id)
+                            ->whereRaw('FIND_IN_SET(?, task_checked_users)', [$receiver->id])
+                            ->get();
+                    
+                        // Initialize counters
+                        $completedCount = 0;
+           
+                        // Iterate through tasks to filter based on checked users
+                        foreach ($completedTasks as $task) {
+                            $taskCheckedUsers = explode(',', $task->task_checked_users);  // Split the string by comma
+                            $specificUserId = $receiver->id;  // Example: Check if user 121 has completed the task
+                    
+                            if (in_array($specificUserId, $taskCheckedUsers)) {
+                                // This task is completed by the specific user
+                                $completedCount++; // Increment the completed counter
+                            }
+                        }
+                    }
                     $profileUrl = $receiver->profile ? setAssetPath('user-profile/' . $receiver->profile) : setAssetPath('assets/media/avatars/blank.png');
 
                     if ($messageSenderReceiver->updated_by == 1) {
                         $response['taskStatus'] = true;
+                        $response['totalTasks'] = $totalTasks;
                     }else{
                         $response['taskStatus'] = false;
+                        $response['totalTasks'] = $totalTasks;
                     }
 
                     return [
@@ -2818,6 +3046,10 @@ class ChatController extends Controller
                         'name' => $receiver->first_name . ' ' . $receiver->last_name,
                         'profile' => $profileUrl,
                         'taskStatus' => $response['taskStatus'],
+                        'totalTasks' => $response['totalTasks'],
+                        'completedCount' => $completedCount,
+                        'date' => $lastMessage->created_at,
+                        'time' => $lastMessage->created_at, 
                     ];
 
                 }
@@ -2850,6 +3082,119 @@ class ChatController extends Controller
             return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
         }
     }
+
+    // public function taskUserList(Request $request)
+    // {
+    //     try {
+
+    //         $rules = [
+    //             'type' => 'required|string|in:Receive,Given,All Task',
+    //         ];
+
+    //         $message = [
+    //             'type.required' => 'The type field is required.',
+    //             'type.string' => 'The type field must be a string.',
+    //             'type.in' => 'The selected type is invalid. Valid options are: Receive, Given, All Task.',
+    //         ];
+
+    //         $validator = Validator::make($request->all(), $rules, $message);
+    //         if ($validator->fails()) {
+    //             return response()->json([
+    //                 'status_code' => 400,
+    //                 'message' => $validator->errors(),
+    //                 'data' => []
+    //             ]);
+    //         }
+
+    //         $type = $request->type;
+    //         $loginUser = auth()->user()->id;
+
+    //         $baseQuery = MessageSenderReceiver::with(['message', 'sender', 'receiver'])
+    //             ->whereHas('message', function ($query) {
+    //                 $query->where('message_type', 'Task');
+    //             });
+    //         if ($type == 'Receive') {
+    //             $userList = (clone $baseQuery)
+    //                 ->where('receiver_id', $loginUser)
+    //                 ->get();
+    //         } elseif ($type == 'Given') {
+    //             $userList = (clone $baseQuery)
+    //                 ->where('sender_id', $loginUser)
+    //                 ->get();
+    //         } elseif ($type == 'All Task') {
+    //             $userList = (clone $baseQuery)
+    //                 ->where(function ($query) use ($loginUser) {
+    //                     $query->where('sender_id', $loginUser)
+    //                         ->orWhere('receiver_id', $loginUser);
+    //                 })
+    //                 ->get();
+    //         }
+    //         $result = $userList->map(function ($messageSenderReceiver) use ($loginUser) {
+    //             $sender = $messageSenderReceiver->sender;
+    //             $receiver = $messageSenderReceiver->receiver;
+
+    //             if ($sender && $sender->id != $loginUser) {
+    //                 $profileUrl = $sender->profile ? setAssetPath('user-profile/' . $sender->profile) : setAssetPath('assets/media/avatars/blank.png');
+    //                 if ($messageSenderReceiver->updated_by == 1) {
+    //                     $response['taskStatus'] = true;
+    //                 }else 
+    //                 {
+    //                     $response['taskStatus'] = false;
+    //                 }
+    //                 return [
+    //                     'id' => $sender->id,
+    //                     'name' => $sender->first_name . ' ' . $sender->last_name,
+    //                     'profile' => $profileUrl,
+    //                     'taskStatus' => $response['taskStatus'],
+    //                 ];
+    //             }
+
+    //             if ($receiver && $receiver->id != $loginUser) {
+    //                 $profileUrl = $receiver->profile ? setAssetPath('user-profile/' . $receiver->profile) : setAssetPath('assets/media/avatars/blank.png');
+
+    //                 if ($messageSenderReceiver->updated_by == 1) {
+    //                     $response['taskStatus'] = true;
+    //                 }else{
+    //                     $response['taskStatus'] = false;
+    //                 }
+
+    //                 return [
+    //                     'id' => $receiver->id,
+    //                     'name' => $receiver->first_name . ' ' . $receiver->last_name,
+    //                     'profile' => $profileUrl,
+    //                     'taskStatus' => $response['taskStatus'],
+    //                 ];
+
+    //             }
+
+    //             return null;
+    //         });
+    //         $uniqueResult = $result->filter()->unique('id')->values();
+
+
+    //         $data = [
+    //             'status_code' => 200,
+    //             'message' => "Task User List Get Successfully!",
+    //             'data' => [
+    //                 'userList' => $uniqueResult
+    //             ]
+    //         ];
+    //         return $this->sendJsonResponse($data);
+    //     } catch (\Exception $e) {
+    //         Log::error(
+    //             [
+    //                 'method' => __METHOD__,
+    //                 'error' => [
+    //                     'file' => $e->getFile(),
+    //                     'line' => $e->getLine(),
+    //                     'message' => $e->getMessage()
+    //                 ],
+    //                 'created_at' => date("Y-m-d H:i:s")
+    //             ]
+    //         );
+    //         return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
+    //     }
+    // }
 
     /**
      * @OA\Post(
@@ -3547,6 +3892,242 @@ class ChatController extends Controller
             return response()->json(['status_code' => 500, 'message' => 'Something went wrong'], 500);
         }
     }
+    
+      /**
+     * @OA\Post(
+     *     path="/api/v1/message-task-notification",
+     *     summary="Send notifications for message tasks",
+     *     description="Sends notifications to users associated with tasks for a given message ID.",
+     *     tags={"Notifications"},
+     *     operationId="messageTaskNotification",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"message_id"},
+     *                 @OA\Property(property="message_id", type="integer", example=1, description="The ID of the message to fetch associated tasks.")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Notifications sent successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status_code", type="integer", example=200),
+     *             @OA\Property(property="message", type="string", example="Notifications sent successfully")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Internal Server Error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status_code", type="integer", example=500),
+     *             @OA\Property(property="message", type="string", example="Something went wrong")
+     *         )
+     *     )
+     * )
+     */
+
+
+     public function message_task_notification(Request $request)
+     {
+         try {
+             $userId = auth()->user()->id; // Get the ID of the currently authenticated user
+     
+             // Fetch tasks associated with the event's message_id
+             $tasks = MessageTask::where('message_id', $request->message_id)->first();                 
+
+                 $receiverIdsArray = $tasks->users ? explode(',', $tasks->users) : [];
+              
+                 $senderId = null;
+
+                 if (in_array($tasks->created_by, $receiverIdsArray)) {
+                     $senderId = $tasks->created_by;
+                 }
+
+                 foreach ($receiverIdsArray as $receiverId) {
+                     $messageForNotification = [
+                         'id' => $tasks->id,
+                         'sender' => $senderId,
+                         'receiver' => $receiverId,
+                         'message_type' => "Task",
+                         'Task_title' => $tasks->task_name, // Use task users                         
+                     ];                   
+                    
+                     // Push Notification
+                     $validationResults = validateToken($receiverId);                                        
+                     $validTokens = [];
+                     $invalidTokens = [];
+     
+                     foreach ($validationResults as $result) {
+                         $validTokens = array_merge($validTokens, $result['valid']);
+                         $invalidTokens = array_merge($invalidTokens, $result['invalid']);
+                     }
+                 
+     
+                     if (count($invalidTokens) > 0) {
+                         foreach ($invalidTokens as $singleInvalidToken) {
+                             userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
+                         }
+                     }
+     
+                     $notification = [
+                         'title' => 'Task',
+                         'body' => $tasks->task_name,
+                         'image' => "",
+                     ];
+     
+                     if (count($validTokens) > 0) {
+                         sendPushNotification($validTokens, $notification, $messageForNotification);
+                     }
+
+                
+                 }  
+             return response()->json([
+                 'status_code' => 200,
+                 'message' => 'Notifications sent successfully'
+             ], 200);
+     
+         } catch (\Exception $e) {
+             Log::error([
+                 'method' => __METHOD__,
+                 'error' => [
+                     'file' => $e->getFile(),
+                     'line' => $e->getLine(),
+                     'message' => $e->getMessage()
+                 ],
+                 'created_at' => now()->format("Y-m-d H:i:s")
+             ]);
+     
+             return response()->json(['status_code' => 500, 'message' => 'Something went wrong'], 500);
+         }
+     }
+     
+   
+       /**
+     * @OA\Post(
+     *     path="/api/v1/sent-meeting-done",
+     *     summary="sent meeting done",
+     *     tags={"Messages"},
+     *     description="Meeting done",
+     *     operationId="meetingDone",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Add Meeting Done Request",
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"message_id","user_id", "type"},
+     *                 @OA\Property(
+     *                     property="message_id",
+     *                     type="string",
+     *                     example="111",
+     *                     description="Enter message_id"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="user_id",
+     *                     type="string",
+     *                     example="1,2,3",
+     *                     description="Enter Comma Separated User Id"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="type",
+     *                     type="string",
+     *                     example="accept",
+     *                     description="Enter 'accept' or 'decline'"
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+
+    public function sentMeetingDone(Request $request)
+    {
+        try {
+            $rules = [
+                'message_id' => 'required|string',
+                'user_id' => 'required|string|regex:/^(\d+)(,\d+)*$/',
+                'type' => 'required|string|in:accept,decline', // Add type validation
+            ];
+    
+            $messages = [
+                'message_id.required' => 'The message_id field is required.',
+                'message_id.string' => 'The message_id field must be a string.',
+                'user_id.required' => 'The user_id field is required.',
+                'user_id.string' => 'The user_id field must be a string.',
+                'user_id.regex' => 'The user_id field must be a comma-separated list of integers.',
+                'type.required' => 'The type field is required.',
+                'type.string' => 'The type field must be a string.',
+                'type.in' => 'The type field must be either accept or decline.',
+            ];
+    
+            $validator = Validator::make($request->all(), $rules, $messages);
+            if ($validator->fails()) {
+                return response()->json([
+                    'status_code' => 400,
+                    'message' => $validator->errors(),
+                    'data' => []
+                ]);
+            }
+    
+            $recipient = explode(',', $request->user_id);
+            $loginUser = auth()->user()->id;
+    
+            // Fetch the meeting record
+            $messageMeeting = MessageMeeting::where('message_id', $request->message_id)->first();
+            if ($messageMeeting) {
+                // Process based on type (accept or decline)
+                if ($request->type === 'accept') {
+                    // Update accepted_users
+                    $existingAcceptedUsers = $messageMeeting->accepted_users ? explode(',', $messageMeeting->accepted_users) : [];
+                    $newAcceptedUsers = array_unique(array_merge($existingAcceptedUsers, $recipient));
+                    $messageMeeting->accepted_users = implode(',', $newAcceptedUsers);
+                } elseif ($request->type === 'decline') {
+                    // Update declined_users
+                    $existingDeclinedUsers = $messageMeeting->decline_users ? explode(',', $messageMeeting->decline_users) : [];
+                    $newDeclinedUsers = array_unique(array_merge($existingDeclinedUsers, $recipient));
+                    $messageMeeting->decline_users = implode(',', $newDeclinedUsers);
+                }
+    
+                // Save the updated meeting data
+                $messageMeeting->save();
+            }
+    
+            $data = [
+                'status_code' => 200,
+                'message' => $request->type === 'accept' ? 'Meeting accepted!' : 'Meeting declined!',
+                'data' => []
+            ];
+            return $this->sendJsonResponse($data);
+        } catch (\Exception $e) {
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => date("Y-m-d H:i:s")
+            ]);
+            return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
+        }
+    } 
+
 
 }
 

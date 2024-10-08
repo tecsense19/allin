@@ -539,43 +539,48 @@ class OtpController extends Controller
      */
 
 
-    public function refreshToken(Request $request)
-    {
-        try {
-            $currentToken = JWTAuth::getToken();
-
-            if (!$currentToken) {
+     public function refreshToken(Request $request)
+     {
+         try {
+             $oldToken = $request->header('Authorization');
+             if (!$oldToken) {
+                 return response()->json([
+                     'status' => 'error',
+                     'status_code' => 401,
+                     'message' => 'Token not provided',
+                 ], 401);
+             }
+ 
+             $oldToken = str_replace('Bearer ', '', $oldToken);
+             $token = JWTAuth::parseToken($oldToken);
+             if (JWTAuth::getBlacklist()->has($token->getPayload())) {
                 return response()->json([
                     'status' => 'error',
                     'status_code' => 401,
-                    'message' => 'Token not provided',
+                    'message' => 'Token has been revoked',
                 ], 401);
-            }
-
-            // Attempt to refresh the token
-            $newToken = JWTAuth::refresh($currentToken);
-
-            $data = [
-                'status_code' => 200,
-                'message' => 'New Token Generated!',
-                'data' => [
-                    'token' => $newToken
-                ]
-            ];
-            return $this->sendJsonResponse($data);
-        } catch (TokenExpiredException $e) {
-            return response()->json([
-                'status' => 'error',
-                'status_code' => 401,
-                'message' => 'Token has expired and cannot be refreshed',
-            ], 401);
-        } catch (JWTException $e) {
-            return response()->json([
-                'status' => 'error',
-                'status_code' => 401,
-                'message' => 'Token refresh failed',
-            ], 401);
-        }
-    }
+            }                                                                                                                                                               
+             $newToken = JWTAuth::refresh($oldToken);
+             return response()->json([
+                 'status_code' => 200,
+                 'message' => 'Token refreshed',
+                 'data' => [
+                     'token' => $newToken
+                 ]
+             ]);
+         } catch (TokenExpiredException $e) {
+             return response()->json([
+                 'status' => 'error',
+                 'status_code' => 401,
+                 'message' => 'Token has expired and cannot be refreshed',
+             ], 401);
+         } catch (JWTException $e) {
+             return response()->json([
+                 'status' => 'error',
+                 'status_code' => 401,
+                 'message' => 'Token refresh failed',
+             ], 401);
+         }                                                                                                                                                                                                                                                                                                                                                                      
+     }                                                                                                                                                      
 
 }
