@@ -562,7 +562,7 @@ class GroupController extends Controller
                         'data' => ""
                     ]);
                 }
-                $group->profile_pic = setAssetPath('group-profile/' . $profileImageName);
+                $group->profile_pic = $profileImageName;
             }
 
             // Handle cover image upload
@@ -582,7 +582,7 @@ class GroupController extends Controller
                         'data' => ""
                     ]);
                 }            
-                $group->cover_image = setAssetPath('group-profile-cover-image/' . $coverImageName);
+                $group->cover_image = $coverImageName;
             }
 
             // Update group details
