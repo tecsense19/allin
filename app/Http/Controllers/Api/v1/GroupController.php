@@ -84,12 +84,12 @@ class GroupController extends Controller
                         // Set Profile image path
                         $group->profile_pic = empty($group->profile_pic) 
                         ? setAssetPath('assets/media/avatars/blank.png') 
-                        : setAssetPath('user-profile/' . $group->profile_pic);
+                        : setAssetPath('group-profile/' . $group->profile_pic);
                     
                         // Set cover image path
                         $group->cover_image = empty($group->cover_image) 
                             ? setAssetPath('assets/media/avatars/blank.png') 
-                            : setAssetPath('ser-profile-cover-image/' . $group->cover_image);
+                            : setAssetPath('group-profile-cover-image/' . $group->cover_image);
                         return $group;
                     });
         
@@ -224,14 +224,14 @@ class GroupController extends Controller
                 if (!empty($user->profile)) {
                     $user->profile = empty($user->profile) 
                     ? setAssetPath('assets/media/avatars/blank.png') 
-                    : setAssetPath('user-profile/' . $user->profile);
+                    : setAssetPath('group-profile/' . $user->profile);
                 }
             
                 // Set cover_image path only if it's not empty
                 if (!empty($user->cover_image)) {
                     $user->cover_image = empty($user->cover_image) 
                     ? setAssetPath('assets/media/avatars/blank.png') 
-                    : setAssetPath('user-profile-cover-image/' . $user->cover_image);                    
+                    : setAssetPath('group-profile-cover-image/' . $user->cover_image);                    
                 }            
                 return $user;
             });
@@ -354,7 +354,7 @@ class GroupController extends Controller
                     return $this->sendJsonResponse($data);
                 }
                 $profileImage = $request->file('profile');
-                $profileImageName = imageUpload($profileImage, 'user-profile');
+                $profileImageName = imageUpload($profileImage, 'group-profile');
                 if ($profileImageName == 'upload_failed') {
                     $data = [
                         'status_code' => 400,
@@ -391,7 +391,7 @@ class GroupController extends Controller
                     return $this->sendJsonResponse($dataCover);
                 }
                 $coverImage = $request->file('cover_image');
-                $coverImageName = imageUpload($coverImage, 'user-profile-cover-image');
+                $coverImageName = imageUpload($coverImage, 'group-profile-cover-image');
                 if ($coverImageName == 'upload_failed') {
                     $data = [
                         'status_code' => 400,
@@ -548,7 +548,7 @@ class GroupController extends Controller
             // Handle profile image upload
             if ($request->hasFile('profile')) {
                 $profileImage = $request->file('profile');
-                $profileImageName = imageUpload($profileImage, 'user-profile');
+                $profileImageName = imageUpload($profileImage, 'group-profile');
                 if ($profileImageName == 'upload_failed') {
                     return $this->sendJsonResponse([
                         'status_code' => 400,
@@ -562,13 +562,13 @@ class GroupController extends Controller
                         'data' => ""
                     ]);
                 }
-                $group->profile_pic = setAssetPath('user-profile/' . $profileImageName);
+                $group->profile_pic = setAssetPath('group-profile/' . $profileImageName);
             }
 
             // Handle cover image upload
             if ($request->hasFile('cover_image')) {
                 $coverImage = $request->file('cover_image');
-                $coverImageName = imageUpload($coverImage, 'user-profile-cover-image');
+                $coverImageName = imageUpload($coverImage, 'group-profile-cover-image');
                 if ($coverImageName == 'upload_failed') {
                     return $this->sendJsonResponse([
                         'status_code' => 400,
@@ -582,7 +582,7 @@ class GroupController extends Controller
                         'data' => ""
                     ]);
                 }            
-                $group->cover_image = setAssetPath('user-profile-cover-image/' . $coverImageName);
+                $group->cover_image = setAssetPath('group-profile-cover-image/' . $coverImageName);
             }
 
             // Update group details
@@ -674,7 +674,7 @@ class GroupController extends Controller
             ]);
             $userList = $userList->map(function ($item) {
                 $item->full_name = $item->first_name . ' ' . $item->last_name;
-                $item->profile = @$item->profile ? setAssetPath('user-profile/' . $item->profile) : setAssetPath('assets/media/avatars/blank.png');
+                $item->profile = @$item->profile ? setAssetPath('group-profile/' . $item->profile) : setAssetPath('assets/media/avatars/blank.png');
                 return $item;
             });
 
