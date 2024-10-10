@@ -81,8 +81,15 @@ class GroupController extends Controller
                     })                    
                     ->get()
                     ->map(function ($group) {
-                        $group->profile_pic = setAssetPath('user-profile/' . $group->profile_pic);
-                        $group->cover_image = setAssetPath('user-profile-cover-image/' . $group->cover_image);
+                        // Set Profile image path
+                        $group->profile_pic = empty($group->profile_pic) 
+                        ? setAssetPath('assets/media/avatars/blank.png') 
+                        : setAssetPath('user-profile/' . $group->profile_pic);
+                    
+                        // Set cover image path
+                        $group->cover_image = empty($group->cover_image) 
+                            ? setAssetPath('assets/media/avatars/blank.png') 
+                            : setAssetPath('ser-profile-cover-image/' . $group->cover_image);
                         return $group;
                     });
         
@@ -215,14 +222,17 @@ class GroupController extends Controller
             $groupMembers = $groupMembers->map(function ($user) {
                 // Set profile_pic path only if it's not empty
                 if (!empty($user->profile)) {
-                    $user->profile = setAssetPath('user-profile/' . $user->profile);
+                    $user->profile = empty($user->profile) 
+                    ? setAssetPath('assets/media/avatars/blank.png') 
+                    : setAssetPath('user-profile/' . $user->profile);
                 }
             
                 // Set cover_image path only if it's not empty
                 if (!empty($user->cover_image)) {
-                    $user->cover_image = setAssetPath('user-profile-cover-image/' . $user->cover_image);
-                }
-            
+                    $user->cover_image = empty($user->cover_image) 
+                    ? setAssetPath('assets/media/avatars/blank.png') 
+                    : setAssetPath('user-profile-cover-image/' . $user->cover_image);                    
+                }            
                 return $user;
             });
             
