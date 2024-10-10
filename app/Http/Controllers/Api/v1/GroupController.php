@@ -590,6 +590,15 @@ class GroupController extends Controller
             $group->description = $request->description;
             $group->save();
 
+
+            $group->profile_pic = empty($group->profile_pic) 
+                    ? setAssetPath('assets/media/avatars/blank.png') 
+                    : setAssetPath('group-profile/' . $group->profile_pic);   
+
+            $group->cover_image = empty($group->cover_image) 
+                    ? setAssetPath('assets/media/avatars/blank.png') 
+                    : setAssetPath('group-profile-cover-image/' . $group->cover_image);               
+
             return $this->sendJsonResponse([
                 'status_code' => 200,
                 'message' => 'Group updated successfully',
