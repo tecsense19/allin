@@ -195,7 +195,7 @@ class ChatController extends Controller
      *         @OA\MediaType(
      *             mediaType="multipart/form-data",
      *             @OA\Schema(
-     *                 required={"message_id", "message"},
+     *                 required={"message_id", "message", "timezone"},
      *                 @OA\Property(
      *                     property="message_id",
      *                     type="integer",
@@ -207,6 +207,13 @@ class ChatController extends Controller
      *                     type="string",
      *                     example="This is an updated test message.",
      *                     description="Updated content of the message",
+     *                     nullable=true
+     *                 ),
+     *                 @OA\Property(
+     *                     property="timezone",
+     *                     type="string",
+     *                     example="America/New_York",
+     *                     description="Timezone of the user making the request",
      *                     nullable=true
      *                 ),
      *             )
@@ -234,76 +241,92 @@ class ChatController extends Controller
      * )
      */
 
-    public function updateTextMessage(Request $request)
-    {
-        try {
-            $rules = [
-                'message_id' => 'required|integer|exists:message,id',
-                'message' => 'required|string',
-            ];
 
-            $messages = [
-                'message_id.required' => 'The message ID is required.',
-                'message_id.integer' => 'The message ID must be an integer.',
-                'message_id.exists' => 'The message ID does not exist.',
-                'message.required' => 'The message content is required.',
-                'message.string' => 'The message content must be a string.',
-            ];
-
-            $validator = Validator::make($request->all(), $rules, $messages);
-            if ($validator->fails()) {
-                return $this->sendJsonResponse([
-                    'status_code' => 400,
-                    'message' => $validator->errors()->first(),
-                    'data' => ""
-                ]);
-            }        
-
-            $msg = Message::where('id', $request->message_id)            
-            ->first();
-            
-            if (!$msg) {
-                return response()->json(['status_code' => 404, 'message' => 'Message not found'], 404);
-            }
-
-            // Check if the logged-in user is both the sender and creator of the message
-            $messageSenderReceiver = MessageSenderReceiver::where('message_id', $msg->id)
-                ->where('sender_id', auth()->user()->id)  // Ensure the logged-in user is the sender
-                ->first();
-
-            if (!$messageSenderReceiver) {
-                return response()->json(['status_code' => 403, 'message' => 'You are not authorized to edit this message'], 403);
-            }
-
-            // Update the message content
+     public function updateTextMessage(Request $request)
+     {
+         try {
+             $rules = [
+                 'message_id' => 'required|integer|exists:message,id',
+                 'message' => 'required|string',
+                 'timezone' => 'required|string|timezone' // New validation rule for timezone
+             ];
+     
+             $messages = [
+                 'message_id.required' => 'The message ID is required.',
+                 'message_id.integer' => 'The message ID must be an integer.',
+                 'message_id.exists' => 'The message ID does not exist.',
+                 'message.required' => 'The message content is required.',
+                 'message.string' => 'The message content must be a string.',
+                 'timezone.required' => 'The timezone is required.',
+                 'timezone.string' => 'The timezone must be a string.',
+                 'timezone.timezone' => 'The timezone must be a valid timezone identifier.'
+             ];
+     
+             $validator = Validator::make($request->all(), $rules, $messages);
+             if ($validator->fails()) {
+                 return $this->sendJsonResponse([
+                     'status_code' => 400,
+                     'message' => $validator->errors()->first(),
+                     'data' => ""
+                 ]);
+             }        
+     
+             $msg = Message::where('id', $request->message_id)->first();
+     
+             if (!$msg) {
+                 return response()->json(['status_code' => 404, 'message' => 'Message not found'], 404);
+             }
+     
+             // Check if the logged-in user is both the sender and creator of the message
+             $messageSenderReceiver = MessageSenderReceiver::where('message_id', $msg->id)
+                 ->where('sender_id', auth()->user()->id) // Ensure the logged-in user is the sender
+                 ->first();
+     
+             if (!$messageSenderReceiver) {
+                 return response()->json(['status_code' => 403, 'message' => 'You are not authorized to edit this message'], 403);
+             }
+    
+     
+           // Update the message content
             $msg->message = $request->message;
+            $msg->updated_at = now(); // Set the updated_at time to now
             $msg->save();
 
+            // Prepare the time in the requested timezone or default to UTC
+            $formattedTime = $request->timezone 
+                ? Carbon::parse($msg->updated_at)->setTimezone($request->timezone)->format('h:i a') 
+                : Carbon::parse($msg->updated_at)->format('h:i a');
+
+            // Response data
             $data = [
                 'status_code' => 200,
                 'message' => 'Message updated successfully!',
                 'data' => [
                     'id' => $msg->id,
                     'updated_message' => $msg->message,
+                    // 'updated_at' => Carbon::parse($msg->updated_at)->toDateTimeString(),
+                    'time' => $formattedTime // Return the updated time in the specified timezone
                 ]
             ];
+
             return $this->sendJsonResponse($data);
 
-        } catch (\Exception $e) {
-            Log::error([
-                'method' => __METHOD__,
-                'error' => [
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                    'message' => $e->getMessage()
-                ],
-                'created_at' => now()->format("Y-m-d H:i:s")
-            ]);
-
-            return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
-        }
-    }
-
+     
+         } catch (\Exception $e) {
+             Log::error([
+                 'method' => __METHOD__,
+                 'error' => [
+                     'file' => $e->getFile(),
+                     'line' => $e->getLine(),
+                     'message' => $e->getMessage()
+                 ],
+                 'created_at' => now()->format("Y-m-d H:i:s")
+             ]);
+     
+             return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
+         }
+     }
+     
 
     
     /**
@@ -4255,6 +4278,3 @@ class ChatController extends Controller
 
 
 }
-
-
-
