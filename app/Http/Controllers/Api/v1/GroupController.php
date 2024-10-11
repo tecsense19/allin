@@ -590,7 +590,6 @@ class GroupController extends Controller
             $group->description = $request->description;
             $group->save();
 
-
             $group->profile_pic = empty($group->profile_pic) 
                     ? setAssetPath('assets/media/avatars/blank.png') 
                     : setAssetPath('group-profile/' . $group->profile_pic);   

@@ -1080,7 +1080,7 @@ class UserController extends Controller
                     return [
                         'id' => $group->id,
                         'name' => $group->name,
-                        'profile' => @$group->profile_pic ? setAssetPath('user-profile/' . $group->profile_pic) : setAssetPath('assets/media/avatars/blank.png'),
+                        'profile' => @$group->profile_pic ? setAssetPath('group-profile/' . $group->profile_pic) : setAssetPath('assets/media/avatars/blank.png'),
                         'last_message' => $lastMessageContent,
                         'last_message_date' => $lastMessageDate,
                         'unread_message_count' => $unreadgroupMessageCount,
@@ -1878,8 +1878,8 @@ class UserController extends Controller
                 
                 $group = new Group();
                 $groupData = $group->find($request->group_id);
-                $groupData->profile_pic = @$groupData->profile_pic ? setAssetPath('user-profile/' . $groupData->profile_pic) : setAssetPath('assets/media/avatars/blank.png');
-                $groupData->cover_image = @$groupData->cover_image ? setAssetPath('user-profile/' . $groupData->cover_image) : setAssetPath('assets/media/avatars/blank.png');
+                $groupData->profile_pic = @$groupData->profile_pic ? setAssetPath('group-profile/' . $groupData->profile_pic) : setAssetPath('assets/media/avatars/blank.png');
+                $groupData->cover_image = @$groupData->cover_image ? setAssetPath('group-profile/' . $groupData->cover_image) : setAssetPath('assets/media/avatars/blank.png');
                          
              $userId = $value->user_id;
              $filter = [
