@@ -1188,7 +1188,7 @@ class ProjectManagementController extends Controller
                             $event->event_date = Carbon::parse($event->event_date)->setTimezone($timezone)->format('Y-m-d H:i:s');
                             $event->event_time = Carbon::parse($event->event_time)->setTimezone($timezone)->format('h:i a');
 
-                            $event->event_image = @$event->event_image ? setAssetPath('event-image/' . $event->event_image) : setAssetPath('assets/media/avatars/blank.png');
+                            $event->event_image = @$event->event_image ?  $event->event_image : setAssetPath('assets/media/avatars/blank.png');
 
                             $userList = [];
                             if($event->users)

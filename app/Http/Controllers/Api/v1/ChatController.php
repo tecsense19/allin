@@ -17,6 +17,7 @@ use App\Models\MessageTask;
 use App\Models\MessageTaskChat;
 use App\Models\Reminder;
 use App\Models\User;
+use App\Models\ProjectEvent;
 use App\Models\userDeviceToken;
 use App\Models\UserDocument;
 use Carbon\Carbon;
@@ -1719,7 +1720,7 @@ class ChatController extends Controller
      *                 @OA\Property(
      *                     property="message_type",
      *                     type="string",
-     *                     example="Meetings,Task,event",
+     *                     example="Meeting,Task,event",
      *                     description="Comma-separated message types to filter"
      *                 )
      *             )
@@ -1761,58 +1762,75 @@ class ChatController extends Controller
      * )
      */
 
-    public function getUnreadMessageCount(Request $request)
-    {
-        try {
-            $rules = [
-                'message_type' => 'required|string'
-            ];
-    
-            $message = [
-                'message_type.required' => 'The message type is required.',
-                'message_type.string' => 'The message type must be a string.'
-            ];
-    
-            $validator = Validator::make($request->all(), $rules, $message);
-            if ($validator->fails()) {
-                $data = [
-                    'status_code' => 400,
-                    'message' => $validator->errors()->first(),
-                    'data' => ""
-                ];
-                return $this->sendJsonResponse($data);
-            }
-            $loginUser = auth()->user()->id;
-            // Convert message types to an array
-            $messageTypes = explode(',', $request->message_type);
-    
-            // Query to count unread messages for specified types
-            $unreadCount = Message::whereIn('message_type', $messageTypes)
-                ->where('status', 'Unread')->where('created_by', $loginUser)
-                ->count();
-    
-            $data = [
-                'status_code' => 200,                
-                'message' => 'Unread message count retrieved successfully.',
-                'data' => [
-                    'message_type' => $messageTypes,
-                    'unread_count' => $unreadCount,                    
-                ]
-            ];
-            return $this->sendJsonResponse($data);
-        } catch (\Exception $e) {
-            Log::error([
-                'method' => __METHOD__,
-                'error' => [
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                    'message' => $e->getMessage()
-                ],
-                'created_at' => now()->format("Y-m-d H:i:s")
-            ]);
-            return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
-        }
-    }
+     public function getUnreadMessageCount(Request $request)
+     {
+         try {
+             $rules = [
+                 'message_type' => 'required|string'
+             ];
+     
+             $message = [
+                 'message_type.required' => 'The message type is required.',
+                 'message_type.string' => 'The message type must be a string.'
+             ];
+     
+             $validator = Validator::make($request->all(), $rules, $message);
+             if ($validator->fails()) {
+                 $data = [
+                     'status_code' => 400,
+                     'message' => $validator->errors()->first(),
+                     'data' => ""
+                 ];
+                 return $this->sendJsonResponse($data);
+             }
+     
+             $loginUser = auth()->user()->id;
+             // Convert message types to an array
+             $messageTypes = explode(',', $request->message_type);
+             
+             // Initialize an array to hold counts
+             $unreadCounts = [];
+     
+             // Loop through each message type and count unread messages
+             foreach ($messageTypes as $type) {
+                 $trimmedType = trim($type);
+                 
+                 // Check if the type is 'Meetings', 'Task', or 'event' and query accordingly
+                 if ($trimmedType === 'Meeting' || $trimmedType === 'Task') {
+                     $unreadCounts[$trimmedType] = Message::where('message_type', $trimmedType) // Assuming you have a message_type column in Message
+                         ->where('status', 'Unread')
+                         ->where('created_by', $loginUser)
+                         ->count();
+                 } elseif ($trimmedType === 'event') {
+                     $unreadCounts[$trimmedType] = ProjectEvent::where('status', 'Unread')
+                         ->where('created_by', $loginUser)
+                         ->count();
+                 }
+             }
+     
+             $data = [
+                 'status_code' => 200,
+                 'message' => 'Unread message counts retrieved successfully.',
+                 'data' => [
+                     'unread_counts' => $unreadCounts,
+                 ]
+             ];
+             return $this->sendJsonResponse($data);
+         } catch (\Exception $e) {
+             Log::error([
+                 'method' => __METHOD__,
+                 'error' => [
+                     'file' => $e->getFile(),
+                     'line' => $e->getLine(),
+                     'message' => $e->getMessage()
+                 ],
+                 'created_at' => now()->format("Y-m-d H:i:s")
+             ]);
+             return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
+         }
+     }
+     
+     
 
 
     /**
@@ -1830,6 +1848,12 @@ class ChatController extends Controller
      *             mediaType="multipart/form-data",
      *             @OA\Schema(
      *                 required={"messageIds","status"},
+     *                 @OA\Property(
+     *                     property="message_type",
+     *                     type="string",
+     *                     example="event",
+     *                     description="only for event use"
+     *                 ),
      *                 @OA\Property(
      *                     property="messageIds",
      *                     type="string",
@@ -1863,6 +1887,7 @@ class ChatController extends Controller
     {
         try {
             $rules = [
+                'message_type' => 'string',
                 'messageIds' => 'required|string|regex:/^\d+(,\d+)*$/',
                 'status' => 'required|string|in:Read,Unread',
             ];
@@ -1886,8 +1911,14 @@ class ChatController extends Controller
                 return $this->sendJsonResponse($data);
             }
 
-            $messageIds = explode(',', $request->messageIds);
-            Message::whereIn('id', $messageIds)->update(['status' => $request->status]);
+            if($request->message_type == 'event')
+            {
+                $messageIds = explode(',', $request->messageIds);
+                ProjectEvent::whereIn('id', $messageIds)->update(['status' => $request->status]);
+            }else{
+                $messageIds = explode(',', $request->messageIds);
+                Message::whereIn('id', $messageIds)->update(['status' => $request->status]);
+            }
 
             $data = [
                 'status_code' => 200,
