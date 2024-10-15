@@ -78,7 +78,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
             Route::post('/file-scan-upload', 'fileScanUpload'); 
             Route::get('/user-documents', 'getUserDocuments'); 
             Route::post('/message-task-notification', 'message_task_notification');   
-            
+            Route::post('/unread-message-count', 'getUnreadMessageCount');           
         });
         Route::controller(ProjectManagementController::class)->group(function () {
             Route::post('/add-work-hours', 'addWorkHours');

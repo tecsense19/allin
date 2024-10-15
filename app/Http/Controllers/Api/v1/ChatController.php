@@ -1699,6 +1699,122 @@ class ChatController extends Controller
             return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
         }
     }
+
+
+    /**
+     * @OA\Post(
+     *     path="/api/v1/unread-message-count",
+     *     summary="Get count of unread messages for specified types",
+     *     tags={"Messages"},
+     *     description="Retrieve the total count of unread messages for the given message_type values (e.g., 'Meetings', 'Task', 'event')",
+     *     operationId="getUnreadMessageCount",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Filter by message type",
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"message_type"},
+     *                 @OA\Property(
+     *                     property="message_type",
+     *                     type="string",
+     *                     example="Meetings,Task,event",
+     *                     description="Comma-separated message types to filter"
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Unread message count",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *             @OA\Schema(
+     *                 @OA\Property(
+     *                     property="status_code",
+     *                     type="integer",
+     *                     example=200
+     *                 ),
+     *                 @OA\Property(
+     *                     property="message",
+     *                     type="string",
+     *                     example="Unread message count retrieved successfully."
+     *                 ),
+     *                 @OA\Property(
+     *                     property="data",
+     *                     type="object",
+     *                     @OA\Property(
+     *                         property="unread_count",
+     *                         type="integer",
+     *                         example=5,
+     *                         description="Total unread messages count"
+     *                     )
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     )
+     * )
+     */
+
+    public function getUnreadMessageCount(Request $request)
+    {
+        try {
+            $rules = [
+                'message_type' => 'required|string'
+            ];
+    
+            $message = [
+                'message_type.required' => 'The message type is required.',
+                'message_type.string' => 'The message type must be a string.'
+            ];
+    
+            $validator = Validator::make($request->all(), $rules, $message);
+            if ($validator->fails()) {
+                $data = [
+                    'status_code' => 400,
+                    'message' => $validator->errors()->first(),
+                    'data' => ""
+                ];
+                return $this->sendJsonResponse($data);
+            }
+            $loginUser = auth()->user()->id;
+            // Convert message types to an array
+            $messageTypes = explode(',', $request->message_type);
+    
+            // Query to count unread messages for specified types
+            $unreadCount = Message::whereIn('message_type', $messageTypes)
+                ->where('status', 'Unread')->where('created_by', $loginUser)
+                ->count();
+    
+            $data = [
+                'status_code' => 200,                
+                'message' => 'Unread message count retrieved successfully.',
+                'data' => [
+                    'message_type' => $messageTypes,
+                    'unread_count' => $unreadCount,                    
+                ]
+            ];
+            return $this->sendJsonResponse($data);
+        } catch (\Exception $e) {
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => now()->format("Y-m-d H:i:s")
+            ]);
+            return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
+        }
+    }
+
+
     /**
      * @OA\Post(
      *     path="/api/v1/read-unread-message",
