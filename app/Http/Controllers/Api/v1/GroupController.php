@@ -208,33 +208,33 @@ class GroupController extends Controller
             
             // Find users based on group_id and optional search term for both first and last names
             $groupMembers = User::join('group_members', 'users.id', '=', 'group_members.user_id')
-                ->where('group_members.group_id', $group_id)
-                ->when($searchTerm, function ($query, $searchTerm) {
-                    return $query->where(function ($query) use ($searchTerm) {
-                        $query->where('users.first_name', 'LIKE', '%' . $searchTerm . '%')
-                              ->orWhere('users.last_name', 'LIKE', '%' . $searchTerm . '%');
-                    });
-                })
-                ->whereNull('users.deleted_at') // Ensure the users are not soft-deleted
-                ->get(['users.*']); // Fetch all user fields or customize as needed
+            ->where('group_members.group_id', $group_id)
+            ->when($searchTerm, function ($query, $searchTerm) {
+                return $query->where(function ($query) use ($searchTerm) {
+                    $query->where('users.first_name', 'LIKE', '%' . $searchTerm . '%')
+                        ->orWhere('users.last_name', 'LIKE', '%' . $searchTerm . '%');
+                });
+            })
+            ->whereNull('users.deleted_at') // Ensure the users are not soft-deleted
+            ->selectRaw('users.*, CONCAT(users.first_name, " ", users.last_name) AS full_name') // Create full_name
+            ->get(); // Fetch all user fields along with the full_name
+
             
-            // Map through the group members to set profile_pic and cover_image paths
+           // Map through the group members to set profile_pic and cover_image paths
             $groupMembers = $groupMembers->map(function ($user) {
-                // Set profile_pic path only if it's not empty
-                if (!empty($user->profile)) {
-                    $user->profile = empty($user->profile) 
-                    ? setAssetPath('assets/media/avatars/blank.png') 
-                    : setAssetPath('group-profile/' . $user->profile);
-                }
-            
-                // Set cover_image path only if it's not empty
-                if (!empty($user->cover_image)) {
-                    $user->cover_image = empty($user->cover_image) 
-                    ? setAssetPath('assets/media/avatars/blank.png') 
-                    : setAssetPath('group-profile-cover-image/' . $user->cover_image);                    
-                }            
+                // Set profile_pic path
+                $user->profile = !empty($user->profile) 
+                    ? setAssetPath('user-profile/' . $user->profile) 
+                    : setAssetPath('assets/media/avatars/blank.png'); 
+
+                // Set cover_image path
+                $user->cover_image = !empty($user->cover_image) 
+                    ? setAssetPath('user-profile-cover-image/' . $user->cover_image) 
+                    : setAssetPath('assets/media/avatars/blank.png');                    
+
                 return $user;
             });
+
             
             $data = [
                 'status_code' => 200,
