@@ -2021,9 +2021,9 @@ class UserController extends Controller
 
 
         // Grouping the messages by Today and Yesterday
-        $groupedChatData = [
-            'Today' => [],
+        $groupedChatData = [        
             'Yesterday' => [],
+            'Today' => [],            
         ];
 
         // Current date and yesterday's date for comparison
