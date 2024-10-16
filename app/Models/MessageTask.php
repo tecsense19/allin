@@ -21,6 +21,7 @@ class MessageTask extends Model
         'task_checked_users',
         'checkbox',
         'users',
+        'read_status',
         'created_by',
         'updated_by',
         'deleted_by',

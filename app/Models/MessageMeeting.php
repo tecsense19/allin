@@ -25,6 +25,7 @@ class MessageMeeting extends Model
         'accepted_users',
         'decline_users',
         'users',
+        'read_status',
         'latitude',
         'longitude',
         'location_url',

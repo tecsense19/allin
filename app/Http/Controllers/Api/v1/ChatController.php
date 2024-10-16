@@ -17,6 +17,7 @@ use App\Models\MessageTask;
 use App\Models\MessageTaskChat;
 use App\Models\Reminder;
 use App\Models\User;
+use App\Models\deleteChatUsers;
 use App\Models\ProjectEvent;
 use App\Models\userDeviceToken;
 use App\Models\UserDocument;
@@ -1783,31 +1784,53 @@ class ChatController extends Controller
                  ];
                  return $this->sendJsonResponse($data);
              }
-     
+
              $loginUser = auth()->user()->id;
              // Convert message types to an array
              $messageTypes = explode(',', $request->message_type);
              
              // Initialize an array to hold counts
              $unreadCounts = [];
-     
+             
              // Loop through each message type and count unread messages
              foreach ($messageTypes as $type) {
-                 $trimmedType = trim($type);
+                 $trimmedType = trim($type);            
                  
-                 // Check if the type is 'Meetings', 'Task', or 'event' and query accordingly
-                 if ($trimmedType === 'Meeting' || $trimmedType === 'Task') {
-                     $unreadCounts[$trimmedType] = Message::where('message_type', $trimmedType) // Assuming you have a message_type column in Message
-                         ->where('status', 'Unread')
-                         ->where('created_by', $loginUser)
-                         ->count();
-                 } elseif ($trimmedType === 'event') {
-                     $unreadCounts[$trimmedType] = ProjectEvent::where('status', 'Unread')
-                         ->where('created_by', $loginUser)
-                         ->count();
+                 // Check if the type is 'Meeting' or 'Task' and query accordingly
+                 if ($trimmedType === 'Meeting') {
+                    
+                     $unreadCounts[$trimmedType] = MessageMeeting::where('users', 'LIKE', '%' . $loginUser . '%')
+                            ->where(function ($query) use ($loginUser) {
+                                // Check if the event has not been read by the specified user
+                                $query->where('read_status', 'NOT LIKE', '%' . $loginUser . '%')
+                                    ->orWhereNull('read_status'); // In case 'read_status' is empty or NULL                                    
+                            })
+                            ->distinct('message_id') // Ensure unique message IDs
+                            ->count('message_id'); // Count the distinct message IDs 
+
+                 } elseif ($trimmedType === 'Task') {
+
+                    $unreadCounts[$trimmedType] = MessageTask::where('users', 'LIKE', '%' . $loginUser . '%')
+                    ->where(function ($query) use ($loginUser) {
+                        $query->where('read_status', 'NOT LIKE', '%' . $loginUser . '%')
+                              ->orWhereNull('read_status'); // In case 'read_status' is empty or NULL
+                    })
+                    ->distinct('message_id') // Ensure unique message IDs
+                    ->count('message_id'); // Count the distinct message IDs
+                
+                
+                    
+                 }elseif ($trimmedType === 'event') {
+                     $unreadCounts[$trimmedType] = ProjectEvent::where('users', 'LIKE', '%' . $loginUser . '%')
+                         ->where(function ($query) use ($loginUser) {
+                             // Check if the event has not been read by the specified user
+                             $query->where('read_status', 'NOT LIKE', '%' . $loginUser . '%')
+                                   ->orWhereNull('read_status'); // In case 'read_status' is empty or NULL
+                         })
+                         ->count();                
                  }
              }
-     
+             
              $data = [
                  'status_code' => 200,
                  'message' => 'Unread message counts retrieved successfully.',
@@ -1815,7 +1838,9 @@ class ChatController extends Controller
                      'unread_counts' => $unreadCounts,
                  ]
              ];
+             
              return $this->sendJsonResponse($data);
+             
          } catch (\Exception $e) {
              Log::error([
                  'method' => __METHOD__,
@@ -1829,8 +1854,249 @@ class ChatController extends Controller
              return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
          }
      }
-     
-     
+
+
+
+     /**
+     * @OA\Post(
+     *     path="/api/v1/read-unread-manage",
+     *     summary="Add a new message for meeting",
+     *     tags={"Messages"},
+     *     description="Change Message status",
+     *     operationId="manageReadStatus",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Add Message Request",
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"message_type","messageIds","status"},
+     *                 @OA\Property(
+     *                     property="message_type",
+     *                     type="string",
+     *                     example="event",
+     *                     description="only for event use"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="messageIds",
+     *                     type="string",
+     *                     example="1,2,3",
+     *                     description="Comma-Separated messageIds"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="status",
+     *                     type="string",
+     *                     example="Read",
+     *                     description="Enter Status (Read / Unread)"
+     *                 ),
+     *             )
+     *         )
+     *     ),
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+
+    public function manageReadStatus(Request $request)
+    {
+        try {
+            $rules = [
+                'message_type' => 'required|string|in:Meeting,Task,Event',
+                'messageIds' => 'required|string|regex:/^\d+(,\d+)*$/',
+            ];
+
+            $message = [
+                'messageIds.required' => 'The message IDs are required.',
+                'messageIds.string' => 'The message IDs must be a string.',
+                'messageIds.regex' => 'The message IDs must be a comma-separated list of numeric values.',
+            ];
+
+         
+            $validator = Validator::make($request->all(), $rules, $message);
+            if ($validator->fails()) {
+                $data = [
+                    'status_code' => 400,
+                    'message' => $validator->errors()->first(),
+                    'data' => ""
+                ];
+                return $this->sendJsonResponse($data);
+            }
+            $loginUser = auth()->user()->id;
+
+            if($request->message_type == 'Event')
+            {             
+                $messageIds = explode(',', $request->messageIds);                
+                
+                // Retrieve the relevant ProjectEvent records
+                $projectEvents = ProjectEvent::whereIn('id', $messageIds)                    
+                    ->get();                                      
+                // Step 3: Create a new read_status string for each event
+                foreach ($projectEvents as $event) {
+                    // Get the existing read_status
+                    $existingStatus = $event->read_status;
+                    
+                    // Prepare the new read_status by concatenating the existing status and loginUser
+                    $newStatus = $existingStatus ? $existingStatus . ',' . $loginUser : $loginUser;                  
+
+                    // Update the read_status in the database
+                    $event->update(['read_status' => $newStatus]);
+                    // Step 4: Get message IDs from the request
+                                  
+
+                    // Step 5: Update the read_status for the specified message IDs
+                    ProjectEvent::whereIn('id', $messageIds)->update(['read_status' => $newStatus]);
+
+                    $messageIds = explode(',', $request->messageIds); // Get message IDs from the request
+                    $newUserId = $loginUser; // The user ID you want to add to read_status
+
+                    foreach ($messageIds as $messageId) {
+                        // Retrieve the current ProjectEvent by ID
+                        $projectEvent = ProjectEvent::find($messageId);
+
+                        if ($projectEvent) {
+                            // Get the current read_status and convert it to an array
+                            $currentReadStatus = explode(',', $projectEvent->read_status);
+                            // Check if the new user ID is already in the current read_status
+                            if (in_array($newUserId, $currentReadStatus)) {
+                                // Add the new user ID to the array
+                                $currentReadStatus[] = $newUserId;                           
+                                // Convert back to a string and ensure unique values
+                                $projectEvent->read_status = implode(',', array_unique($currentReadStatus));
+
+                                // Save the model
+                                $projectEvent->save();
+                            }
+                        }
+                    }
+
+                }
+
+            }elseif($request->message_type == 'Meeting'){
+
+
+                $messageIds = explode(',', $request->messageIds);                
+                
+                $projectMeetings = MessageMeeting::whereIn('id', $messageIds)                    
+                    ->get();        
+                                      
+                // Step 3: Create a new read_status string for each event
+                foreach ($projectMeetings as $event) {
+                    // Get the existing read_status
+                    $existingStatus = $event->read_status;
+                    
+                    // Prepare the new read_status by concatenating the existing status and loginUser
+                    $newStatus = $existingStatus ? $existingStatus . ',' . $loginUser : $loginUser;                  
+
+                    // Update the read_status in the database
+                    $event->update(['read_status' => $newStatus]);
+                    // Step 4: Get message IDs from the request
+                    $messageIds = explode(',', $request->messageIds);              
+
+                    // Step 5: Update the read_status for the specified message IDs
+                    MessageMeeting::whereIn('id', $messageIds)->update(['read_status' => $newStatus]);
+
+                    $messageIds = explode(',', $request->messageIds); // Get message IDs from the request
+                    $newUserId = $loginUser; // The user ID you want to add to read_status
+
+                    foreach ($messageIds as $messageId) {
+                        // Retrieve the current ProjectEvent by ID
+                        $projectMeetings = MessageMeeting::find($messageId);
+
+                        if ($projectMeetings) {
+                            // Get the current read_status and convert it to an array
+                            $currentReadStatus = explode(',', $projectMeetings->read_status);
+                            // Check if the new user ID is already in the current read_status
+                            if (in_array($newUserId, $currentReadStatus)) {
+                                // Add the new user ID to the array
+                                $currentReadStatus[] = $newUserId;                           
+                                // Convert back to a string and ensure unique values
+                                $projectMeetings->read_status = implode(',', array_unique($currentReadStatus));
+
+                                // Save the model
+                                $projectMeetings->save();
+                            }
+                        }
+                    }
+                }
+
+            }elseif($request->message_type == 'Task'){
+
+                $messageIds = explode(',', $request->messageIds);                
+                
+                $projectTask = MessageTask::whereIn('id', $messageIds)                    
+                    ->get();        
+                                      
+                // Step 3: Create a new read_status string for each event
+                foreach ($projectTask as $event) {
+                    // Get the existing read_status
+                    $existingStatus = $event->read_status;
+                    
+                    // Prepare the new read_status by concatenating the existing status and loginUser
+                    $newStatus = $existingStatus ? $existingStatus . ',' . $loginUser : $loginUser;                  
+
+                    // Update the read_status in the database
+                    $event->update(['read_status' => $newStatus]);
+                    // Step 4: Get message IDs from the request
+                    $messageIds = explode(',', $request->messageIds);              
+
+                    // Step 5: Update the read_status for the specified message IDs
+                    MessageTask::whereIn('id', $messageIds)->update(['read_status' => $newStatus]);
+
+                    $messageIds = explode(',', $request->messageIds); // Get message IDs from the request
+                    $newUserId = $loginUser; // The user ID you want to add to read_status
+
+                    foreach ($messageIds as $messageId) {
+                        // Retrieve the current ProjectEvent by ID
+                        $projectTasks = MessageTask::find($messageId);
+
+                        if ($projectTasks) {
+                            // Get the current read_status and convert it to an array
+                            $currentReadStatus = explode(',', $projectTasks->read_status);
+                            // Check if the new user ID is already in the current read_status
+                            if (in_array($newUserId, $currentReadStatus)) {
+                                // Add the new user ID to the array
+                                $currentReadStatus[] = $newUserId;                           
+                                // Convert back to a string and ensure unique values
+                                $projectTasks->read_status = implode(',', array_unique($currentReadStatus));
+
+                                // Save the model
+                                $projectTasks->save();
+                            }
+                        }
+                    }
+                }
+
+            }
+
+            $data = [
+                'status_code' => 200,
+                'message' => 'Change Status Successfully!',
+                'data' => ""
+            ];
+            return $this->sendJsonResponse($data);
+        } catch (\Exception $e) {
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => now()->format("Y-m-d H:i:s")
+            ]);
+            return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
+        }
+    }
 
 
     /**
