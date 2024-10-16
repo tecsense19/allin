@@ -55,6 +55,12 @@ class ProjectManagementController extends Controller
      *                     description="Enter Work Summary"
      *                 ),
      *                 @OA\Property(
+     *                     property="location",
+     *                     type="string",
+     *                     example="",
+     *                     description="Enter location"
+     *                 ),
+     *                 @OA\Property(
      *                     property="timezone",
      *                     type="string",
      *                     example="Asia/Kolkata",
@@ -116,6 +122,7 @@ class ProjectManagementController extends Controller
             $workHours->start_date_time = $request->start_date_time;
             $workHours->end_date_time = $request->end_date_time;
             $workHours->summary = $request->summary;
+            $workHours->location = $request->location;
             $workHours->timezone = $request->timezone;
             $workHours->total_hours = $totalWorkingTime;
             $workHours->save();
@@ -199,7 +206,7 @@ class ProjectManagementController extends Controller
                 ->whereYear('start_date_time', $filterMonth->year)
                 ->whereMonth('start_date_time', $filterMonth->month)
                 ->orderByDesc('id')
-                ->get(['id', 'start_date_time', 'end_date_time', 'total_hours', 'summary']);
+                ->get(['id', 'start_date_time', 'end_date_time', 'total_hours', 'summary', 'location']);
             $format = $workHours->map(function ($workHour) {
                 $workHour->start_date_time = Carbon::parse($workHour->start_date_time)->format('Y-m-d H:i:s');
                 $workHour->end_date_time = Carbon::parse($workHour->end_date_time)->format('Y-m-d H:i:s');

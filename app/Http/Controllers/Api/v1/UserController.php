@@ -1593,193 +1593,478 @@ class UserController extends Controller
      * )
      */
 
-     public function userGroupDetails(Request $request)
-     {
-         try {
-             $rules = [
-                 'group_id' => 'required|integer',
-             ];
+    //  public function userGroupDetails(Request $request)
+    //  {
+    //      try {
+    //          $rules = [
+    //              'group_id' => 'required|integer',
+    //          ];
  
-             $message = [
-                 'group_id.required' => 'User group_id is required.',
-                 'group_id.integer' => 'User group_id must be an integer.',                 
-             ];
-             $start = $request->start ?? 0;
-             $limit = $request->limit ?? 15;             
-             $validator = Validator::make($request->all(), $rules, $message);
-             if ($validator->fails()) {
-                 $data = [
-                     'status_code' => 400,
-                     'message' => $validator->errors()->first(),
-                     'data' => ""
-                 ];
-                 return $this->sendJsonResponse($data);
-             }   
-             $loginUser = auth()->user()->id;  
-             $members = GroupMembers::where('group_id', $request->group_id)->get();
-             if ($members->isEmpty()) {
-                 return $this->sendJsonResponse(['status_code' => 404, 'message' => 'No members found in this group.']);
-             }
-             foreach($members as $value) 
-             {
-                $user = new User();
-                $userData = $user->find(auth()->user()->id);
-                $userData->profile = @$userData->profile ? setAssetPath('user-profile/' . $userData->profile) : setAssetPath('assets/media/avatars/blank.png');
-                $userData->cover_image = @$userData->cover_image ? setAssetPath('user-profile-cover-image/' . $userData->cover_image) : setAssetPath('assets/media/misc/image.png');  
+    //          $message = [
+    //              'group_id.required' => 'User group_id is required.',
+    //              'group_id.integer' => 'User group_id must be an integer.',                 
+    //          ];
+    //          $start = $request->start ?? 0;
+    //          $limit = $request->limit ?? 15;             
+    //          $validator = Validator::make($request->all(), $rules, $message);
+    //          if ($validator->fails()) {
+    //              $data = [
+    //                  'status_code' => 400,
+    //                  'message' => $validator->errors()->first(),
+    //                  'data' => ""
+    //              ];
+    //              return $this->sendJsonResponse($data);
+    //          }   
+    //          $loginUser = auth()->user()->id;  
+    //          $members = GroupMembers::where('group_id', $request->group_id)->get();
+    //          if ($members->isEmpty()) {
+    //              return $this->sendJsonResponse(['status_code' => 404, 'message' => 'No members found in this group.']);
+    //          }
+    //          foreach($members as $value) 
+    //          {
+    //             $user = new User();
+    //             $userData = $user->find(auth()->user()->id);
+    //             $userData->profile = @$userData->profile ? setAssetPath('user-profile/' . $userData->profile) : setAssetPath('assets/media/avatars/blank.png');
+    //             $userData->cover_image = @$userData->cover_image ? setAssetPath('user-profile-cover-image/' . $userData->cover_image) : setAssetPath('assets/media/misc/image.png');  
                 
-                $group = new Group();
-                $groupData = $group->find($request->group_id);
-                $groupData->profile_pic = @$groupData->profile_pic ? setAssetPath('group-profile/' . $groupData->profile_pic) : setAssetPath('assets/media/avatars/blank.png');
-                $groupData->cover_image = @$groupData->cover_image ? setAssetPath('group-profile/' . $groupData->cover_image) : setAssetPath('assets/media/avatars/blank.png');
+    //             $group = new Group();
+    //             $groupData = $group->find($request->group_id);
+    //             $groupData->profile_pic = @$groupData->profile_pic ? setAssetPath('group-profile/' . $groupData->profile_pic) : setAssetPath('assets/media/avatars/blank.png');
+    //             $groupData->cover_image = @$groupData->cover_image ? setAssetPath('group-profile/' . $groupData->cover_image) : setAssetPath('assets/media/avatars/blank.png');
                          
-             $userId = $value->user_id;
-             $filter = [
-                 'Task',
-                 'Meeting',
-                 'Reminder'
-             ];
-             $messages = MessageSenderReceiver::where(function ($query) use ($loginUser, $userId) {
-                $query->where('receiver_id', $userId);
-            })
+    //          $userId = $value->user_id;
+    //          $filter = [
+    //              'Task',
+    //              'Meeting',
+    //              'Reminder'
+    //          ];
+    //          $messages = MessageSenderReceiver::where(function ($query) use ($loginUser, $userId) {
+    //             $query->where('receiver_id', $userId);
+    //         })
            
-            ->whereNull('deleted_at')
-            ->whereHas('message', function ($q) use ($request) {
-                $q->where('message_type', '!=', 'Task Chat');
-                if ($request->group_id) {
-                    $q->where('group_id', $request->group_id);
-                }
-            })
-            ->with([ /* your relations */ ])
-            ->orderByDesc('created_at')
-            ->skip($start)
-            ->take($limit);
+    //         ->whereNull('deleted_at')
+    //         ->whereHas('message', function ($q) use ($request) {
+    //             $q->where('message_type', '!=', 'Task Chat');
+    //             if ($request->group_id) {
+    //                 $q->where('group_id', $request->group_id);
+    //             }
+    //         })
+    //         ->with([ /* your relations */ ])
+    //         ->orderByDesc('created_at')
+    //         ->skip($start)
+    //         ->take($limit);
                     
-            $messages = $messages->get();
-
-        }
-             $groupedChat = $messages->map(function ($message) use ($loginUser, $request) {
-                 $messageDetails = [];
-                 switch ($message->message->message_type) {
-                     case 'Text':
-                         $messageDetails = $message->message->message;                         
-                         break;
-                     case 'Attachment':
-                         $messageDetails = $message->message->attachment;
-                         break;
-                     case 'Location':
-                         $messageDetails = $message->message->location;
-                         break;
-                     case 'Meeting':
-                         $messageDetails = $message->message->meeting;
-                         break;
-                     case 'Task':                           
-                        $messageDetails = $message->message->Task;                                           
-                         break;                                             
-                     case 'Reminder':
-                         $messageDetails = $message->message->reminder;
-                         break;
-                     case 'Contact':
-                         $messageDetails = $message->message->message;
-                         break;
-                 }
+    //         $messages = $messages->get();
+    //     }
+       
+    //          $groupedChat = $messages->map(function ($message) use ($loginUser, $request) {
+    //              $messageDetails = [];
+    //              switch ($message->message->message_type) {
+    //                  case 'Text':
+    //                      $messageDetails = $message->message->message;
+                         
+    //                      break;
+    //                  case 'Attachment':
+    //                      $messageDetails = $message->message->attachment;
+    //                      break;
+    //                  case 'Location':
+    //                      $messageDetails = $message->message->location;
+    //                      break;
+    //                  case 'Meeting':
+    //                      $messageDetails = $message->message->meeting;
+    //                      break;
+    //                  case 'Task':                           
+    //                     $messageDetails = $message->message->Task;                                           
+    //                      break;                                             
+    //                  case 'Reminder':
+    //                      $messageDetails = $message->message->reminder;
+    //                      break;
+    //                  case 'Contact':
+    //                      $messageDetails = $message->message->message;
+    //                      break;
+    //              }
                  
-                 $senderName = @$message->sender->first_name .' '. @$message->sender->last_name;                 
-                 $senderProfile = @$message->sender->profile ? setAssetPath('user-profile/' . $message->sender->profile) : setAssetPath('assets/media/avatars/blank.png');                 
+    //              $senderName = @$message->sender->first_name .' '. @$message->sender->last_name;                 
+    //              $senderProfile = @$message->sender->profile ? setAssetPath('user-profile/' . $message->sender->profile) : setAssetPath('assets/media/avatars/blank.png');                 
 
-                 if($message->message->message_type == 'Meeting' || $message->message->message_type == 'Reminder'){
-                     $users = explode(',',$messageDetails->users);
-                     $userList = User::whereIn('id', $users)->get(['id','first_name','last_name','country_code','mobile','profile']);
-                     $userList = $userList->map(function ($user) {
-                         $user->profile = @$user->profile ? setAssetPath('user-profile/' . $user->profile) : setAssetPath('assets/media/avatars/blank.png');
-                         return $user;
-                     });
-                     $messageDetails->users = $userList;
-                     $messageDetails->date = @$request->timezone ? Carbon::parse($messageDetails->date)->format('d-m-Y') : Carbon::parse($messageDetails->date)->format('Y-m-d H:i:s');
-                     if($message->message->message_type == 'Reminder'){
-                         $messageDetails->time = @$request->timezone ? Carbon::parse($messageDetails->time)->format('h:i a') : Carbon::parse($messageDetails->time)->format('h:i a');
-                     }elseif($message->message->message_type == 'Meeting'){
-                         $messageDetails->start_time = @$request->timezone ? Carbon::parse($messageDetails->start_time)->format('h:i a') : Carbon::parse($messageDetails->start_time)->format('h:i a');
-                         $messageDetails->end_time = @$request->timezone ? Carbon::parse($messageDetails->end_time)->format('h:i a') : Carbon::parse($messageDetails->end_time)->format('h:i a');
-                     }
-                 }
-                 return [
-                     'messageId' => $message->message->id,
-                     'messageType' => $message->message->message_type,
-                     'attachmentType' => $message->message->attachment_type,
-                     'date' => @$request->timezone ? Carbon::parse($message->message->created_at)->setTimezone($request->timezone)->format('Y-m-d H:i:s') : Carbon::parse($message->message->created_at)->format('Y-m-d H:i:s'),
-                     'time' => @$request->timezone ? Carbon::parse($message->message->created_at)->setTimezone($request->timezone)->format('h:i a') : Carbon::parse($message->message->created_at)->format('h:i a'),
-                     'sentBy' => ($message->sender_id == auth()->user()->id) ? 'loginUser' : 'User',
-                     'senderName' => $senderName,
-                     'senderProfile' => $senderProfile,
-                     'messageDetails' => $messageDetails,
-                 ];
-             })->groupBy(function ($message) {
-                 $carbonDate = Carbon::parse($message['date']);
-                 if ($carbonDate->isToday()) {
-                     return 'Today';
-                 } elseif ($carbonDate->isYesterday()) {
-                     return 'Yesterday';
-                 } else {
-                     return $carbonDate->format('d M Y');
-                 }
-             })->map(function ($messages, $date) {
-                 $sortedMessages = $messages->sort(function ($a, $b) {
-                     $timeA = strtotime($a['time']);
-                     $timeB = strtotime($b['time']);
+    //              if($message->message->message_type == 'Meeting' || $message->message->message_type == 'Reminder'){
+    //                  $users = explode(',',$messageDetails->users);
+    //                  $userList = User::whereIn('id', $users)->get(['id','first_name','last_name','country_code','mobile','profile']);
+    //                  $userList = $userList->map(function ($user) {
+    //                      $user->profile = @$user->profile ? setAssetPath('user-profile/' . $user->profile) : setAssetPath('assets/media/avatars/blank.png');
+    //                      return $user;
+    //                  });
+    //                  $messageDetails->users = $userList;
+    //                  $messageDetails->date = @$request->timezone ? Carbon::parse($messageDetails->date)->format('d-m-Y') : Carbon::parse($messageDetails->date)->format('Y-m-d H:i:s');
+    //                  if($message->message->message_type == 'Reminder'){
+    //                      $messageDetails->time = @$request->timezone ? Carbon::parse($messageDetails->time)->format('h:i a') : Carbon::parse($messageDetails->time)->format('h:i a');
+    //                  }elseif($message->message->message_type == 'Meeting'){
+    //                      $messageDetails->start_time = @$request->timezone ? Carbon::parse($messageDetails->start_time)->format('h:i a') : Carbon::parse($messageDetails->start_time)->format('h:i a');
+    //                      $messageDetails->end_time = @$request->timezone ? Carbon::parse($messageDetails->end_time)->format('h:i a') : Carbon::parse($messageDetails->end_time)->format('h:i a');
+    //                  }
+    //              }
+    //              return [
+    //                  'messageId' => $message->message->id,
+    //                  'messageType' => $message->message->message_type,
+    //                  'attachmentType' => $message->message->attachment_type,
+    //                  'date' => @$request->timezone ? Carbon::parse($message->message->created_at)->setTimezone($request->timezone)->format('Y-m-d H:i:s') : Carbon::parse($message->message->created_at)->format('Y-m-d H:i:s'),
+    //                  'time' => @$request->timezone ? Carbon::parse($message->message->created_at)->setTimezone($request->timezone)->format('h:i a') : Carbon::parse($message->message->created_at)->format('h:i a'),
+    //                  'sentBy' => ($message->sender_id == auth()->user()->id) ? 'loginUser' : 'User',
+    //                  'senderName' => $senderName,
+    //                  'senderProfile' => $senderProfile,
+    //                  'messageDetails' => $messageDetails,
+    //              ];
+    //          })->groupBy(function ($message) {
+    //              $carbonDate = Carbon::parse($message['date']);
+    //              if ($carbonDate->isToday()) {
+    //                  return 'Today';
+    //              } elseif ($carbonDate->isYesterday()) {
+    //                  return 'Yesterday';
+    //              } else {
+    //                  return $carbonDate->format('d M Y');
+    //              }
+    //          })->map(function ($messages, $date) {
+    //              $sortedMessages = $messages->sort(function ($a, $b) {
+    //                  $timeA = strtotime($a['time']);
+    //                  $timeB = strtotime($b['time']);
  
-                     if ($timeA == $timeB) {
-                         return $a['messageId'] <=> $b['messageId'];
-                     }
+    //                  if ($timeA == $timeB) {
+    //                      return $a['messageId'] <=> $b['messageId'];
+    //                  }
  
-                     return $timeA <=> $timeB;
-                 })->values();
+    //                  return $timeA <=> $timeB;
+    //              })->values();
  
-                 return [$date => $sortedMessages];
-             });
+    //              return [$date => $sortedMessages];
+    //          });
           
-             $reversedGroupedChat = array_reverse($groupedChat->toArray());
+    //          $reversedGroupedChat = array_reverse($groupedChat->toArray());
  
-             $chat = [];
-             foreach ($reversedGroupedChat as $item) {
-                 foreach ($item as $date => $messages) {
-                     if ($request->filter == 'filter') {
-                         $msgArr = [];
-                         foreach ($messages as $single) {
-                             if (in_array($single['messageType'], $filter)) {
-                                 $msgArr[] = $single;
-                                 $chat[$date] = $msgArr;
-                             }
-                         }
-                         // $chat[$date] = $msgArr;
-                     } else {
-                         $chat[$date] = $messages;
-                     }
-                 }
-             }
-             $data = [
-                 'status_code' => 200,
-                 'message' => "Get Data Successfully!",
-                 'data' => [
-                     'groupData' => $groupData,
-                     'groupChat' => $chat,
-                 ]
-             ];
-             return $this->sendJsonResponse($data);
-         } catch (\Exception $e) {
-             Log::error(
-                 [
-                     'method' => __METHOD__,
-                     'error' => [
-                         'file' => $e->getFile(),
-                         'line' => $e->getLine(),
-                         'message' => $e->getMessage()
-                     ],
-                     'created_at' => date("Y-m-d H:i:s")
-                 ]
-             );
-             return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
-         }
-     }
+    //          $chat = [];
+    //          foreach ($reversedGroupedChat as $item) {
+    //              foreach ($item as $date => $messages) {
+    //                  if ($request->filter == 'filter') {
+    //                      $msgArr = [];
+    //                      foreach ($messages as $single) {
+    //                          if (in_array($single['messageType'], $filter)) {
+    //                              $msgArr[] = $single;
+    //                              $chat[$date] = $msgArr;
+    //                          }
+    //                      }
+    //                      // $chat[$date] = $msgArr;
+    //                  } else {
+    //                      $chat[$date] = $messages;
+    //                  }
+    //              }
+    //          }
+    //          $data = [
+    //              'status_code' => 200,
+    //              'message' => "Get Data Successfully!",
+    //              'data' => [
+    //                  'groupData' => $groupData,
+    //                  'groupChat' => $chat,
+    //              ]
+    //          ];
+    //          return $this->sendJsonResponse($data);
+    //      } catch (\Exception $e) {
+    //          Log::error(
+    //              [
+    //                  'method' => __METHOD__,
+    //                  'error' => [
+    //                      'file' => $e->getFile(),
+    //                      'line' => $e->getLine(),
+    //                      'message' => $e->getMessage()
+    //                  ],
+    //                  'created_at' => date("Y-m-d H:i:s")
+    //              ]
+    //          );
+    //          return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
+    //      }
+    //  }
+
+    ///Maincode 
+
+    ///oldcode
+
+    // public function userGroupDetails(Request $request)
+    // {
+    //     try {
+    //         $rules = [
+    //             'group_id' => 'required|integer',
+    //         ];
+    
+    //         $message = [
+    //             'group_id.required' => 'User group_id is required.',
+    //             'group_id.integer' => 'User group_id must be an integer.',
+    //         ];
+    //         $start = $request->start ?? 0;
+    //         $limit = $request->limit ?? 15;
+    //         $validator = Validator::make($request->all(), $rules, $message);
+    //         if ($validator->fails()) {
+    //             $data = [
+    //                 'status_code' => 400,
+    //                 'message' => $validator->errors()->first(),
+    //                 'data' => ""
+    //             ];
+    //             return $this->sendJsonResponse($data);
+    //         }
+    
+    //         $loginUser = auth()->user()->id;
+    
+    //         // Get all members of the group
+    //         $members = GroupMembers::where('group_id', $request->group_id)->pluck('user_id')->toArray();
+    //         if (empty($members)) {
+    //             return $this->sendJsonResponse(['status_code' => 404, 'message' => 'No members found in this group.']);
+    //         }
+    
+    //         // Fetch messages for all group members
+    //         $messages = MessageSenderReceiver::where(function ($query) use ($members) {
+    //             $query->whereIn('receiver_id', $members);
+    //         })
+    //         ->whereNull('deleted_at')
+    //         ->whereHas('message', function ($q) use ($request) {
+    //             $q->where('message_type', '!=', 'Task Chat');
+    //             if ($request->group_id) {
+    //                 $q->where('group_id', $request->group_id);
+    //             }
+    //         })
+    //         ->with([/* your relations */])
+    //         ->orderByDesc('created_at')
+    //         ->skip($start)
+    //         ->take($limit)
+    //         ->get();
+    
+    //         if ($messages->isEmpty()) {
+    //             return $this->sendJsonResponse(['status_code' => 404, 'message' => 'No messages found.']);
+    //         }
+    
+    //         // Group messages by message ID
+    //         $groupedChat = $messages->mapToGroups(function ($message) use ($loginUser, $request) {
+    //             $messageDetails = [];
+    //             switch ($message->message->message_type) {
+    //                 case 'Text':
+    //                     $messageDetails = $message->message->message;
+    //                     break;
+    //                 case 'Attachment':
+    //                     $messageDetails = $message->message->attachment;
+    //                     break;
+    //                 case 'Location':
+    //                     $messageDetails = $message->message->location;
+    //                     break;
+    //                 case 'Meeting':
+    //                     $messageDetails = $message->message->meeting;
+    //                     break;
+    //                 case 'Task':
+    //                     $messageDetails = $message->message->Task;
+    //                     break;
+    //                 case 'Reminder':
+    //                     $messageDetails = $message->message->reminder;
+    //                     break;
+    //                 case 'Contact':
+    //                     $messageDetails = $message->message->message;
+    //                     break;
+    //             }
+    
+    //             $senderName = @$message->sender->first_name .' '. @$message->sender->last_name;
+    //             $senderProfile = @$message->sender->profile ? setAssetPath('user-profile/' . $message->sender->profile) : setAssetPath('assets/media/avatars/blank.png');
+    
+    //             if ($message->message->message_type == 'Meeting' || $message->message->message_type == 'Reminder') {
+    //                 $users = explode(',', $messageDetails->users);
+    //                 $userList = User::whereIn('id', $users)->get(['id', 'first_name', 'last_name', 'country_code', 'mobile', 'profile']);
+    //                 $userList = $userList->map(function ($user) {
+    //                     $user->profile = @$user->profile ? setAssetPath('user-profile/' . $user->profile) : setAssetPath('assets/media/avatars/blank.png');
+    //                     return $user;
+    //                 });
+    //                 $messageDetails->users = $userList;
+    //                 $messageDetails->date = @$request->timezone ? Carbon::parse($messageDetails->date)->format('d-m-Y') : Carbon::parse($messageDetails->date)->format('Y-m-d H:i:s');
+    //                 if ($message->message->message_type == 'Reminder') {
+    //                     $messageDetails->time = @$request->timezone ? Carbon::parse($messageDetails->time)->format('h:i a') : Carbon::parse($messageDetails->time)->format('h:i a');
+    //                 } elseif ($message->message->message_type == 'Meeting') {
+    //                     $messageDetails->start_time = @$request->timezone ? Carbon::parse($messageDetails->start_time)->format('h:i a') : Carbon::parse($messageDetails->start_time)->format('h:i a');
+    //                     $messageDetails->end_time = @$request->timezone ? Carbon::parse($messageDetails->end_time)->format('h:i a') : Carbon::parse($messageDetails->end_time)->format('h:i a');
+    //                 }
+    //             }
+    
+    //             return [
+    //                 $message->message->id => [
+    //                     'messageId' => $message->message->id,
+    //                     'messageType' => $message->message->message_type,
+    //                     'attachmentType' => $message->message->attachment_type,
+    //                     'date' => @$request->timezone ? Carbon::parse($message->message->created_at)->setTimezone($request->timezone)->format('Y-m-d H:i:s') : Carbon::parse($message->message->created_at)->format('Y-m-d H:i:s'),
+    //                     'time' => @$request->timezone ? Carbon::parse($message->message->created_at)->setTimezone($request->timezone)->format('h:i a') : Carbon::parse($message->message->created_at)->format('h:i a'),
+    //                     'sentBy' => ($message->sender_id == auth()->user()->id) ? 'loginUser' : 'User',
+    //                     'senderName' => $senderName,
+    //                     'senderProfile' => $senderProfile,
+    //                     'messageDetails' => $messageDetails,
+    //                 ]
+    //             ];
+    //         });
+    
+    //         $groupedChat = $groupedChat->map(function ($messages, $messageId) {
+    //             return $messages->first(); // In case there are duplicates, take the first
+    //         });
+    
+    //         $data = [
+    //             'status_code' => 200,
+    //             'message' => "Get Data Successfully!",
+    //             'data' => $groupedChat->values()
+    //         ];
+    //         return $this->sendJsonResponse($data);
+    //     } catch (\Exception $e) {
+    //         Log::error([
+    //             'method' => __METHOD__,
+    //             'error' => [
+    //                 'file' => $e->getFile(),
+    //                 'line' => $e->getLine(),
+    //                 'message' => $e->getMessage()
+    //             ],
+    //             'created_at' => date("Y-m-d H:i:s")
+    //         ]);
+    //         return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
+    //     }
+    // }
+    
+
+    public function userGroupDetails(Request $request)
+{
+    try {
+        $rules = [
+            'group_id' => 'required|integer',
+        ];
+
+        $message = [
+            'group_id.required' => 'User group_id is required.',
+            'group_id.integer' => 'User group_id must be an integer.',
+        ];
+        $start = $request->start ?? 0;
+        $limit = $request->limit ?? 15;
+        $validator = Validator::make($request->all(), $rules, $message);
+        if ($validator->fails()) {
+            $data = [
+                'status_code' => 400,
+                'message' => $validator->errors()->first(),
+                'data' => ""
+            ];
+            return $this->sendJsonResponse($data);
+        }
+
+        $loginUser = auth()->user()->id;
+        $members = GroupMembers::where('group_id', $request->group_id)->get();
+        if ($members->isEmpty()) {
+            return $this->sendJsonResponse(['status_code' => 404, 'message' => 'No members found in this group.']);
+        }
+
+        $groupData = Group::find($request->group_id);
+        $groupData->profile_pic = @$groupData->profile_pic ? setAssetPath('group-profile/' . $groupData->profile_pic) : setAssetPath('assets/media/avatars/blank.png');
+        $groupData->cover_image = @$groupData->cover_image ? setAssetPath('group-profile/' . $groupData->cover_image) : setAssetPath('assets/media/avatars/blank.png');
+
+        $filter = [
+            'Task',
+            'Meeting',
+            'Reminder'
+        ];
+
+        // Collect Messages
+        $messages = MessageSenderReceiver::whereHas('message', function ($q) use ($request) {
+            $q->where('message_type', '!=', 'Task Chat')
+              ->where('group_id', $request->group_id);
+        })
+        ->whereNull('deleted_at')
+        ->with(['sender'])
+        ->orderByDesc('created_at')
+        ->skip($start)
+        ->take($limit)
+        ->get();
+
+        $groupedChat = $messages->map(function ($message) use ($loginUser, $request) {
+            // Message Details mapping
+            $messageDetails = []; 
+            switch ($message->message->message_type) {
+                case 'Text':
+                    $messageDetails = $message->message->message;
+                    break;
+                case 'Attachment':
+                    $messageDetails = $message->message->attachment;
+                    break;
+                case 'Location':
+                    $messageDetails = $message->message->location;
+                    break;
+                case 'Meeting':
+                    $messageDetails = $message->message->meeting;
+                    break;
+                case 'Task':
+                    $messageDetails = $message->message->task;
+                    break;
+                case 'Reminder':
+                    $messageDetails = $message->message->reminder;
+                    break;
+                case 'Contact':
+                    $messageDetails = $message->message->message;
+                    break;
+            }
+
+            $senderName = @$message->sender->first_name .' '. @$message->sender->last_name;
+            $senderProfile = @$message->sender->profile ? setAssetPath('user-profile/' . $message->sender->profile) : setAssetPath('assets/media/avatars/blank.png');
+
+            return [
+                'messageId' => $message->message->id,
+                'messageType' => $message->message->message_type,
+                'attachmentType' => $message->message->attachment_type,
+                'date' => Carbon::parse($message->message->created_at)->format('Y-m-d H:i:s'),
+                'time' => Carbon::parse($message->message->created_at)->format('h:i a'),
+                'sentBy' => ($message->sender_id == auth()->user()->id) ? 'loginUser' : 'User',
+                'senderName' => $senderName,
+                'senderProfile' => $senderProfile,
+                'messageDetails' => $messageDetails,
+            ];
+        })->unique('messageId')->values();
+
+
+        // Grouping the messages by Today and Yesterday
+        $groupedChatData = [
+            'Today' => [],
+            'Yesterday' => [],
+        ];
+
+        // Current date and yesterday's date for comparison
+        $today = Carbon::now()->startOfDay();
+        $yesterday = Carbon::now()->subDay()->startOfDay();
+
+        foreach ($groupedChat as $chat) {
+            $messageDate = Carbon::parse($chat['date'])->startOfDay();
+
+            if ($messageDate->equalTo($today)) {
+                $groupedChatData['Today'][] = $chat;
+            } elseif ($messageDate->equalTo($yesterday)) {
+                $groupedChatData['Yesterday'][] = $chat;
+            }
+        }
+
+        $data = [
+            "status" => "Success",
+            "status_code" => 200,
+            "message" => "Get Data Successfully!",
+            "data" => [
+                "groupData" => $groupData,
+                "groupChat" => $groupedChatData
+            ]
+        ];
+
+        return $this->sendJsonResponse($data);
+    } catch (\Exception $e) {
+        Log::error([
+            'method' => __METHOD__,
+            'error' => [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'message' => $e->getMessage()
+            ],
+            'created_at' => date("Y-m-d H:i:s")
+        ]);
+        return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
+    }
+}
+
    
   
       /**
