@@ -1986,7 +1986,7 @@ class ChatController extends Controller
 
                 $messageIds = explode(',', $request->messageIds);                
                 
-                $projectMeetings = MessageMeeting::whereIn('id', $messageIds)                    
+                $projectMeetings = MessageMeeting::whereIn('message_id', $messageIds)                    
                     ->get();        
                                       
                 // Step 3: Create a new read_status string for each event
@@ -2003,14 +2003,14 @@ class ChatController extends Controller
                     $messageIds = explode(',', $request->messageIds);              
 
                     // Step 5: Update the read_status for the specified message IDs
-                    MessageMeeting::whereIn('id', $messageIds)->update(['read_status' => $newStatus]);
+                    MessageMeeting::whereIn('message_id', $messageIds)->update(['read_status' => $newStatus]);
 
                     $messageIds = explode(',', $request->messageIds); // Get message IDs from the request
                     $newUserId = $loginUser; // The user ID you want to add to read_status
 
                     foreach ($messageIds as $messageId) {
                         // Retrieve the current ProjectEvent by ID
-                        $projectMeetings = MessageMeeting::find($messageId);
+                        $projectMeetings = MessageMeeting::where('message_id',$messageId)->first();
 
                         if ($projectMeetings) {
                             // Get the current read_status and convert it to an array
@@ -2033,7 +2033,7 @@ class ChatController extends Controller
 
                 $messageIds = explode(',', $request->messageIds);                
                 
-                $projectTask = MessageTask::whereIn('id', $messageIds)                    
+                $projectTask = MessageTask::whereIn('message_id', $messageIds)                    
                     ->get();        
                                       
                 // Step 3: Create a new read_status string for each event
@@ -2050,14 +2050,14 @@ class ChatController extends Controller
                     $messageIds = explode(',', $request->messageIds);              
 
                     // Step 5: Update the read_status for the specified message IDs
-                    MessageTask::whereIn('id', $messageIds)->update(['read_status' => $newStatus]);
+                    MessageTask::whereIn('message_id', $messageIds)->update(['read_status' => $newStatus]);
 
                     $messageIds = explode(',', $request->messageIds); // Get message IDs from the request
                     $newUserId = $loginUser; // The user ID you want to add to read_status
 
                     foreach ($messageIds as $messageId) {
                         // Retrieve the current ProjectEvent by ID
-                        $projectTasks = MessageTask::find($messageId);
+                        $projectTasks = MessageTask::where('message_id',$messageId)->first();
 
                         if ($projectTasks) {
                             // Get the current read_status and convert it to an array
@@ -3561,6 +3561,7 @@ class ChatController extends Controller
                     }
                     return [
                         'id' => $sender->id,
+                        'message_id' => $lastMessage->message_id,
                         'name' => $sender->first_name . ' ' . $sender->last_name,
                         'profile' => $profileUrl,
                         'taskStatus' => $response['taskStatus'],
@@ -3604,6 +3605,7 @@ class ChatController extends Controller
 
                     return [
                         'id' => $receiver->id,
+                        'message_id' => $lastMessage->message_id,
                         'name' => $receiver->first_name . ' ' . $receiver->last_name,
                         'profile' => $profileUrl,
                         'taskStatus' => $response['taskStatus'],
