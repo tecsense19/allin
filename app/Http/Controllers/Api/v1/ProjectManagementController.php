@@ -265,6 +265,16 @@ class ProjectManagementController extends Controller
      *             type="string"
      *         )
      *     ),
+     *     @OA\Parameter(
+     *         name="location",
+     *         in="query",
+     *         description="Enter location",
+     *         example="",
+     *         required=false,
+     *         @OA\Schema(
+     *             type="string"
+     *         )
+     *     ),
      *      @OA\Response(
      *         response=200,
      *         description="json schema",
@@ -285,6 +295,7 @@ class ProjectManagementController extends Controller
             $rules = [
                 'id' => 'required|integer',
                 'summary' => 'nullable|string',
+                'location' => 'nullable|string',
             ];
             $message = [
                 'id.required' => 'Id is required',
@@ -302,6 +313,7 @@ class ProjectManagementController extends Controller
             $workHour = WorkingHours::find($request->id);
             if ($workHour) {
                 $workHour->summary = $request->summary;
+                $workHour->location = $request->location;
                 $workHour->save();
                 $data = [
                     'status_code' => 200,
