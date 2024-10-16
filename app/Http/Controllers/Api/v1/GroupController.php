@@ -775,6 +775,7 @@ class GroupController extends Controller
                 return $this->sendJsonResponse($data);
             }
             $userIds = explode(',', $request->user_id);
+            
             foreach ($userIds as $user) {
                 GroupMembers::create([
                     'group_id' => $request->id,

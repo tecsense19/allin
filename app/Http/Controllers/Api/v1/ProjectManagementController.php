@@ -193,7 +193,8 @@ class ProjectManagementController extends Controller
                     'data' => ""
                 ]);
             }
-            $filterMonth = $request->filled('mon                                                                                                              th') ? Carbon::parse($request->month) : Carbon::now();
+            $filterMonth = $request->filled('month') ? Carbon::parse($request->month) : Carbon::now();
+       
             $workHours = WorkingHours::where('user_id', auth()->user()->id)
                 ->whereYear('start_date_time', $filterMonth->year)
                 ->whereMonth('start_date_time', $filterMonth->month)
@@ -202,6 +203,8 @@ class ProjectManagementController extends Controller
             $format = $workHours->map(function ($workHour) {
                 $workHour->start_date_time = Carbon::parse($workHour->start_date_time)->format('Y-m-d H:i:s');
                 $workHour->end_date_time = Carbon::parse($workHour->end_date_time)->format('Y-m-d H:i:s');
+                $formattedHours = str_replace(['h', 'min'], ['h:', 'mi'], $workHour->total_hours);
+                $workHour->total_hours = $formattedHours;
                 return $workHour;
             });
             $data = [

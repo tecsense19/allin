@@ -1661,8 +1661,7 @@ class UserController extends Controller
                  $messageDetails = [];
                  switch ($message->message->message_type) {
                      case 'Text':
-                         $messageDetails = $message->message->message;
-                         
+                         $messageDetails = $message->message->message;                         
                          break;
                      case 'Attachment':
                          $messageDetails = $message->message->attachment;
