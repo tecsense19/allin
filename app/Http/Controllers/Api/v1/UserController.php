@@ -2444,6 +2444,12 @@ class UserController extends Controller
      *                     example="",
      *                     description="Enter LinkedIn Profile Url"
      *                 ),
+     *                 @OA\Property(
+     *                     property="map_profile_url",
+     *                     type="string",
+     *                     example="",
+     *                     description="Enter Google Map Url"
+     *                 ),
      *             )
      *         )
      *     ),
@@ -2565,6 +2571,7 @@ class UserController extends Controller
             $user->twitter_profile_url = @$request->twitter_profile_url ? $request->twitter_profile_url : NULL;
             $user->youtube_profile_url = @$request->youtube_profile_url ? $request->youtube_profile_url : NULL;
             $user->linkedin_profile_url = @$request->linkedin_profile_url ? $request->linkedin_profile_url : NULL;
+            $user->map_profile_url = @$request->map_profile_url ? $request->map_profile_url : NULL;
             $user->save();
 
             $user->profile = @$user->profile ? setAssetPath('user-profile/' . $user->profile) : NULL;
