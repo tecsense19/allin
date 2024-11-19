@@ -1786,6 +1786,13 @@ class ChatController extends Controller
              }
 
              $loginUser = auth()->user()->id;
+             
+              $lastMessageTask = DB::table('message_task')
+                            ->select('id', 'message_id', 'task_name', 'checkbox', 'task_checked', 'task_checked_users', 'task_description', 'users', 'read_status', 'created_by', 'updated_by', 'deleted_by', 'created_at', 'updated_at', 'deleted_at')
+                            ->where('users', 'LIKE', '%'. $loginUser. '%' )
+                            ->orderBy('message_id', 'desc')
+                            ->first();
+                            
              // Convert message types to an array
              $messageTypes = explode(',', $request->message_type);
              
@@ -1810,18 +1817,18 @@ class ChatController extends Controller
 
                  } elseif ($trimmedType === 'Task') {
 
-                    $unreadCounts[$trimmedType] = MessageTask::where('users', 'LIKE', '%' . $loginUser . '%')
+                    $unreadCounts[$trimmedType] = MessageTask::where('message_id',$lastMessageTask->message_id)
                     ->where(function ($query) use ($loginUser) {
                         $query->where('read_status', 'NOT LIKE', '%' . $loginUser . '%')
                               ->orWhereNull('read_status'); // In case 'read_status' is empty or NULL
                     })
-                    ->distinct('message_id') // Ensure unique message IDs
-                    ->count('message_id'); // Count the distinct message IDs
+                    // ->distinct('message_id') // Ensure unique message IDs
+                    ->count(); // Count the distinct message IDs
                 
                 
                     
                  }elseif ($trimmedType === 'event') {
-                     $unreadCounts[$trimmedType] = ProjectEvent::where('users', 'LIKE', '%' . $loginUser . '%')
+                     $unreadCounts[$trimmedType] = ProjectEvent::where('created_by', $loginUser)
                          ->where(function ($query) use ($loginUser) {
                              // Check if the event has not been read by the specified user
                              $query->where('read_status', 'NOT LIKE', '%' . $loginUser . '%')
@@ -3490,7 +3497,13 @@ class ChatController extends Controller
 
             $type = $request->type;
             $loginUser = auth()->user()->id;
-
+            
+            $lastMessageTask = DB::table('message_task')
+                            ->select('id', 'message_id', 'task_name', 'checkbox', 'task_checked', 'task_checked_users', 'task_description', 'users', 'read_status', 'created_by', 'updated_by', 'deleted_by', 'created_at', 'updated_at', 'deleted_at')
+                            ->where('users', 'like', '%' .$loginUser. '%')
+                            ->orderBy('message_id', 'desc')
+                            ->first();
+            
             $baseQuery = MessageSenderReceiver::with(['message', 'sender', 'receiver'])
                 ->whereHas('message', function ($query) {
                     $query->where('message_type', 'Task');
@@ -3498,30 +3511,34 @@ class ChatController extends Controller
             if ($type == 'Receive') {
                 $userList = (clone $baseQuery)
                     ->where('receiver_id', $loginUser)
+                    ->where('message_id', $lastMessageTask->message_id)
                     ->get();
             } elseif ($type == 'Given') {
                 $userList = (clone $baseQuery)
                     ->where('sender_id', $loginUser)
+                    ->where('message_id', $lastMessageTask->message_id)
                     ->get();
             } elseif ($type == 'All Task') {
                 $userList = (clone $baseQuery)
                     ->where(function ($query) use ($loginUser) {
                         $query->where('sender_id', $loginUser)
+                              ->where('message_id', $lastMessageTask->message_id)
                             ->orWhere('receiver_id', $loginUser);
                     })
                     ->get();
             }
            
-            $result = $userList->map(function ($messageSenderReceiver) use ($loginUser) {
-                $sender = $messageSenderReceiver->sender;
-                $receiver = $messageSenderReceiver->receiver;         
-             // Fetch the last message with task type
-             $lastMessage = MessageSenderReceiver::with(['message', 'sender', 'receiver'])
-             ->whereHas('message', function ($query) {
-                 $query->where('message_type', 'Task');
-             })
-             ->orderBy('id', 'desc')
-             ->first();
+           $result = $userList->map(function ($messageSenderReceiver) use ($loginUser) {
+            $sender = $messageSenderReceiver->sender;
+            $receiver = $messageSenderReceiver->receiver;
+        
+            // Fetch the last message with task type
+            $lastMessage = MessageSenderReceiver::with(['message', 'sender', 'receiver'])
+                ->whereHas('message', function ($query) use ($loginUser) {
+                    $query->where('message_type', 'Task');
+                })
+                ->orderBy('id', 'desc')
+                ->first();
                 
         
 
@@ -3620,6 +3637,9 @@ class ChatController extends Controller
                 return null;
             });
             $uniqueResult = $result->filter()->unique('id')->values();
+            
+            // print_r($uniqueResult);
+            // die;
 
 
             $data = [
