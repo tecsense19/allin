@@ -182,60 +182,77 @@ class ProjectManagementController extends Controller
      * )
      */
 
-    public function workHours(Request $request)
-    {
-        try {
-            $rules = [
-                'month' => 'nullable|string',
-            ];
-            $message = [
-                'month.nullable' => 'Month is required',
-                'month.string' => 'Month must be an String'
-            ];
-            $validator = Validator::make($request->all(), $rules, $message);
-            if ($validator->fails()) {
-                return response()->json([
-                    'status_code' => 400,
-                    'message' => $validator->errors()->first(),
-                    'data' => ""
-                ]);
-            }
-            $filterMonth = $request->filled('month') ? Carbon::parse($request->month) : Carbon::now();
-       
-            $workHours = WorkingHours::where('user_id', auth()->user()->id)
-                ->whereYear('start_date_time', $filterMonth->year)
-                ->whereMonth('start_date_time', $filterMonth->month)
-                ->orderByDesc('id')
-                ->get(['id', 'start_date_time', 'end_date_time', 'total_hours', 'summary', 'location']);
-            $format = $workHours->map(function ($workHour) {
-                $workHour->start_date_time = Carbon::parse($workHour->start_date_time)->format('Y-m-d H:i:s');
-                $workHour->end_date_time = Carbon::parse($workHour->end_date_time)->format('Y-m-d H:i:s');
-                $formattedHours = str_replace(['h', 'min'], ['h:', 'mi'], $workHour->total_hours);
-                $workHour->total_hours = $formattedHours;
-                return $workHour;
-            });
-            $data = [
-                'status_code' => 200,
-                'message' => "Work Hours Successfully get!",
-                'data' => [
-                    'workHours' => $format
-                ]
-            ];
-
-            return response()->json($data);
-        } catch (\Exception $e) {
-            Log::error([
-                'method' => __METHOD__,
-                'error' => [
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                    'message' => $e->getMessage()
-                ],
-                'created_at' => date("Y-m-d H:i:s")
-            ]);
-            return response()->json(['status_code' => 500, 'message' => 'Something went wrong']);
-        }
-    }
+     public function workHours(Request $request)
+     {
+         try {
+             $rules = [
+                 'month' => 'nullable|string',
+             ];
+             $message = [
+                 'month.nullable' => 'Month is required',
+                 'month.string' => 'Month must be a string',
+             ];
+             $validator = Validator::make($request->all(), $rules, $message);
+     
+             if ($validator->fails()) {
+                 return response()->json([
+                     'status_code' => 400,
+                     'message' => $validator->errors()->first(),
+                     'data' => "",
+                 ]);
+             }
+     
+             $filterMonth = $request->filled('month') ? Carbon::parse($request->month) : Carbon::now();
+     
+             $workHours = WorkingHours::where('user_id', auth()->user()->id)
+                 ->whereYear('start_date_time', $filterMonth->year)
+                 ->whereMonth('start_date_time', $filterMonth->month)
+                 ->orderByDesc('id')
+                 ->get(['id', 'start_date_time', 'end_date_time', 'total_hours', 'summary', 'location']);
+     
+             $totalHours = 0;
+             $format = $workHours->map(function ($workHour) use (&$totalHours) {
+                 $workHour->start_date_time = Carbon::parse($workHour->start_date_time)->format('Y-m-d H:i:s');
+                 $workHour->end_date_time = Carbon::parse($workHour->end_date_time)->format('Y-m-d H:i:s');
+     
+                 // Parse total hours and add to the total
+                 $hours = str_replace(['h', 'min'], [':', ''], $workHour->total_hours);
+                 [$h, $m] = explode(':', $hours);
+                 $totalHours += ($h * 60) + $m; // Convert to minutes
+     
+                 // Reformat total hours for output
+                 $formattedHours = str_replace(['h', 'min'], ['h:', 'mi'], $workHour->total_hours);
+                 $workHour->total_hours = $formattedHours;
+     
+                 return $workHour;
+             });
+     
+             // Convert total hours back to h:min format
+             $formattedTotalHours = floor($totalHours / 60) . 'h:' . ($totalHours % 60) . 'mi';
+     
+             $data = [
+                 'status_code' => 200,
+                 'message' => "Work Hours Successfully retrieved!",
+                 'data' => [
+                     'TotalHours' => $formattedTotalHours,
+                     'workHours' => $format,
+                 ],
+             ];
+     
+             return response()->json($data);
+         } catch (\Exception $e) {
+             Log::error([
+                 'method' => __METHOD__,
+                 'error' => [
+                     'file' => $e->getFile(),
+                     'line' => $e->getLine(),
+                     'message' => $e->getMessage(),
+                 ],
+                 'created_at' => date("Y-m-d H:i:s"),
+             ]);
+             return response()->json(['status_code' => 500, 'message' => 'Something went wrong']);
+         }
+     }
 
     /**
      * @OA\Post(
