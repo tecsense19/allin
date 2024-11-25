@@ -71,6 +71,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
             Route::post('/forward-message', 'forwardMessage');
             Route::post('/message-contact', 'contactDetails');
             Route::post('/task-users-list', 'taskUserList');
+            Route::get('task-complete-incomplete', 'taskCompleteIncomplete');
             Route::post('/sent-task-summary-email', 'sentTaskSummaryEmail');
             Route::post('/sent-task-done', 'sentTaskDone'); 
             Route::post('/sent-meeting-done', 'sentMeetingDone'); 
@@ -79,8 +80,12 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
             Route::get('/user-documents', 'getUserDocuments'); 
             Route::post('/message-task-notification', 'message_task_notification');   
             Route::post('/unread-message-count', 'getUnreadMessageCount');
-            Route::post('/read-unread-manage', 'manageReadStatus');   
-                    
+            Route::post('/read-unread-manage', 'manageReadStatus'); 
+            Route::post('/tasks/comments', 'addComment'); 
+            Route::post('getTasks/comments', 'getComments'); 
+            Route::post('group/question-with-options', 'questionWithOptions'); 
+            Route::post('group/select-option', 'selectOption'); 
+            Route::get('group/votes/fetch', 'fetchVotes');                
         });
         Route::controller(ProjectManagementController::class)->group(function () {
             Route::post('/add-work-hours', 'addWorkHours');

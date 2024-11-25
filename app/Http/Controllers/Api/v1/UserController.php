@@ -13,6 +13,7 @@ use App\Models\Group;
 use App\Models\GroupMembers;
 use App\Models\MessageTask;
 use App\Models\UserOtp;
+use App\Models\MessageTaskChatComment;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -942,9 +943,7 @@ class UserController extends Controller
      *         description="Invalid Request"
      *     ),
      * )
-     */
-
-   
+     */   
    public function userDetails(Request $request)
     {
         try {
@@ -1036,64 +1035,12 @@ class UserController extends Controller
                             $users = explode(',', $taskDetails_task->users);
                             $userList = User::whereIn('id', $users)->get(['id', 'first_name', 'last_name', 'country_code', 'mobile', 'profile']);
                             $userList = $userList->map(function ($user) use ($taskDetails, $message) {
-                                $user->profile = @$user->profile ? setAssetPath('user-profile/' . $user->profile) : setAssetPath('assets/media/avatars/blank.png');                                
-                                    // // Initialize an empty string to hold the task IDs
-                                    // $user->task_ids = '';
-                                    // $allTaskId = [];
-                                    // $doneTaskId = [];
-
-                                    // // Loop through each task to check if the user has checked it
-                                    // foreach ($taskDetails as $task) {
-                                    //     $checkedUsers = explode(',', $task->task_checked_users);
-                                        
-                                    //     // Remove the first empty element (if there is any)
-                                    //     if (empty($checkedUsers[0])) {
-                                    //         array_shift($checkedUsers);
-                                    //     }
-
-                                    //     // Remove the $message->message->created_by ID from the checked users list
-                                    //     $checkedUsers = array_diff($checkedUsers, [$message->message->created_by]);
-
-                                    //     // Check if the user ID is in the checked users list
-                                    //     if (in_array($user->id, $checkedUsers)) {
-                                    //         // If yes, append the task ID to the user's task_ids string
-                                    //         $user->task_ids .= $task->id . ','; // Append with a comma
-                                    //         $doneTaskId[] = $task->id;
-                                    //     }
-
-                                    //     // Add all task IDs, including those created by others
-                                    //     $allTaskId[] = $task->id;
-                                    // }
-
-                                    // // Remove the trailing comma if task_ids is not empty
-                                    // if (!empty($user->task_ids)) {
-                                    //     $user->task_ids = rtrim($user->task_ids, ','); // Remove the last comma
-                                    // }
-
-                                    // // Calculate pending tasks by removing the done tasks from all tasks
-                                    // $pendingTaskId = array_diff($allTaskId, $doneTaskId);
-                                                                    
-                                    // // If the current user is the one who created the message, set task_done status
-                                    // if ($user->id == $message->message->created_by) {                                        
-                                    //     $user->task_done = empty($pendingTaskId) ? true : false;
-                                    // }                                    
-                                   
-                                    // // Initialize an empty array to hold task IDs
-                                    // $taskids = [];
-
-                                    // // Loop through each task to collect task IDs
-                                    // foreach ($taskDetails as $task) {
-                                    //     $taskids[] = $task->id;
-                                    // }
-                                    
-
+                            $user->profile = @$user->profile ? setAssetPath('user-profile/' . $user->profile) : setAssetPath('assets/media/avatars/blank.png');                                                                  
                                     // Initialize an empty string to hold the task IDs
                                     $user->task_ids = '';
                                     $allTaskId = [];
                                     $doneTaskId = [];
-                                    $allTasksCheckedByOthers = true; // Flag to track if all tasks are checked by other users
-                                
-
+                                    $allTasksCheckedByOthers = true; // Flag to track if all tasks are checked by other users                                
                                     // Loop through each task to check if the user has checked it
                                     foreach ($taskDetails as $task) {
                                         $checkedUsers = explode(',', $task->task_checked_users);
@@ -1158,26 +1105,84 @@ class UserController extends Controller
                                 'time' => $message->message->time,
                                 'users' => $userList,// Assuming task_name is available here
                                 'tasks' => $taskDetails->map(function ($task) {
+                                      // Assuming $task->task_checked_users contains ",131,132"
+                                        $checkedUsers = explode(',', $task->task_checked_users);
 
-                                // Assuming $task->task_checked_users contains ",131,132"
-                                $checkedUsers = explode(',', $task->task_checked_users);
+                                        
 
-                                // Remove the first empty element (if there is any)
-                                if ($checkedUsers[0] === '') {
-                                    array_shift($checkedUsers);
-                                }
+                                        // Remove the first empty element (if there is any)
+                                        if ($checkedUsers[0] === '') {
+                                            array_shift($checkedUsers);
+                                        }
+                                        
+                                        // Convert the array back to a string
+                                        $task->task_checked_users = implode(',', $checkedUsers);                                       
 
-                                // Convert the array back to a string
-                                $task->task_checked_users = implode(',', $checkedUsers);
-                                    return [
-                                        'id' => $task->id,
-                                        'message_id' => $task->message_id,
-                                        'checkbox' => $task->checkbox,
-                                        'task_checked' => (bool) $task->task_checked, // Convert to boolean
-                                        'task_checked_users' => $task->task_checked_users,
-                                    ];
-                                })->toArray(), // Convert to array if needed
-                            ];                        
+                                        // Fetch user profile URLs for the task_checked_users
+                                        $profiles = User::whereIn('id', $checkedUsers)->get(['id', 'profile'])->map(function ($user) {
+                                            return [
+                                                'id' => $user->id,
+                                                'profile_url' => @$user->profile ? setAssetPath('user-profile/' . $user->profile) : setAssetPath('assets/media/avatars/blank.png')
+                                            ];
+                                        });      
+                                                                            
+                                        // $comments = MessageTaskChatComment::with('user')->where('task_chat_id', $task->id)
+                                        //             ->orderBy('created_at', 'desc')
+                                        //             ->take(5)
+                                        //             ->get();
+
+                                        $comments = MessageTaskChatComment::with('user')
+                                                    ->where('task_chat_id', $task->id)
+                                                    ->orderBy('created_at', 'desc')
+                                                    ->take(5)
+                                                    ->get()
+                                                    ->map(function ($comment) {
+                                                        return [
+                                                            'id' => $comment->id,
+                                                            'task_chat_id' => $comment->task_chat_id,
+                                                            'message_id' => $comment->message_id,
+                                                            'user' => [
+                                                                'id' => $comment->user->id,
+                                                                'name' => $comment->user->first_name,
+                                                                'profile_picture' => $comment->user->profile ? setAssetPath('user-profile/' . $comment->user->profile) : setAssetPath('assets/media/avatars/blank.png')
+                                                                
+                                                            ],
+                                                            'comment' => $comment->comment,
+                                                            'created_at' => $comment->created_at,
+                                                        ];
+                                                    });
+                           
+                                        return [
+                                            'id' => $task->id,
+                                            'message_id' => $task->message_id,
+                                            'checkbox' => $task->checkbox,
+                                            'task_checked' => (bool) $task->task_checked, // Convert to boolean
+                                            'task_checked_users' => $task->task_checked_users,
+                                            'profiles' => $profiles, // Attach profiles of users who checked the task
+                                            'comments' => $comments, // Attach task comments
+                                        ];
+                                    })->toArray(), // Convert to array if needed
+                                ];                        
+
+                            //     // Assuming $task->task_checked_users contains ",131,132"
+                            //     $checkedUsers = explode(',', $task->task_checked_users);
+
+                            //     // Remove the first empty element (if there is any)
+                            //     if ($checkedUsers[0] === '') {
+                            //         array_shift($checkedUsers);
+                            //     }
+
+                            //     // Convert the array back to a string
+                            //     $task->task_checked_users = implode(',', $checkedUsers);
+                            //         return [
+                            //             'id' => $task->id,
+                            //             'message_id' => $task->message_id,
+                            //             'checkbox' => $task->checkbox,
+                            //             'task_checked' => (bool) $task->task_checked, // Convert to boolean
+                            //             'task_checked_users' => $task->task_checked_users,
+                            //         ];
+                            //     })->toArray(), // Convert to array if needed
+                            // ];                        
                         break;                                             
                     case 'Reminder':
                         $messageDetails = $message->message->reminder;
@@ -1278,7 +1283,7 @@ class UserController extends Controller
         }
     }
     
-      // public function userDetails(Request $request)
+    // public function userDetails(Request $request)
     // {
     //     try {
     //         $rules = [
@@ -1926,148 +1931,177 @@ class UserController extends Controller
     
 
     public function userGroupDetails(Request $request)
-{
-    try {
-        $rules = [
-            'group_id' => 'required|integer',
-        ];
+    {
+        try {
+            $rules = [
+                'group_id' => 'required|integer',
+            ];
 
-        $message = [
-            'group_id.required' => 'User group_id is required.',
-            'group_id.integer' => 'User group_id must be an integer.',
-        ];
-        $start = $request->start ?? 0;
-        $limit = $request->limit ?? 15;
-        $validator = Validator::make($request->all(), $rules, $message);
-        if ($validator->fails()) {
+            $message = [
+                'group_id.required' => 'User group_id is required.',
+                'group_id.integer' => 'User group_id must be an integer.',
+            ];
+            $start = $request->start ?? 0;
+            $limit = $request->limit ?? 15;
+            $validator = Validator::make($request->all(), $rules, $message);
+            if ($validator->fails()) {
+                $data = [
+                    'status_code' => 400,
+                    'message' => $validator->errors()->first(),
+                    'data' => ""
+                ];
+                return $this->sendJsonResponse($data);
+            }
+
+            $loginUser = auth()->user()->id;
+            $members = GroupMembers::where('group_id', $request->group_id)->get();
+            if ($members->isEmpty()) {
+                return $this->sendJsonResponse(['status_code' => 404, 'message' => 'No members found in this group.']);
+            }
+
+            $groupData = Group::find($request->group_id);
+            $groupData->profile_pic = @$groupData->profile_pic ? setAssetPath('group-profile/' . $groupData->profile_pic) : setAssetPath('assets/media/avatars/blank.png');
+            $groupData->cover_image = @$groupData->cover_image ? setAssetPath('group-profile/' . $groupData->cover_image) : setAssetPath('assets/media/avatars/blank.png');
+
+            $filter = [
+                'Task',
+                'Meeting',
+                'Reminder'
+            ];
+
+            // Collect Messages
+            $messages = MessageSenderReceiver::whereHas('message', function ($q) use ($request) {
+                $q->where('message_type', '!=', 'Task Chat')
+                ->where('group_id', $request->group_id);
+            })
+            ->whereNull('deleted_at')
+            ->with(['sender',
+            'message.options:id,message_id,option,option_id,users'])
+            ->orderByDesc('created_at')
+            ->skip($start)
+            ->take($limit)
+            ->get();
+
+            $groupedChat = $messages->map(function ($message) use ($loginUser, $request) {
+                // Message Details mapping
+                $messageDetails = []; 
+                switch ($message->message->message_type) {
+                    case 'Text':
+                        $messageDetails = $message->message->message;
+                        break;
+                    case 'Options':
+                        // $messageDetails = $message->message->options;
+                        $messageDetails = $message->message->options->map(function ($option) {
+                            if ($option->users) {
+                                // Split the users string into an array of user IDs
+                                $userIds = explode(',', $option->users);
+                        
+                                // Fetch user data (id, profile, name)
+                                $users = User::whereIn('id', $userIds)->get();
+                        
+                                // Map the user data to include id, profile (with fallback), and name
+                                $userData = $users->map(function ($user) {
+                                    return [
+                                        'id' => $user->id,
+                                        'profile' => $user->profile 
+                                            ? setAssetPath('user-profile/' . $user->profile) 
+                                            : setAssetPath('assets/media/avatars/blank.png'),
+                                        'name' => $user->first_name .''. $user->lastname_name,
+                                    ];
+                                });
+                        
+                                // Add the user data to the option
+                                $option->user_data = $userData;
+                            }
+                        
+                            return $option;
+                        });                
+                        
+                        break;
+                    case 'Attachment':
+                        $messageDetails = $message->message->attachment;
+                        break;
+                    case 'Location':
+                        $messageDetails = $message->message->location;
+                        break;
+                    case 'Meeting':
+                        $messageDetails = $message->message->meeting;
+                        break;
+                    case 'Task':
+                        $messageDetails = $message->message->task;
+                        break;
+                    case 'Reminder':
+                        $messageDetails = $message->message->reminder;
+                        break;
+                    case 'Contact':
+                        $messageDetails = $message->message->message;
+                        break;
+                }
+
+                $senderName = @$message->sender->first_name .' '. @$message->sender->last_name;
+                $senderProfile = @$message->sender->profile ? setAssetPath('user-profile/' . $message->sender->profile) : setAssetPath('assets/media/avatars/blank.png');
+
+                return [
+                    'messageId' => $message->message->id,                
+                    'messageType' => $message->message->message_type,
+                    'message' => $message->message->message,
+                    'attachmentType' => $message->message->attachment_type,                
+                    'date' => Carbon::parse($message->message->created_at)->format('Y-m-d H:i:s'),
+                    'time' => Carbon::parse($message->message->created_at)->format('h:i a'),
+                    'sentBy' => ($message->sender_id == auth()->user()->id) ? 'loginUser' : 'User',
+                    'senderName' => $senderName,
+                    'senderProfile' => $senderProfile,
+                    'messageDetails' => $messageDetails,
+                ];
+            })->unique('messageId')->values();
+
+
+            // Grouping the messages by Today and Yesterday
+            $groupedChatData = [        
+                'Yesterday' => [],
+                'Today' => [],            
+            ];
+
+            // Current date and yesterday's date for comparison
+            $today = Carbon::now()->startOfDay();
+            $yesterday = Carbon::now()->subDay()->startOfDay();
+
+            foreach ($groupedChat as $chat) {
+                $messageDate = Carbon::parse($chat['date'])->startOfDay();
+
+                if ($messageDate->equalTo($today)) {
+                    $groupedChatData['Today'][] = $chat;
+                } elseif ($messageDate->equalTo($yesterday)) {
+                    $groupedChatData['Yesterday'][] = $chat;
+                }
+            }
+
             $data = [
-                'status_code' => 400,
-                'message' => $validator->errors()->first(),
-                'data' => ""
+                "status" => "Success",
+                "status_code" => 200,
+                "message" => "Get Data Successfully!",
+                "data" => [
+                    "groupData" => $groupData,
+                    "groupChat" => $groupedChatData
+                ]
             ];
+
             return $this->sendJsonResponse($data);
+        } catch (\Exception $e) {
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => date("Y-m-d H:i:s")
+            ]);
+            return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
         }
-
-        $loginUser = auth()->user()->id;
-        $members = GroupMembers::where('group_id', $request->group_id)->get();
-        if ($members->isEmpty()) {
-            return $this->sendJsonResponse(['status_code' => 404, 'message' => 'No members found in this group.']);
-        }
-
-        $groupData = Group::find($request->group_id);
-        $groupData->profile_pic = @$groupData->profile_pic ? setAssetPath('group-profile/' . $groupData->profile_pic) : setAssetPath('assets/media/avatars/blank.png');
-        $groupData->cover_image = @$groupData->cover_image ? setAssetPath('group-profile/' . $groupData->cover_image) : setAssetPath('assets/media/avatars/blank.png');
-
-        $filter = [
-            'Task',
-            'Meeting',
-            'Reminder'
-        ];
-
-        // Collect Messages
-        $messages = MessageSenderReceiver::whereHas('message', function ($q) use ($request) {
-            $q->where('message_type', '!=', 'Task Chat')
-              ->where('group_id', $request->group_id);
-        })
-        ->whereNull('deleted_at')
-        ->with(['sender'])
-        ->orderByDesc('created_at')
-        ->skip($start)
-        ->take($limit)
-        ->get();
-
-        $groupedChat = $messages->map(function ($message) use ($loginUser, $request) {
-            // Message Details mapping
-            $messageDetails = []; 
-            switch ($message->message->message_type) {
-                case 'Text':
-                    $messageDetails = $message->message->message;
-                    break;
-                case 'Attachment':
-                    $messageDetails = $message->message->attachment;
-                    break;
-                case 'Location':
-                    $messageDetails = $message->message->location;
-                    break;
-                case 'Meeting':
-                    $messageDetails = $message->message->meeting;
-                    break;
-                case 'Task':
-                    $messageDetails = $message->message->task;
-                    break;
-                case 'Reminder':
-                    $messageDetails = $message->message->reminder;
-                    break;
-                case 'Contact':
-                    $messageDetails = $message->message->message;
-                    break;
-            }
-
-            $senderName = @$message->sender->first_name .' '. @$message->sender->last_name;
-            $senderProfile = @$message->sender->profile ? setAssetPath('user-profile/' . $message->sender->profile) : setAssetPath('assets/media/avatars/blank.png');
-
-            return [
-                'messageId' => $message->message->id,
-                'messageType' => $message->message->message_type,
-                'attachmentType' => $message->message->attachment_type,
-                'date' => Carbon::parse($message->message->created_at)->format('Y-m-d H:i:s'),
-                'time' => Carbon::parse($message->message->created_at)->format('h:i a'),
-                'sentBy' => ($message->sender_id == auth()->user()->id) ? 'loginUser' : 'User',
-                'senderName' => $senderName,
-                'senderProfile' => $senderProfile,
-                'messageDetails' => $messageDetails,
-            ];
-        })->unique('messageId')->values();
-
-
-        // Grouping the messages by Today and Yesterday
-        $groupedChatData = [        
-            'Yesterday' => [],
-            'Today' => [],            
-        ];
-
-        // Current date and yesterday's date for comparison
-        $today = Carbon::now()->startOfDay();
-        $yesterday = Carbon::now()->subDay()->startOfDay();
-
-        foreach ($groupedChat as $chat) {
-            $messageDate = Carbon::parse($chat['date'])->startOfDay();
-
-            if ($messageDate->equalTo($today)) {
-                $groupedChatData['Today'][] = $chat;
-            } elseif ($messageDate->equalTo($yesterday)) {
-                $groupedChatData['Yesterday'][] = $chat;
-            }
-        }
-
-        $data = [
-            "status" => "Success",
-            "status_code" => 200,
-            "message" => "Get Data Successfully!",
-            "data" => [
-                "groupData" => $groupData,
-                "groupChat" => $groupedChatData
-            ]
-        ];
-
-        return $this->sendJsonResponse($data);
-    } catch (\Exception $e) {
-        Log::error([
-            'method' => __METHOD__,
-            'error' => [
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'message' => $e->getMessage()
-            ],
-            'created_at' => date("Y-m-d H:i:s")
-        ]);
-        return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
-    }
-}
-
-   
+    }   
   
-      /**
+    /**
      * @OA\Post(
      *     path="/api/v1/tasks/update",
      *     tags={"Update Tasks"},
@@ -2445,10 +2479,16 @@ class UserController extends Controller
      *                     description="Enter LinkedIn Profile Url"
      *                 ),
      *                 @OA\Property(
-     *                     property="map_profile_url",
+     *                     property="longitude",
      *                     type="string",
      *                     example="",
-     *                     description="Enter Google Map Url"
+     *                     description="Enter longitude"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="latitude",
+     *                     type="string",
+     *                     example="",
+     *                     description="Enter latitude"
      *                 ),
      *             )
      *         )
@@ -2571,7 +2611,8 @@ class UserController extends Controller
             $user->twitter_profile_url = @$request->twitter_profile_url ? $request->twitter_profile_url : NULL;
             $user->youtube_profile_url = @$request->youtube_profile_url ? $request->youtube_profile_url : NULL;
             $user->linkedin_profile_url = @$request->linkedin_profile_url ? $request->linkedin_profile_url : NULL;
-            $user->map_profile_url = @$request->map_profile_url ? $request->map_profile_url : NULL;
+            $user->longitude = @$request->longitude ? $request->longitude : NULL;
+            $user->latitude = @$request->latitude ? $request->latitude : NULL;
             $user->save();
 
             $user->profile = @$user->profile ? setAssetPath('user-profile/' . $user->profile) : NULL;

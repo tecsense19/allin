@@ -37,6 +37,11 @@ class Message extends Model
         return $this->hasMany(MessageAttachment::class);
     }
 
+    public function options()
+    {
+        return $this->hasMany(Option::class);
+    }
+
     public function tasks()
     {
         return $this->hasMany(MessageTask::class);

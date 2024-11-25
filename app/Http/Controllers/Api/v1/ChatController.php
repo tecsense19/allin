@@ -21,6 +21,8 @@ use App\Models\deleteChatUsers;
 use App\Models\ProjectEvent;
 use App\Models\userDeviceToken;
 use App\Models\UserDocument;
+use App\Models\MessageTaskChatComment;
+use App\Models\Option;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -32,6 +34,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class ChatController extends Controller
 {
@@ -493,6 +496,602 @@ class ChatController extends Controller
             return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
         }
     }
+
+
+    // new code 
+    
+    /**
+     * @OA\Post(
+     *     path="/api/v1/group/question-with-options",
+     *     summary="Send a question with options to a group",
+     *     description="This endpoint allows sending a question with multiple choice options to a specific group. The options are provided as an array.",
+     *     tags={"Messages"},
+     *     security={{"bearerAuth": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data", 
+     *             @OA\Schema(
+     *                 type="object",
+     *                 required={"message_type", "message", "group_id"},
+     *                 @OA\Property(
+     *                     property="message_type",
+     *                     type="string",
+     *                     description="The type of message being sent, which should be 'Options' for questions with multiple choices.",
+     *                     example="Options"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="message",
+     *                     type="string",
+     *                     description="The question content for the group, asking them to choose from options.",
+     *                     example="What is your favorite color?"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="group_id",
+     *                     type="integer",
+     *                     description="The ID of the group to which the message will be sent.",
+     *                     example=123
+     *                 ),
+     *                 @OA\Property(
+     *                     property="options[]", 
+     *                     type="array",
+     *                     description="The options for the users to choose from, required if message_type is 'options'.",
+     *                     @OA\Items(
+     *                         type="string",
+     *                         example="Red"
+     *                     ),
+     *                 ),
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Question with options sent successfully.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status_code", type="integer", example=200),
+     *             @OA\Property(property="message", type="string", example="Group Message Sent Successfully!"),
+     *             @OA\Property(property="data", type="string", example="")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Validation error for missing or invalid parameters.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status_code", type="integer", example=400),
+     *             @OA\Property(property="message", type="string", example="The message content is required."),
+     *             @OA\Property(property="data", type="string", example="")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="No members found in the group.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status_code", type="integer", example=404),
+     *             @OA\Property(property="message", type="string", example="No members found in this group."),
+     *             @OA\Property(property="data", type="string", example="")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Internal server error.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status_code", type="integer", example=500),
+     *             @OA\Property(property="message", type="string", example="Something went wrong."),
+     *             @OA\Property(property="data", type="string", example="")
+     *         )
+     *     )
+     * )
+     */
+
+    public function questionWithOptions(Request $request)
+    {
+        try {
+            $rules = [
+                'message_type' => 'required|string',
+                'message' => 'required|string', // The question or content related to the options
+                'group_id' => 'required|integer',
+                'options' => 'nullable|array', // Optional: Array of options if message type is 'options'
+                'options.*' => 'string', // Each option should be a string
+            ];
+
+            $messages = [
+                'message_type.required' => 'The message type is required.',
+                'message_type.string' => 'The message type must be a string.',
+                'message.required' => 'The message content is required.',
+                'message.string' => 'The message content must be a string.',
+                'group_id.required' => 'The group ID is required.',
+                'group_id.integer' => 'The group ID must be an integer.',
+                'options.array' => 'The options should be an array of strings.',
+                'options.*.string' => 'Each option should be a string.',
+            ];
+
+            $validator = Validator::make($request->all(), $rules, $messages);
+            if ($validator->fails()) {
+                $data = [
+                    'status_code' => 400,
+                    'message' => $validator->errors()->first(),
+                    'data' => ""
+                ];
+                return $this->sendJsonResponse($data);
+            }
+
+            // Create the message with type 'options'
+            $msg = new Message();
+            $msg->message_type = 'Options'; // Set message type to options
+            $msg->group_id = $request->group_id; 
+            $msg->message = $request->message; // Store the question or prompt
+            $msg->status = "Unread";
+            $msg->save();
+            
+            $result = [];
+            foreach ($request->options as $item) {
+                $parsed = str_getcsv($item); // Automatically handles quoted strings
+                $result[] = $parsed;
+            }
+
+            if ($request->has('options') && is_array($request->options)) {
+                foreach ($result[0] as $option) {
+                    // Ensure the option is a valid string and not empty
+                    if (!empty($option)) {
+                        // Check if this option already exists for the same message
+                        $existingOption = Option::where('message_id', $msg->id)
+                                                ->where('option', $option)
+                                                ->first();
+            
+                        if (!$existingOption) {
+                            // Save the option with a unique ID
+                            $msgOption = new Option();
+                            $msgOption->message_id = $msg->id;       // Link to the message
+                            $msgOption->option = $option;           // Individual option text
+                            $msgOption->option_id = (string) Str::uuid(); // Unique option ID
+                            $msgOption->save();                     // Save to database
+                        }
+                    }
+                }
+            }
+        
+            // Fetch group members
+            $groupMembers = GroupMembers::where('group_id', $request->group_id)->pluck('user_id')->toArray();
+            if (empty($groupMembers)) {
+                return $this->sendJsonResponse(['status_code' => 404, 'message' => 'No members found in this group']);
+            }
+
+            // Send the message to all group members
+            foreach ($groupMembers as $memberId) {
+                $messageSenderReceiver = new MessageSenderReceiver();
+                $messageSenderReceiver->message_id = $msg->id;
+                $messageSenderReceiver->sender_id = auth()->user()->id;
+                $messageSenderReceiver->receiver_id = $memberId;
+                $messageSenderReceiver->save();
+            }
+
+            // Create message payload for broadcasting and notifications
+            $message = [
+                'id' => $msg->id,
+                'sender' => auth()->user()->id,
+                'group_id' => $request->group_id,
+                'message_type' => 'Options',
+                'message' => $request->message, // Question or prompt
+                'options' => $result[0], // Include options
+                "screen" => "groupchat"
+            ];
+
+            // Pusher: Broadcast the message to group members
+            // broadcast(new MessageSent($message))->toOthers();
+
+            // Push Notification
+            $validTokens = [];
+            $invalidTokens = [];
+
+            foreach ($groupMembers as $memberId) {
+                $validationResults = validateToken($memberId);
+                foreach ($validationResults as $result) {
+                    $validTokens = array_merge($validTokens, $result['valid']);
+                    $invalidTokens = array_merge($invalidTokens, $result['invalid']);
+                }
+            }
+
+            if (count($invalidTokens) > 0) {
+                foreach ($invalidTokens as $singleInvalidToken) {
+                    userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
+                }
+            }
+
+            $notification = [
+                'title' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
+                'body' => $request->message,
+                'image' => '',
+            ];
+
+            if (count($validTokens) > 0) {
+               // sendPushNotification($validTokens, $notification, $message);
+            }
+
+            $data = [
+                'status_code' => 200,
+                'message' => 'Group Options Message Sent Successfully!',
+                'data' => $message
+            ];
+            return $this->sendJsonResponse($data);
+        } catch (\Exception $e) {
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => now()->format("Y-m-d H:i:s")
+            ]);
+            return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
+        }
+    }
+
+
+    /**
+     * @OA\Post(
+     *     path="/api/v1/group/select-option",
+     *     summary="User selects an option (True/False)",
+     *     description="This API allows a user to select or deselect an option for a particular option ID. If True, the user is added to the users list, if False, the user is removed from the list.",
+     *     tags={"Messages"},
+     *     security={{"bearerAuth": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data", 
+     *             @OA\Schema(
+     *                 required={"option_id", "selected"},
+     *                 @OA\Property(property="option_id", type="string", description="The ID of the option being selected."),
+     *                 @OA\Property(property="selected", type="boolean", description="True to add the user to the option, False to remove the user from the option.")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Option selection updated successfully.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status_code", type="integer", example=200),
+     *             @OA\Property(property="message", type="string", example="Option selection updated successfully!"),
+     *             @OA\Property(property="data", type="object")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Validation error (missing required fields or invalid data).",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status_code", type="integer", example=400),
+     *             @OA\Property(property="message", type="string", example="Option ID is required.")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Option not found.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status_code", type="integer", example=404),
+     *             @OA\Property(property="message", type="string", example="Option not found.")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Internal server error.",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status_code", type="integer", example=500),
+     *             @OA\Property(property="message", type="string", example="Something went wrong.")
+     *         )
+     *     )
+     * )
+     */
+        
+     public function selectOption(Request $request)
+     {
+         try {
+             // Validation
+             $rules = [
+                 'option_id' => 'required|string|exists:options,option_id', // Ensure the option exists
+                 'selected' => 'required|in:true,false', // Accept string "true" or "false"
+             ];
+     
+             $messages = [
+                 'option_id.required' => 'Option ID is required.',
+                 'option_id.string' => 'Option ID must be a string.',
+                 'option_id.exists' => 'The selected option does not exist.',
+                 'selected.required' => 'Selection is required.',
+                 'selected.in' => 'Selection must be either true or false.',
+             ];
+     
+             $validator = Validator::make($request->all(), $rules, $messages);
+             if ($validator->fails()) {
+                 $data = [
+                     'status_code' => 400,
+                     'message' => $validator->errors()->first(),
+                     'data' => ""
+                 ];
+                 return $this->sendJsonResponse($data);
+             }
+     
+             // Get the selected option
+             $option = Option::where('option_id', $request->option_id)->first();
+     
+             if (!$option) {
+                 return $this->sendJsonResponse(['status_code' => 404, 'message' => 'Option not found']);
+             }
+     
+             // Get the existing users (if any) in the `users` column
+             $users = explode(',', $option->users); // Convert comma-separated list to array
+     
+             // Convert selected to boolean
+             $selected = filter_var($request->selected, FILTER_VALIDATE_BOOLEAN);
+     
+             if ($selected) {
+                 // Add user if not already in the list
+                 if (!in_array(auth()->user()->id, $users)) {
+                     $users[] = auth()->user()->id; // Add user to the array
+                 }
+             } else {
+                 // Remove user if they exist in the list
+                 $users = array_filter($users, function($userId) {
+                     return $userId != auth()->user()->id; // Filter out the current user's ID
+                 });
+     
+                 // Re-index the array after removal to avoid gaps
+                 $users = array_values($users); // Reset array keys after filtering
+             }
+     
+             // After filtering, if users list is empty, set it to an empty string
+             $usersString = implode(',', $users); // Convert array back to a comma-separated string
+             
+             // Trim leading/trailing commas
+             $usersString = trim($usersString, ',');
+     
+             // If the string is empty, set it as an empty string
+             if (empty($usersString)) {
+                 $usersString = '';
+             }
+     
+             // Save the updated users list
+             $option->users = $usersString;
+             $option->save();
+     
+             // Return success response
+             $data = [
+                 'status_code' => 200,
+                 'message' => 'Option selection updated successfully!',
+                 'data' => $option,
+             ];
+             return $this->sendJsonResponse($data);
+     
+         } catch (\Exception $e) {
+             Log::error([
+                 'method' => __METHOD__,
+                 'error' => [
+                     'file' => $e->getFile(),
+                     'line' => $e->getLine(),
+                     'message' => $e->getMessage()
+                 ],
+                 'created_at' => now()->format("Y-m-d H:i:s")
+             ]);
+             return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
+         }
+     }
+     
+     /**
+     * @OA\Get(
+     *     path="/api/v1/group/votes/fetch",
+     *     summary="Fetch votes for a message by message_id",
+     *     description="This endpoint fetches the vote details for a given message_id, including the question and the options with vote counts.",
+     *     tags={"Messages"},
+     *     security={{"bearerAuth": {}}},
+     *     @OA\Parameter(
+     *         name="message_id",
+     *         in="query",
+     *         description="The ID of the message to fetch votes for",
+     *         required=true,
+     *         @OA\Schema(
+     *             type="integer"
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Vote details fetched successfully!",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(
+     *                 property="status_code",
+     *                 type="integer",
+     *                 example=200
+     *             ),
+     *             @OA\Property(
+     *                 property="message",
+     *                 type="string",
+     *                 example="Vote details fetched successfully!"
+     *             ),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 @OA\Property(
+     *                     property="question",
+     *                     type="string",
+     *                     example="What is your favorite programming language?"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="options",
+     *                     type="array",
+     *                     @OA\Items(
+     *                         type="object",
+     *                         @OA\Property(
+     *                             property="option",
+     *                             type="string",
+     *                             example="PHP"
+     *                         ),
+     *                         @OA\Property(
+     *                             property="vote_count",
+     *                             type="integer",
+     *                             example=5
+     *                         )
+     *                     )
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Bad Request: Missing or invalid message_id",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(
+     *                 property="status_code",
+     *                 type="integer",
+     *                 example=400
+     *             ),
+     *             @OA\Property(
+     *                 property="message",
+     *                 type="string",
+     *                 example="The 'message_id' parameter is required."
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Not Found: No options message found for the provided message_id",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(
+     *                 property="status_code",
+     *                 type="integer",
+     *                 example=404
+     *             ),
+     *             @OA\Property(
+     *                 property="message",
+     *                 type="string",
+     *                 example="No options message found for the provided message_id"
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Internal Server Error",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(
+     *                 property="status_code",
+     *                 type="integer",
+     *                 example=500
+     *             ),
+     *             @OA\Property(
+     *                 property="message",
+     *                 type="string",
+     *                 example="Something went wrong"
+     *             )
+     *         )
+     *     )
+     * )
+     */
+
+    public function fetchVotes(Request $request)
+    {
+        try {
+            // Validate the incoming request to ensure message_id is provided
+            $validator = Validator::make($request->all(), [
+                'message_id' => 'required|integer',
+            ]);
+
+            if ($validator->fails()) {
+                return $this->sendJsonResponse([
+                    'status_code' => 400,
+                    'message' => $validator->errors()->first(),
+                    'data' => ""
+                ]);
+            }
+
+            // Retrieve the message (question) based on the provided message_id
+            $message = Message::where('id', $request->message_id)
+                            ->where('message_type', 'Options') // Ensure this is an "Options" type message
+                            ->first();
+
+            if (!$message) {
+                return $this->sendJsonResponse([
+                    'status_code' => 404,
+                    'message' => 'No options message found with the provided message_id',
+                    'data' => ""
+                ]);
+            }
+
+            // Fetch the options for this message
+            $options = Option::where('message_id', $message->id)->get();
+
+            $optionsWithCounts = $options->map(function($option) {
+                // Initialize vote count and user details array
+                $voteCount = 0;
+                $userDetails = [];
+            
+                if ($option->users) {
+
+                    // Check if $option->users is null or an empty string before applying explode
+                    if ($option->users) {
+                        $voteCount = count(explode(',', $option->users));
+                    } else {
+                        $voteCount = 0; // No users, hence 0 votes
+                    }               
+
+                    // Split the comma-separated list of user IDs
+                    $userIds = explode(',', $option->users);                                                    
+            
+                    // Fetch user details (e.g., name, email) for each user ID
+                    $users = User::whereIn('id', $userIds)->get(['id', 'first_name', 'last_name', 'email', 'profile']);  // Adjust fields as needed
+            
+                    // Process each user and check if they have a profile
+                    $userDetails = $users->map(function($user) {
+                    
+                    // Set the profile image if available, or use a default image
+                    $user->profile = @$user->profile ? setAssetPath('user-profile/' . $user->profile) : setAssetPath('assets/media/avatars/blank.png');
+                        
+                        return [
+                            'id' => $user->id,
+                            'name' => $user->first_name . $user->last_name,
+                            'email' => $user->email,
+                            'profile' => $user->profile,
+                        ];
+                    });
+                }
+            
+                return [
+                    'option' => $option->option,
+                    'vote_count' => $voteCount,
+                    'users' => $userDetails,  // Include user details with profile
+                ];
+            });                   
+
+            // Prepare the final response including the message (question) and options with counts
+            $response = [
+                'question' => $message->message,
+                'options' => $optionsWithCounts,
+            ];
+
+            return $this->sendJsonResponse([
+                'status_code' => 200,
+                'message' => 'Vote details fetched successfully!',
+                'data' => $response
+            ]);
+        } catch (\Exception $e) {
+            // Log any errors that occur
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => now()->format("Y-m-d H:i:s")
+            ]);
+            return $this->sendJsonResponse([
+                'status_code' => 500,
+                'message' => 'Something went wrong',
+                'data' => ''
+            ]);
+        }
+    }
+
+    // edn new code
     
     /**
      * @OA\Post(
@@ -3433,6 +4032,249 @@ class ChatController extends Controller
         }
     }
 
+    // New task fatch complete incomplete 
+    /**
+     * @OA\Get(
+     *     path="/api/v1/task-complete-incomplete",
+     *     summary="Fetch Task Complete or Incomplete by message_id",
+     *     description="This endpoint fetches the Task Complete or Incomplete for a given message_id, including the question and the options with vote counts.",
+     *     tags={"Messages"},
+     *     security={{"bearerAuth": {}}},
+     *     @OA\Parameter(
+     *         name="message_id",
+     *         in="query",
+     *         description="The ID of the message to fetch votes for",
+     *         required=true,
+     *         @OA\Schema(
+     *             type="integer"
+     *         )
+     *     ),
+     *     @OA\Parameter(
+     *         name="select",
+     *         in="query",
+     *         description="The status of the task (complete or incomplete)",
+     *         required=true,
+     *         @OA\Schema(
+     *             type="string",
+     *             enum={"complete", "incomplete"}
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Task Complete or Incomplete details fetched successfully!",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(
+     *                 property="status_code",
+     *                 type="integer",
+     *                 example=200
+     *             ),
+     *             @OA\Property(
+     *                 property="message",
+     *                 type="string",
+     *                 example="Task Complete or Incomplete fetched successfully!"
+     *             ),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 @OA\Property(
+     *                     property="question",
+     *                     type="string",
+     *                     example="What is your favorite programming language?"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="options",
+     *                     type="array",
+     *                     @OA\Items(
+     *                         type="object",
+     *                         @OA\Property(
+     *                             property="option",
+     *                             type="string",
+     *                             example="PHP"
+     *                         ),
+     *                         @OA\Property(
+     *                             property="vote_count",
+     *                             type="integer",
+     *                             example=5
+     *                         )
+     *                     )
+     *                 ),
+     *                 @OA\Property(
+     *                     property="users",
+     *                     type="array",
+     *                     @OA\Items(
+     *                         type="object",
+     *                         @OA\Property(
+     *                             property="id",
+     *                             type="integer",
+     *                             example=1
+     *                         ),
+     *                         @OA\Property(
+     *                             property="name",
+     *                             type="string",
+     *                             example="John Doe"
+     *                         ),
+     *                         @OA\Property(
+     *                             property="profile_picture",
+     *                             type="string",
+     *                             example="https://example.com/images/johndoe.jpg"
+     *                         )
+     *                     )
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Bad Request: Missing or invalid message_id or select",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(
+     *                 property="status_code",
+     *                 type="integer",
+     *                 example=400
+     *             ),
+     *             @OA\Property(
+     *                 property="message",
+     *                 type="string",
+     *                 example="The 'message_id' or 'select' parameter is required."
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Not Found: No options message found for the provided message_id",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(
+     *                 property="status_code",
+     *                 type="integer",
+     *                 example=404
+     *             ),
+     *             @OA\Property(
+     *                 property="message",
+     *                 type="string",
+     *                 example="No options message found for the provided message_id"
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Internal Server Error",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(
+     *                 property="status_code",
+     *                 type="integer",
+     *                 example=500
+     *             ),
+     *             @OA\Property(
+     *                 property="message",
+     *                 type="string",
+     *                 example="Something went wrong"
+     *             )
+     *         )
+     *     )
+     * )
+     */
+    
+     public function taskCompleteIncomplete(Request $request)
+    {
+        try {
+            // Validate the incoming request to ensure message_id and select are provided
+            $validator = Validator::make($request->all(), [
+                'message_id' => 'required|integer',
+                'select' => 'required|in:complete,incomplete', // Validate select field
+            ]);
+
+            if ($validator->fails()) {
+                return $this->sendJsonResponse([
+                    'status_code' => 400,
+                    'message' => $validator->errors()->first(),
+                    'data' => ""
+                ]);
+            }
+
+            // Retrieve all tasks associated with the provided message_id
+            $messageTasks = MessageTask::where('message_id', $request->message_id)->get();           
+
+            if ($messageTasks->isEmpty()) {
+                return $this->sendJsonResponse([
+                    'status_code' => 404,
+                    'message' => 'No tasks found with the provided message_id',
+                    'data' => ""
+                ]);
+            }
+
+        // Map each task to include its complete/incomplete users
+        $tasks = $messageTasks->map(function ($task) use ($request) {
+            // Parse complete and incomplete user IDs
+            $completeUsers = $task->task_checked_users ? explode(',', $task->task_checked_users) : [];
+            $allUsers = $task->users ? explode(',', $task->users) : [];
+            
+            // Filter incomplete users to exclude those in the complete users list
+            $incompleteUsers = array_diff($allUsers, $completeUsers);                     
+
+            // Determine which set of users to return based on the 'select' field
+            $selectedUsers = ($request->select === 'complete') ? $completeUsers : $incompleteUsers;
+
+            // Only include tasks with valid selected users
+            if (!empty($selectedUsers)) {
+                // Fetch profiles for the selected users
+                $userProfiles = User::whereIn('id', $selectedUsers)->get(['id', 'first_name', 'profile']);
+
+                // Return the task data with user profiles
+                return [
+                    'taskname' => $task->checkbox,
+                    'taskdescription' => $task->task_description,
+                    'userData' => $userProfiles->map(function ($user) {
+                        return [
+                            'id' => $user->id,
+                            'first_name' => $user->first_name,
+                            'profile' => $user->profile
+                            ? setAssetPath('user-profile/' . $user->profile)
+                            : setAssetPath('assets/media/avatars/blank.png'),
+                        ];
+                    }),
+                ];
+            }
+
+            // Return null for tasks with no valid selected users
+            return null;
+        });
+
+        // Remove null values from the mapped tasks
+        $tasks = $tasks->filter(function ($task) {
+            return !is_null($task);
+        })->values(); // Reindex the array to avoid gaps in indices
+
+        // Prepare the final response
+        return $this->sendJsonResponse([
+            'status_code' => 200,
+            'message' => 'Task Complete or Incomplete fetched successfully!',
+            'data' => $tasks
+        ]);
+
+        } catch (\Exception $e) {
+            // Log any errors that occur
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => now()->format("Y-m-d H:i:s")
+            ]);
+            return $this->sendJsonResponse([
+                'status_code' => 500,
+                'message' => 'Something went wrong',
+                'data' => ''
+            ]);
+        }
+    }     
+    //End 
+
     /**
      * @OA\Post(
      *     path="/api/v1/task-users-list",
@@ -3471,8 +4313,8 @@ class ChatController extends Controller
      * )
      */
 
- 
-  public function taskUserList(Request $request)
+    // ****************************** Main Code **********************************//
+     public function taskUserList(Request $request)
     {
         try {
 
@@ -3539,9 +4381,7 @@ class ChatController extends Controller
                 })
                 ->orderBy('id', 'desc')
                 ->first();
-                
-        
-
+                        
                 if ($sender && $sender->id != $loginUser) {   
                     $totalTasks = MessageTask::where('message_id', $lastMessage->message_id)->count();                  
                     $profileUrl = $sender->profile ? setAssetPath('user-profile/' . $sender->profile) : setAssetPath('assets/media/avatars/blank.png');
@@ -3636,11 +4476,7 @@ class ChatController extends Controller
 
                 return null;
             });
-            $uniqueResult = $result->filter()->unique('id')->values();
-            
-            // print_r($uniqueResult);
-            // die;
-
+            $uniqueResult = $result->filter()->unique('id')->values();            
 
             $data = [
                 'status_code' => 200,
@@ -3665,6 +4501,328 @@ class ChatController extends Controller
             return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
         }
     }
+    // ****************************** Main Code **********************************//
+
+
+//     public function taskUserList(Request $request)
+// {
+//     try {
+//         // Validation rules
+//         $rules = [
+//             'type' => 'required|string|in:Receive,Given,All Task',
+//         ];
+
+//         $message = [
+//             'type.required' => 'The type field is required.',
+//             'type.string' => 'The type field must be a string.',
+//             'type.in' => 'The selected type is invalid. Valid options are: Receive, Given, All Task.',
+//         ];
+
+//         // Validate the request
+//         $validator = Validator::make($request->all(), $rules, $message);
+//         if ($validator->fails()) {
+//             return response()->json([
+//                 'status_code' => 400,
+//                 'message' => $validator->errors(),
+//                 'data' => []
+//             ]);
+//         }
+
+//         $type = $request->type;
+//         $loginUser = auth()->user()->id;
+
+//         // Get all message tasks related to the logged-in user
+//         $messageTasks = DB::table('message_task')
+//             ->select('id', 'message_id', 'task_name', 'checkbox', 'task_checked', 'task_checked_users', 'task_description', 'users', 'read_status', 'created_by', 'updated_by', 'deleted_by', 'created_at', 'updated_at', 'deleted_at')
+//             ->where('users', 'like', '%' . $loginUser . '%')
+//             ->get();
+
+//         if ($messageTasks->isEmpty()) {
+//             return response()->json([
+//                 'status_code' => 404,
+//                 'message' => 'No tasks found for the user.',
+//                 'data' => []
+//             ]);
+//         }
+
+//         // Base query for fetching message sender/receiver details
+//         $baseQuery = MessageSenderReceiver::with(['message', 'sender', 'receiver'])
+//             ->whereHas('message', function ($query) {
+//                 $query->where('message_type', 'Task');
+//             });
+
+//         $userList = collect();
+
+//         // Iterate through each message task and gather relevant user details
+//         foreach ($messageTasks as $messageTask) {
+//             if ($type == 'Receive') {
+//                 $userList = $userList->merge(
+//                     (clone $baseQuery)
+//                         ->where('receiver_id', $loginUser)
+//                         ->where('message_id', $messageTask->message_id)
+//                         ->get()
+//                 );
+//             } elseif ($type == 'Given') {
+//                 $userList = $userList->merge(
+//                     (clone $baseQuery)
+//                         ->where('sender_id', $loginUser)
+//                         ->where('message_id', $messageTask->message_id)
+//                         ->get()
+//                 );
+//             } elseif ($type == 'All Task') {
+//                 $userList = $userList->merge(
+//                     (clone $baseQuery)
+//                         ->where(function ($query) use ($loginUser) {
+//                             $query->where('sender_id', $loginUser)
+//                                 ->orWhere('receiver_id', $loginUser);
+//                         })
+//                         ->where('message_id', $messageTask->message_id)
+//                         ->get()
+//                 );
+//             }
+//         }
+
+//         // Process the results
+//         $result = $userList->map(function ($messageSenderReceiver) use ($loginUser) {
+//             $sender = $messageSenderReceiver->sender;
+//             $receiver = $messageSenderReceiver->receiver;
+
+//             // Fetch the tasks related to this message_id
+//             $tasks = MessageTask::where('message_id', $messageSenderReceiver->message_id)->get();
+
+//             // Calculate completed tasks for the sender
+//             if ($sender && $sender->id != $loginUser) {
+//                 $totalTasks = $tasks->count();
+//                 $profileUrl = $sender->profile ? setAssetPath('user-profile/' . $sender->profile) : setAssetPath('assets/media/avatars/blank.png');
+
+//                 // Fetch tasks that the sender has marked as completed
+//                 $completedTasks = $tasks->filter(function ($task) use ($sender) {
+//                     return in_array($sender->id, explode(',', $task->task_checked_users));
+//                 });
+
+//                 return [
+//                     'id' => $sender->id,
+//                     'message_id' => $messageSenderReceiver->message_id,
+//                     'name' => $sender->first_name . ' ' . $sender->last_name,
+//                     'profile' => $profileUrl,
+//                     'totalTasks' => $totalTasks,
+//                     'completedCount' => $completedTasks->count(),
+//                 ];
+//             }
+
+//             // Calculate completed tasks for the receiver
+//             if ($receiver && $receiver->id != $loginUser) {
+//                 $totalTasks = $tasks->count();
+//                 $profileUrl = $receiver->profile ? setAssetPath('user-profile/' . $receiver->profile) : setAssetPath('assets/media/avatars/blank.png');
+
+//                 // Fetch tasks that the receiver has marked as completed
+//                 $completedTasks = $tasks->filter(function ($task) use ($receiver) {
+//                     return in_array($receiver->id, explode(',', $task->task_checked_users));
+//                 });
+
+//                 return [
+//                     'id' => $receiver->id,
+//                     'message_id' => $messageSenderReceiver->message_id,
+//                     'name' => $receiver->first_name . ' ' . $receiver->last_name,
+//                     'profile' => $profileUrl,
+//                     'totalTasks' => $totalTasks,
+//                     'completedCount' => $completedTasks->count(),
+//                 ];
+//             }
+
+//             return null;
+//         });
+
+//         // Remove null values and ensure unique users based on user ID
+//         $uniqueResult = $result->filter()->unique('id')->values();
+
+//         // Prepare the final response data
+//         $data = [
+//             'status_code' => 200,
+//             'message' => "Task User List Get Successfully!",
+//             'data' => [
+//                 'userList' => $uniqueResult
+//             ]
+//         ];
+//         return $this->sendJsonResponse($data);
+//     } catch (\Exception $e) {
+//         // Log any errors and return an error response
+//         Log::error(
+//             [
+//                 'method' => __METHOD__,
+//                 'error' => [
+//                     'file' => $e->getFile(),
+//                     'line' => $e->getLine(),
+//                     'message' => $e->getMessage()
+//                 ],
+//                 'created_at' => date("Y-m-d H:i:s")
+//             ]
+//         );
+//         return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
+//     }
+// }
+
+
+//     public function taskUserList(Request $request)
+// {
+//     try {
+//         // Validation rules
+//         $rules = [
+//             'type' => 'required|string|in:Receive,Given,All Task',
+//         ];
+
+//         $message = [
+//             'type.required' => 'The type field is required.',
+//             'type.string' => 'The type field must be a string.',
+//             'type.in' => 'The selected type is invalid. Valid options are: Receive, Given, All Task.',
+//         ];
+
+//         // Validate the request
+//         $validator = Validator::make($request->all(), $rules, $message);
+//         if ($validator->fails()) {
+//             return response()->json([
+//                 'status_code' => 400,
+//                 'message' => $validator->errors(),
+//                 'data' => []
+//             ]);
+//         }
+
+//         $type = $request->type;
+//         $loginUser = auth()->user()->id;
+
+//         // Get the last message related to the task for the logged-in user
+//         $lastMessageTask = DB::table('message_task')
+//             ->select('id', 'message_id', 'task_name', 'checkbox', 'task_checked', 'task_checked_users', 'task_description', 'users', 'read_status', 'created_by', 'updated_by', 'deleted_by', 'created_at', 'updated_at', 'deleted_at')
+//             ->where('users', 'like', '%' . $loginUser . '%')
+//             ->orderBy('message_id', 'desc')
+//             ->first();
+
+//         // Base query for fetching message sender/receiver details
+//         $baseQuery = MessageSenderReceiver::with(['message', 'sender', 'receiver'])
+//             ->whereHas('message', function ($query) {
+//                 $query->where('message_type', 'Task');
+//             });
+
+//         // Filter based on the task type
+//         if ($type == 'Receive') {
+//             $userList = (clone $baseQuery)
+//                 ->where('receiver_id', $loginUser)
+//                 ->where('message_id', $lastMessageTask->message_id)
+//                 ->get();
+//         } elseif ($type == 'Given') {
+//             $userList = (clone $baseQuery)
+//                 ->where('sender_id', $loginUser)
+//                 ->where('message_id', $lastMessageTask->message_id)
+//                 ->get();
+//         } elseif ($type == 'All Task') {
+//             $userList = (clone $baseQuery)
+//                 ->where(function ($query) use ($loginUser) {
+//                     $query->where('sender_id', $loginUser)
+//                         ->where('message_id', $lastMessageTask->message_id)
+//                         ->orWhere('receiver_id', $loginUser);
+//                 })
+//                 ->get();
+//         }
+
+//         // Process the results
+//         $result = $userList->map(function ($messageSenderReceiver) use ($loginUser) {
+//             $sender = $messageSenderReceiver->sender;
+//             $receiver = $messageSenderReceiver->receiver;
+
+//             // Fetch the last message related to the task
+//             $lastMessage = MessageSenderReceiver::with(['message', 'sender', 'receiver'])
+//                 ->whereHas('message', function ($query) use ($loginUser) {
+//                     $query->where('message_type', 'Task');
+//                 })
+//                 ->orderBy('id', 'desc')
+//                 ->first();
+
+//             // Calculate completed tasks for the sender
+//             if ($sender && $sender->id != $loginUser) {
+//                 $totalTasks = MessageTask::where('message_id', $lastMessage->message_id)->count();
+//                 $profileUrl = $sender->profile ? setAssetPath('user-profile/' . $sender->profile) : setAssetPath('assets/media/avatars/blank.png');
+
+//                 // Fetch tasks that the sender has marked as completed
+//                 $completedTasks = MessageTask::where('message_id', $lastMessage->message_id)
+//                     ->whereRaw('FIND_IN_SET(?, task_checked_users)', [$sender->id])
+//                     ->get();
+
+//                 $completedCount = $completedTasks->count();
+
+//                 // Check task status based on who updated the task
+//                 $taskStatus = ($messageSenderReceiver->updated_by == 1);
+
+//                 return [
+//                     'id' => $sender->id,
+//                     'message_id' => $lastMessage->message_id,
+//                     'name' => $sender->first_name . ' ' . $sender->last_name,
+//                     'profile' => $profileUrl,
+//                     'taskStatus' => $taskStatus,
+//                     'totalTasks' => $totalTasks,
+//                     'completedCount' => $completedCount,
+//                 ];
+//             }
+
+//             // Calculate completed tasks for the receiver
+//             if ($receiver && $receiver->id != $loginUser) {
+//                 $totalTasks = MessageTask::where('message_id', $lastMessage->message_id)->count();
+//                 $profileUrl = $receiver->profile ? setAssetPath('user-profile/' . $receiver->profile) : setAssetPath('assets/media/avatars/blank.png');
+
+//                 // Fetch tasks that the receiver has marked as completed
+//                 $completedTasks = MessageTask::where('message_id', $lastMessage->message_id)
+//                     ->whereRaw('FIND_IN_SET(?, task_checked_users)', [$receiver->id])
+//                     ->get();
+
+//                 $completedCount = $completedTasks->count();
+
+//                 // Check task status based on who updated the task
+//                 $taskStatus = ($messageSenderReceiver->updated_by == 1);
+
+//                 return [
+//                     'id' => $receiver->id,
+//                     'message_id' => $lastMessage->message_id,
+//                     'name' => $receiver->first_name . ' ' . $receiver->last_name,
+//                     'profile' => $profileUrl,
+//                     'taskStatus' => $taskStatus,
+//                     'totalTasks' => $totalTasks,
+//                     'completedCount' => $completedCount,
+//                     'date' => $lastMessage->created_at,
+//                     'time' => $lastMessage->created_at,
+//                 ];
+//             }
+
+//             return null;
+//         });
+
+//         // Remove null values and ensure unique users based on user ID
+//         $uniqueResult = $result->filter()->unique('id')->values();
+
+//         // Prepare the final response data
+//         $data = [
+//             'status_code' => 200,
+//             'message' => "Task User List Get Successfully!",
+//             'data' => [
+//                 'userList' => $uniqueResult
+//             ]
+//         ];
+//         return $this->sendJsonResponse($data);
+//     } catch (\Exception $e) {
+//         // Log any errors and return an error response
+//         Log::error(
+//             [
+//                 'method' => __METHOD__,
+//                 'error' => [
+//                     'file' => $e->getFile(),
+//                     'line' => $e->getLine(),
+//                     'message' => $e->getMessage()
+//                 ],
+//                 'created_at' => date("Y-m-d H:i:s")
+//             ]
+//         );
+//         return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
+//     }
+// }
+
 
     // public function taskUserList(Request $request)
     // {
@@ -4716,4 +5874,177 @@ class ChatController extends Controller
     } 
 
 
+
+   /**
+    * @OA\Post(
+    *     path="/api/v1/tasks/comments",
+    *     summary="Add a comment to a task",
+    *     description="This endpoint allows authenticated users to add comments to a specific task.",
+    *     operationId="addComment",
+    *     tags={"Messages"},
+    *     security={{"bearerAuth": {}}},
+    *     @OA\RequestBody(
+    *         required=true,
+    *         @OA\MediaType(
+    *             mediaType="multipart/form-data",
+    *             @OA\Schema(
+    *                 @OA\Property(property="comment", type="string", example="This is a sample comment."),
+    *                 @OA\Property(property="task_chat_id", type="integer", example=318),
+    *                 @OA\Property(property="message_id", type="integer", example=1434)
+    *             )
+    *         )
+    *     ),
+    *     @OA\Response(
+    *         response=200,
+    *         description="Comment added successfully",
+    *         @OA\JsonContent(
+    *             @OA\Property(property="success", type="boolean", example=true),
+    *             @OA\Property(property="comment", type="object", 
+    *                 @OA\Property(property="id", type="integer", example=1),
+    *                 @OA\Property(property="task_id", type="integer", example=318),
+    *                 @OA\Property(property="comment", type="string", example="This is a sample comment."),
+    *                 @OA\Property(property="task_chat_id", type="integer", example=318),
+    *                 @OA\Property(property="message_id", type="integer", example=1434),
+    *                 @OA\Property(property="created_at", type="string", example="2024-11-20 10:30:00"),
+    *                 @OA\Property(property="updated_at", type="string", example="2024-11-20 10:30:00")
+    *             )
+    *         )
+    *     ),
+    *     @OA\Response(
+    *         response=400,
+    *         description="Invalid input",
+    *         @OA\JsonContent(
+    *             @OA\Property(property="success", type="boolean", example=false),
+    *             @OA\Property(property="message", type="string", example="Validation error.")
+    *         )
+    *     ),
+    *     @OA\Response(
+    *         response=401,
+    *         description="Unauthorized",
+    *         @OA\JsonContent(
+    *             @OA\Property(property="success", type="boolean", example=false),
+    *             @OA\Property(property="message", type="string", example="Token is invalid or expired.")
+    *         )
+    *     )
+    * )
+    */
+
+    public function addComment(Request $request)
+    {
+        $loginUser = auth()->user()->id;
+
+        $request->validate([
+            'comment' => 'required|string',
+            'task_chat_id' => 'required|exists:message_task,id',
+            'message_id' => 'required|exists:message,id',
+        ]);
+
+        $comment = MessageTaskChatComment::create([
+            'user_id' => $loginUser,
+            'comment' => $request->comment,
+            'task_chat_id' => $request->task_chat_id,
+            'message_id' => $request->message_id,
+        ]);
+
+        return response()->json(['success' => true, 'comment' => $comment]);
+    }
+
+
+
+   /**
+     * @OA\Post(
+     *     path="/api/v1/getTasks/comments",
+     *     summary="Fetch all comments with pagination",
+     *     description="Retrieve all comments for a specific message and task with pagination.",
+     *     operationId="getComments",
+     *     tags={"Messages"},
+     *     security={{"bearerAuth": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 @OA\Property(property="message_id", type="integer", example=1434),
+     *                 @OA\Property(property="task_id", type="integer", example=318),
+     *                 @OA\Property(property="per_page", type="integer", example=10, description="Number of comments per page (optional)"),
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Comments retrieved successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="comments", type="object",
+     *                 @OA\Property(property="current_page", type="integer", example=1),
+     *                 @OA\Property(property="data", type="array",
+     *                     @OA\Items(
+     *                         @OA\Property(property="id", type="integer", example=1),
+     *                         @OA\Property(property="task_id", type="integer", example=318),
+     *                         @OA\Property(property="message_id", type="integer", example=1434),
+     *                         @OA\Property(property="comment", type="string", example="This is a sample comment."),
+     *                         @OA\Property(property="task_chat_id", type="integer", example=318),
+     *                         @OA\Property(property="user_id", type="integer", example=1),
+     *                         @OA\Property(property="created_at", type="string", format="date-time", example="2024-11-20T10:30:00.000000Z"),
+     *                         @OA\Property(property="updated_at", type="string", format="date-time", example="2024-11-20T10:30:00.000000Z")
+     *                     )
+     *                 ),
+     *                 @OA\Property(property="first_page_url", type="string", example="http://example.com/api/v1/tasks/comments?page=1"),
+     *                 @OA\Property(property="from", type="integer", example=1),
+     *                 @OA\Property(property="last_page", type="integer", example=5),
+     *                 @OA\Property(property="last_page_url", type="string", example="http://example.com/api/v1/tasks/comments?page=5"),
+     *                 @OA\Property(property="next_page_url", type="string", example="http://example.com/api/v1/tasks/comments?page=2"),
+     *                 @OA\Property(property="path", type="string", example="http://example.com/api/v1/tasks/comments"),
+     *                 @OA\Property(property="per_page", type="integer", example=10),
+     *                 @OA\Property(property="prev_page_url", type="string", example=null),
+     *                 @OA\Property(property="to", type="integer", example=10),
+     *                 @OA\Property(property="total", type="integer", example=50)
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Invalid input",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Validation error.")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthorized",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Token is invalid or expired.")
+     *         )
+     *     )
+     * )
+     */
+
+    public function getComments(Request $request)
+    {
+        $request->validate([
+            'message_id' => 'required|exists:message,id',
+            'task_id' => 'required|exists:message_task,id',
+        ]);
+
+        $comments = MessageTaskChatComment::where('message_id', $request->message_id)
+            ->where('task_chat_id', $request->task_id)
+            ->orderBy('created_at', 'desc') // Optional: Order by latest comments
+            ->with(['user:id,profile']) // Eager load user data (selecting only the necessary fields)
+            ->paginate($request->input('per_page', 10)); // Use the 'per_page' query parameter or default to 10
+
+        // Iterate through the comments and modify the profile field
+        $comments->getCollection()->transform(function ($comment) {
+            $user = $comment->user; // Access the user object
+            // Ensure you're passing only the relative path, not the full URL
+            $comment->user->profile_url = $user->profile 
+                ? setAssetPath('user-profile/' . $user->profile) // Only append the relative path here
+                : setAssetPath('assets/media/avatars/blank.png');
+            
+            return $comment; // Return the modified comment
+        });
+
+        return response()->json(['success' => true, 'comments' => $comments]);
+    }
 }
