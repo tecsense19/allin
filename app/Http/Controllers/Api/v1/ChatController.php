@@ -2386,7 +2386,7 @@ class ChatController extends Controller
 
              $loginUser = auth()->user()->id;
              
-              $lastMessageTask = DB::table('message_task')
+            $lastMessageTask = DB::table('message_task')
                             ->select('id', 'message_id', 'task_name', 'checkbox', 'task_checked', 'task_checked_users', 'task_description', 'users', 'read_status', 'created_by', 'updated_by', 'deleted_by', 'created_at', 'updated_at', 'deleted_at')
                             ->where('users', 'LIKE', '%'. $loginUser. '%' )
                             ->orderBy('message_id', 'desc')
@@ -2638,50 +2638,26 @@ class ChatController extends Controller
             }elseif($request->message_type == 'Task'){
 
                 $messageIds = explode(',', $request->messageIds);                
-                
-                $projectTask = MessageTask::whereIn('message_id', $messageIds)                    
-                    ->get();        
-                                      
-                // Step 3: Create a new read_status string for each event
-                foreach ($projectTask as $event) {
-                    // Get the existing read_status
-                    $existingStatus = $event->read_status;
-                    
-                    // Prepare the new read_status by concatenating the existing status and loginUser
-                    $newStatus = $existingStatus ? $existingStatus . ',' . $loginUser : $loginUser;                  
 
-                    // Update the read_status in the database
-                    $event->update(['read_status' => $newStatus]);
-                    // Step 4: Get message IDs from the request
-                    $messageIds = explode(',', $request->messageIds);              
+                // Retrieve the MessageTask records for the provided message IDs
+                $projectTasks = MessageTask::whereIn('message_id', $messageIds)->get();
 
-                    // Step 5: Update the read_status for the specified message IDs
-                    MessageTask::whereIn('message_id', $messageIds)->update(['read_status' => $newStatus]);
+                // Loop through each task and update read_status
+                foreach ($projectTasks as $task) {
+                    // Get the current read_status and convert it to an array
+                    $currentReadStatus = $task->read_status ? explode(',', $task->read_status) : [];
 
-                    $messageIds = explode(',', $request->messageIds); // Get message IDs from the request
-                    $newUserId = $loginUser; // The user ID you want to add to read_status
+                    // Add the new user ID only if it's not already in the array
+                    if (!in_array($loginUser, $currentReadStatus)) {
+                        $currentReadStatus[] = $loginUser;
 
-                    foreach ($messageIds as $messageId) {
-                        // Retrieve the current ProjectEvent by ID
-                        $projectTasks = MessageTask::where('message_id',$messageId)->first();
+                        // Ensure unique values and convert back to a comma-separated string
+                        $task->read_status = implode(',', array_unique($currentReadStatus));
 
-                        if ($projectTasks) {
-                            // Get the current read_status and convert it to an array
-                            $currentReadStatus = explode(',', $projectTasks->read_status);
-                            // Check if the new user ID is already in the current read_status
-                            if (in_array($newUserId, $currentReadStatus)) {
-                                // Add the new user ID to the array
-                                $currentReadStatus[] = $newUserId;                           
-                                // Convert back to a string and ensure unique values
-                                $projectTasks->read_status = implode(',', array_unique($currentReadStatus));
-
-                                // Save the model
-                                $projectTasks->save();
-                            }
-                        }
+                        // Save the updated task
+                        $task->save();
                     }
                 }
-
             }
 
             $data = [
