@@ -931,6 +931,16 @@ class UserController extends Controller
      *             type="string",
      *         )
      *     ),
+     *     @OA\Parameter(
+     *         name="startchat",
+     *         in="query",
+     *         example="Yes or No",
+     *         description="Enter Yes or No",
+     *         required=false,
+     *         @OA\Schema(
+     *             type="string",
+     *         )
+     *     ),
      *      @OA\Response(
      *         response=200,
      *         description="json schema",
@@ -958,6 +968,7 @@ class UserController extends Controller
             ];
             $start = @$request->start ? $request->start : 0;
             $limit = @$request->limit ? $request->limit : 15;
+            $startchat = @$request->startchat ? $request->startchat : 'No';
             $validator = Validator::make($request->all(), $rules, $message);
             if ($validator->fails()) {
                 $data = [
@@ -1266,7 +1277,22 @@ class UserController extends Controller
                     'chat' => $chat,
                 ]
             ];
-            return $this->sendJsonResponse($data);
+
+            $data1 = [
+                'status_code' => 200,
+                'message' => "User Data fetch Successfully!",
+                'data' => [
+                    'userData' => $userData,                    
+                ]
+            ];
+
+            if($startchat === 'Yes')
+            {
+                return $this->sendJsonResponse($data1);
+            }else{
+                return $this->sendJsonResponse($data);
+            }
+            
         } catch (\Exception $e) {
             Log::error(
                 [
@@ -2479,6 +2505,12 @@ class UserController extends Controller
      *                     description="Enter LinkedIn Profile Url"
      *                 ),
      *                 @OA\Property(
+     *                     property="address",
+     *                     type="string",
+     *                     example="",
+     *                     description="Enter your full address"
+     *                 ),
+     *                 @OA\Property(
      *                     property="longitude",
      *                     type="string",
      *                     example="",
@@ -2613,6 +2645,7 @@ class UserController extends Controller
             $user->linkedin_profile_url = @$request->linkedin_profile_url ? $request->linkedin_profile_url : NULL;
             $user->longitude = @$request->longitude ? $request->longitude : NULL;
             $user->latitude = @$request->latitude ? $request->latitude : NULL;
+            $user->address = @$request->address ? $request->address : NULL;
             $user->save();
 
             $user->profile = @$user->profile ? setAssetPath('user-profile/' . $user->profile) : NULL;

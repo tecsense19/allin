@@ -49,8 +49,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
             Route::post('/delete-chat-user', 'deleteChatUsers');
             Route::post('/deleted-user-list', 'deletedUserList');
             Route::post('/deleted-user-account', 'deletedUserAccount');
-            Route::post('/tasks/update', 'updateTask');
-            
+            Route::post('/tasks/update', 'updateTask');            
         });
         Route::controller(ChatController::class)->group(function () {
             Route::post('/text-message', 'textMessage');
@@ -74,6 +73,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
             Route::get('task-complete-incomplete', 'taskCompleteIncomplete');
             Route::post('/sent-task-summary-email', 'sentTaskSummaryEmail');
             Route::post('/sent-task-done', 'sentTaskDone'); 
+            Route::post('/sent-event-done', 'sentEventDone');
             Route::post('/sent-meeting-done', 'sentMeetingDone'); 
             Route::get('/meetings', 'getMeetingDetails');    
             Route::post('/file-scan-upload', 'fileScanUpload'); 
@@ -85,7 +85,8 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
             Route::post('getTasks/comments', 'getComments'); 
             Route::post('group/question-with-options', 'questionWithOptions'); 
             Route::post('group/select-option', 'selectOption'); 
-            Route::get('group/votes/fetch', 'fetchVotes');                
+            Route::get('group/votes/fetch', 'fetchVotes');     
+            Route::get('/meetings/{id}', 'getMeetingById');                 
         });
         Route::controller(ProjectManagementController::class)->group(function () {
             Route::post('/add-work-hours', 'addWorkHours');
@@ -100,6 +101,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
             Route::post('/events-create-update', 'eventsCreateUpdate');
             Route::post('/events-list', 'eventsList');
             Route::post('/events-delete', 'eventsDelete');
+            Route::get('/event/{id}', 'getEventById');
         });
         Route::controller(GroupController::class)->group(function () {
             Route::Post('/group-list', 'groupList');

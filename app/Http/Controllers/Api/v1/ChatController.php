@@ -6,23 +6,26 @@ use App\Events\MessageSent;
 use App\Exports\chatExport;
 use App\Http\Controllers\Controller;
 use App\Mail\taskMail;
-use App\Models\Message;
-use App\Models\GroupMembers;
-use App\Models\MessageAttachment;
-use App\Models\MessageLocation;
-use App\Models\MessageMeeting;
-use App\Models\MessageReminder;
-use App\Models\MessageSenderReceiver;
-use App\Models\MessageTask;
-use App\Models\MessageTaskChat;
-use App\Models\Reminder;
-use App\Models\User;
-use App\Models\deleteChatUsers;
-use App\Models\ProjectEvent;
-use App\Models\userDeviceToken;
-use App\Models\UserDocument;
-use App\Models\MessageTaskChatComment;
-use App\Models\Option;
+use App\Models\{
+    Message,
+    MessageAttachment,
+    MessageLocation,
+    MessageMeeting,
+    MessageReminder,
+    MessageSenderReceiver,
+    MessageTask,
+    MessageTaskChat,
+    MessageTaskChatComment,
+    GroupMembers,
+    Reminder,
+    User,
+    deleteChatUsers,
+    ProjectEvent,
+    userDeviceToken,
+    UserDocument,
+    Option
+};
+
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -289,14 +292,13 @@ class ChatController extends Controller
      
              if (!$messageSenderReceiver) {
                  return response()->json(['status_code' => 403, 'message' => 'You are not authorized to edit this message'], 403);
-             }
-    
+             }    
      
-           // Update the message content
+            // Update only the message field without modifying the updated_at field
+            $msg->timestamps = false; // Disable automatic timestamps
             $msg->message = $request->message;
-            $msg->updated_at = now(); // Set the updated_at time to now
             $msg->save();
-
+            $msg->timestamps = true; // Re-enable timestamps after the operation
             // Prepare the time in the requested timezone or default to UTC
             $formattedTime = $request->timezone 
                 ? Carbon::parse($msg->updated_at)->setTimezone($request->timezone)->format('h:i a') 
@@ -1296,7 +1298,7 @@ class ChatController extends Controller
      *                     property="task_name",
      *                     type="string",                     
      *                     example="Task name",
-     *                     description="Date of the task"
+     *                     description="Enter Task Name"
      *                 ),
      *                 @OA\Property(
      *                     property="checkbox",
@@ -1306,6 +1308,15 @@ class ChatController extends Controller
      *                         example="CRUD Module"
      *                     ),
      *                     description="Array of checkbox"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="task_description",
+     *                     type="array",                     
+     *                     @OA\Items(
+     *                         type="string",
+     *                         example="Description area"
+     *                     ),
+     *                     description="Enter Task Description"
      *                 ),
      *                 @OA\Property(
      *                     property="date",
@@ -1337,8 +1348,6 @@ class ChatController extends Controller
      *     ),
      * )
      */
-
-
      public function messageTask(Request $request)
      {
          try {            
@@ -1381,27 +1390,35 @@ class ChatController extends Controller
              $mergedIds = implode(',', $uniqueIdsArray);
 
 
-             $task_name_Array = explode(',', $request->checkbox);             
+             $task_name_Array = explode(',', $request->checkbox);
              $task_name_UArray = array_unique($task_name_Array);
-
+             
+             // Ensure task_description is also an array
+             $taskDescriptions = $request->task_description ? explode(',', $request->task_description) : [];    
+             
              if (empty($task_name_UArray)) {
                  // If the array is empty, create a MessageTask entry with null data
                  $messageTask = new MessageTask();
                  $messageTask->message_id = $msg->id;
                  $messageTask->task_name = null; // or a default value
+                 $messageTask->task_description = null; // or a default value
                  $messageTask->checkbox = null; // or a default value
                  $messageTask->users = $mergedIds;
                  $messageTask->save();
              } else {
-                 foreach ($task_name_UArray as $taskName) { // Loop through multiple task names
+                 foreach ($task_name_UArray as $index => $taskName) { // Loop through multiple task names
                      $messageTask = new MessageTask();
                      $messageTask->message_id = $msg->id;
                      $messageTask->task_name = $request->task_name;
+                     
+                     // Use the corresponding task description if available
+                     $messageTask->task_description = $taskDescriptions ? $taskDescriptions[$index] : null;
+                     
                      $messageTask->checkbox = $taskName; // Save each task name
                      $messageTask->users = $mergedIds;
                      $messageTask->save();
                  }
-             }
+             }             
              
              foreach ($receiverIdsArray as $receiverId) {
                  $messageSenderReceiver = new MessageSenderReceiver();
@@ -1466,7 +1483,6 @@ class ChatController extends Controller
          }
      }
      
-
     // public function messageTask(Request $request)
     // {
     //     try {
@@ -2110,12 +2126,21 @@ class ChatController extends Controller
             $messageMeeting->date = @$request->date ? Carbon::parse($request->date)->format('Y-m-d') : NULL;
             $messageMeeting->start_time = @$request->start_time ? $request->start_time : NULL;
             $messageMeeting->end_time = @$request->end_time ? $request->end_time : NULL;
-            $messageMeeting->meeting_url = @$request->meeting_url ? $request->meeting_url : NULL;
-            $messageMeeting->users = $mergedIds;
-            $messageMeeting->latitude = @$request->latitude ? $request->latitude : NULL;
-            $messageMeeting->longitude = @$request->longitude ? $request->longitude : NULL;
-            $messageMeeting->location_url = @$request->location_url ? $request->location_url : NULL;
-            $messageMeeting->location = @$request->location ? $request->location : NULL;
+            $messageMeeting->users = $mergedIds;            
+            if($request->mode == "Online")
+            {
+                $messageMeeting->meeting_url = @$request->meeting_url ? $request->meeting_url : NULL;
+                $messageMeeting->latitude = NULL;
+                $messageMeeting->longitude = NULL;
+                $messageMeeting->location_url = NULL;
+                $messageMeeting->location = NULL;
+            }else{
+                $messageMeeting->meeting_url = NULL;
+                $messageMeeting->latitude = @$request->latitude ? $request->latitude : NULL;
+                $messageMeeting->longitude = @$request->longitude ? $request->longitude : NULL;
+                $messageMeeting->location_url = @$request->location_url ? $request->location_url : NULL;
+                $messageMeeting->location = @$request->location ? $request->location : NULL;
+            }
             $messageMeeting->save();
 
             foreach ($receiverIdsArray as $receiverId) {
@@ -2460,8 +2485,6 @@ class ChatController extends Controller
              return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
          }
      }
-
-
 
      /**
      * @OA\Post(
@@ -4009,6 +4032,7 @@ class ChatController extends Controller
     }
 
     // New task fatch complete incomplete 
+    
     /**
      * @OA\Get(
      *     path="/api/v1/task-complete-incomplete",
@@ -4194,6 +4218,11 @@ class ChatController extends Controller
             // Determine which set of users to return based on the 'select' field
             $selectedUsers = ($request->select === 'complete') ? $completeUsers : $incompleteUsers;
 
+            $loginUserId = auth()->user()->id;
+
+            // Remove the logged-in user's ID from the selected users array
+            $selectedUsers = array_diff($selectedUsers, [$loginUserId]);
+
             // Only include tasks with valid selected users
             if (!empty($selectedUsers)) {
                 // Fetch profiles for the selected users
@@ -4288,522 +4317,10 @@ class ChatController extends Controller
      *     ),
      * )
      */
-
     // ****************************** Main Code **********************************//
-     public function taskUserList(Request $request)
-    {
-        try {
-
-            $rules = [
-                'type' => 'required|string|in:Receive,Given,All Task',
-            ];
-
-            $message = [
-                'type.required' => 'The type field is required.',
-                'type.string' => 'The type field must be a string.',
-                'type.in' => 'The selected type is invalid. Valid options are: Receive, Given, All Task.',
-            ];
-
-            $validator = Validator::make($request->all(), $rules, $message);
-            if ($validator->fails()) {
-                return response()->json([
-                    'status_code' => 400,
-                    'message' => $validator->errors(),
-                    'data' => []
-                ]);
-            }
-
-            $type = $request->type;
-            $loginUser = auth()->user()->id;
-            
-            $lastMessageTask = DB::table('message_task')
-                            ->select('id', 'message_id', 'task_name', 'checkbox', 'task_checked', 'task_checked_users', 'task_description', 'users', 'read_status', 'created_by', 'updated_by', 'deleted_by', 'created_at', 'updated_at', 'deleted_at')
-                            ->where('users', 'like', '%' .$loginUser. '%')
-                            ->orderBy('message_id', 'desc')
-                            ->first();
-            
-            $baseQuery = MessageSenderReceiver::with(['message', 'sender', 'receiver'])
-                ->whereHas('message', function ($query) {
-                    $query->where('message_type', 'Task');
-                });
-            if ($type == 'Receive') {
-                $userList = (clone $baseQuery)
-                    ->where('receiver_id', $loginUser)
-                    ->where('message_id', $lastMessageTask->message_id)
-                    ->get();
-            } elseif ($type == 'Given') {
-                $userList = (clone $baseQuery)
-                    ->where('sender_id', $loginUser)
-                    ->where('message_id', $lastMessageTask->message_id)
-                    ->get();
-            } elseif ($type == 'All Task') {
-                $userList = (clone $baseQuery)
-                    ->where(function ($query) use ($loginUser) {
-                        $query->where('sender_id', $loginUser)
-                              ->where('message_id', $lastMessageTask->message_id)
-                            ->orWhere('receiver_id', $loginUser);
-                    })
-                    ->get();
-            }
-           
-           $result = $userList->map(function ($messageSenderReceiver) use ($loginUser) {
-            $sender = $messageSenderReceiver->sender;
-            $receiver = $messageSenderReceiver->receiver;
-        
-            // Fetch the last message with task type
-            $lastMessage = MessageSenderReceiver::with(['message', 'sender', 'receiver'])
-                ->whereHas('message', function ($query) use ($loginUser) {
-                    $query->where('message_type', 'Task');
-                })
-                ->orderBy('id', 'desc')
-                ->first();
-                        
-                if ($sender && $sender->id != $loginUser) {   
-                    $totalTasks = MessageTask::where('message_id', $lastMessage->message_id)->count();                  
-                    $profileUrl = $sender->profile ? setAssetPath('user-profile/' . $sender->profile) : setAssetPath('assets/media/avatars/blank.png');
-
-                    if ($lastMessage) {
-                        // Fetch tasks related to the last message and that are marked as checked
-                        $completedTasks = MessageTask::where('message_id', $lastMessage->message_id)
-                            ->whereRaw('FIND_IN_SET(?, task_checked_users)', [$sender->id])
-                            ->get();
-                    
-                        // Initialize counters
-                        $completedCount = 0;
-           
-                        // Iterate through tasks to filter based on checked users
-                        foreach ($completedTasks as $task) {
-                            $taskCheckedUsers = explode(',', $task->task_checked_users);  // Split the string by comma
-                            $specificUserId = $sender->id;  // Example: Check if user 121 has completed the task
-                    
-                            if (in_array($specificUserId, $taskCheckedUsers)) {
-                                // This task is completed by the specific user
-                                $completedCount++; // Increment the completed counter
-                            }
-                        }
-                    }
-
-                    if ($messageSenderReceiver->updated_by == 1) {                        
-                      
-                        $response['taskStatus'] = true;
-                        $response['totalTasks'] = $totalTasks;
-                    }else 
-                    {
-                        $response['taskStatus'] = false;
-                        $response['totalTasks'] = $totalTasks;
-                    }
-                    return [
-                        'id' => $sender->id,
-                        'message_id' => $lastMessage->message_id,
-                        'name' => $sender->first_name . ' ' . $sender->last_name,
-                        'profile' => $profileUrl,
-                        'taskStatus' => $response['taskStatus'],
-                        'totalTasks' => $response['totalTasks'],
-                        'completedCount' => $completedCount,
-                    ];
-                }
-
-                if ($receiver && $receiver->id != $loginUser) {
-                    $totalTasks = MessageTask::where('message_id', $lastMessage->message_id)->count();  
-                    
-                    if ($lastMessage) {
-                        // Fetch tasks related to the last message and that are marked as checked
-                        $completedTasks = MessageTask::where('message_id', $lastMessage->message_id)
-                            ->whereRaw('FIND_IN_SET(?, task_checked_users)', [$receiver->id])
-                            ->get();
-                    
-                        // Initialize counters
-                        $completedCount = 0;
-           
-                        // Iterate through tasks to filter based on checked users
-                        foreach ($completedTasks as $task) {
-                            $taskCheckedUsers = explode(',', $task->task_checked_users);  // Split the string by comma
-                            $specificUserId = $receiver->id;  // Example: Check if user 121 has completed the task
-                    
-                            if (in_array($specificUserId, $taskCheckedUsers)) {
-                                // This task is completed by the specific user
-                                $completedCount++; // Increment the completed counter
-                            }
-                        }
-                    }
-                    $profileUrl = $receiver->profile ? setAssetPath('user-profile/' . $receiver->profile) : setAssetPath('assets/media/avatars/blank.png');
-
-                    if ($messageSenderReceiver->updated_by == 1) {
-                        $response['taskStatus'] = true;
-                        $response['totalTasks'] = $totalTasks;
-                    }else{
-                        $response['taskStatus'] = false;
-                        $response['totalTasks'] = $totalTasks;
-                    }
-
-                    return [
-                        'id' => $receiver->id,
-                        'message_id' => $lastMessage->message_id,
-                        'name' => $receiver->first_name . ' ' . $receiver->last_name,
-                        'profile' => $profileUrl,
-                        'taskStatus' => $response['taskStatus'],
-                        'totalTasks' => $response['totalTasks'],
-                        'completedCount' => $completedCount,
-                        'date' => $lastMessage->created_at,
-                        'time' => $lastMessage->created_at, 
-                    ];
-
-                }
-
-                return null;
-            });
-            $uniqueResult = $result->filter()->unique('id')->values();            
-
-            $data = [
-                'status_code' => 200,
-                'message' => "Task User List Get Successfully!",
-                'data' => [
-                    'userList' => $uniqueResult
-                ]
-            ];
-            return $this->sendJsonResponse($data);
-        } catch (\Exception $e) {
-            Log::error(
-                [
-                    'method' => __METHOD__,
-                    'error' => [
-                        'file' => $e->getFile(),
-                        'line' => $e->getLine(),
-                        'message' => $e->getMessage()
-                    ],
-                    'created_at' => date("Y-m-d H:i:s")
-                ]
-            );
-            return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
-        }
-    }
-    // ****************************** Main Code **********************************//
-
-
-//     public function taskUserList(Request $request)
-// {
-//     try {
-//         // Validation rules
-//         $rules = [
-//             'type' => 'required|string|in:Receive,Given,All Task',
-//         ];
-
-//         $message = [
-//             'type.required' => 'The type field is required.',
-//             'type.string' => 'The type field must be a string.',
-//             'type.in' => 'The selected type is invalid. Valid options are: Receive, Given, All Task.',
-//         ];
-
-//         // Validate the request
-//         $validator = Validator::make($request->all(), $rules, $message);
-//         if ($validator->fails()) {
-//             return response()->json([
-//                 'status_code' => 400,
-//                 'message' => $validator->errors(),
-//                 'data' => []
-//             ]);
-//         }
-
-//         $type = $request->type;
-//         $loginUser = auth()->user()->id;
-
-//         // Get all message tasks related to the logged-in user
-//         $messageTasks = DB::table('message_task')
-//             ->select('id', 'message_id', 'task_name', 'checkbox', 'task_checked', 'task_checked_users', 'task_description', 'users', 'read_status', 'created_by', 'updated_by', 'deleted_by', 'created_at', 'updated_at', 'deleted_at')
-//             ->where('users', 'like', '%' . $loginUser . '%')
-//             ->get();
-
-//         if ($messageTasks->isEmpty()) {
-//             return response()->json([
-//                 'status_code' => 404,
-//                 'message' => 'No tasks found for the user.',
-//                 'data' => []
-//             ]);
-//         }
-
-//         // Base query for fetching message sender/receiver details
-//         $baseQuery = MessageSenderReceiver::with(['message', 'sender', 'receiver'])
-//             ->whereHas('message', function ($query) {
-//                 $query->where('message_type', 'Task');
-//             });
-
-//         $userList = collect();
-
-//         // Iterate through each message task and gather relevant user details
-//         foreach ($messageTasks as $messageTask) {
-//             if ($type == 'Receive') {
-//                 $userList = $userList->merge(
-//                     (clone $baseQuery)
-//                         ->where('receiver_id', $loginUser)
-//                         ->where('message_id', $messageTask->message_id)
-//                         ->get()
-//                 );
-//             } elseif ($type == 'Given') {
-//                 $userList = $userList->merge(
-//                     (clone $baseQuery)
-//                         ->where('sender_id', $loginUser)
-//                         ->where('message_id', $messageTask->message_id)
-//                         ->get()
-//                 );
-//             } elseif ($type == 'All Task') {
-//                 $userList = $userList->merge(
-//                     (clone $baseQuery)
-//                         ->where(function ($query) use ($loginUser) {
-//                             $query->where('sender_id', $loginUser)
-//                                 ->orWhere('receiver_id', $loginUser);
-//                         })
-//                         ->where('message_id', $messageTask->message_id)
-//                         ->get()
-//                 );
-//             }
-//         }
-
-//         // Process the results
-//         $result = $userList->map(function ($messageSenderReceiver) use ($loginUser) {
-//             $sender = $messageSenderReceiver->sender;
-//             $receiver = $messageSenderReceiver->receiver;
-
-//             // Fetch the tasks related to this message_id
-//             $tasks = MessageTask::where('message_id', $messageSenderReceiver->message_id)->get();
-
-//             // Calculate completed tasks for the sender
-//             if ($sender && $sender->id != $loginUser) {
-//                 $totalTasks = $tasks->count();
-//                 $profileUrl = $sender->profile ? setAssetPath('user-profile/' . $sender->profile) : setAssetPath('assets/media/avatars/blank.png');
-
-//                 // Fetch tasks that the sender has marked as completed
-//                 $completedTasks = $tasks->filter(function ($task) use ($sender) {
-//                     return in_array($sender->id, explode(',', $task->task_checked_users));
-//                 });
-
-//                 return [
-//                     'id' => $sender->id,
-//                     'message_id' => $messageSenderReceiver->message_id,
-//                     'name' => $sender->first_name . ' ' . $sender->last_name,
-//                     'profile' => $profileUrl,
-//                     'totalTasks' => $totalTasks,
-//                     'completedCount' => $completedTasks->count(),
-//                 ];
-//             }
-
-//             // Calculate completed tasks for the receiver
-//             if ($receiver && $receiver->id != $loginUser) {
-//                 $totalTasks = $tasks->count();
-//                 $profileUrl = $receiver->profile ? setAssetPath('user-profile/' . $receiver->profile) : setAssetPath('assets/media/avatars/blank.png');
-
-//                 // Fetch tasks that the receiver has marked as completed
-//                 $completedTasks = $tasks->filter(function ($task) use ($receiver) {
-//                     return in_array($receiver->id, explode(',', $task->task_checked_users));
-//                 });
-
-//                 return [
-//                     'id' => $receiver->id,
-//                     'message_id' => $messageSenderReceiver->message_id,
-//                     'name' => $receiver->first_name . ' ' . $receiver->last_name,
-//                     'profile' => $profileUrl,
-//                     'totalTasks' => $totalTasks,
-//                     'completedCount' => $completedTasks->count(),
-//                 ];
-//             }
-
-//             return null;
-//         });
-
-//         // Remove null values and ensure unique users based on user ID
-//         $uniqueResult = $result->filter()->unique('id')->values();
-
-//         // Prepare the final response data
-//         $data = [
-//             'status_code' => 200,
-//             'message' => "Task User List Get Successfully!",
-//             'data' => [
-//                 'userList' => $uniqueResult
-//             ]
-//         ];
-//         return $this->sendJsonResponse($data);
-//     } catch (\Exception $e) {
-//         // Log any errors and return an error response
-//         Log::error(
-//             [
-//                 'method' => __METHOD__,
-//                 'error' => [
-//                     'file' => $e->getFile(),
-//                     'line' => $e->getLine(),
-//                     'message' => $e->getMessage()
-//                 ],
-//                 'created_at' => date("Y-m-d H:i:s")
-//             ]
-//         );
-//         return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
-//     }
-// }
-
-
-//     public function taskUserList(Request $request)
-// {
-//     try {
-//         // Validation rules
-//         $rules = [
-//             'type' => 'required|string|in:Receive,Given,All Task',
-//         ];
-
-//         $message = [
-//             'type.required' => 'The type field is required.',
-//             'type.string' => 'The type field must be a string.',
-//             'type.in' => 'The selected type is invalid. Valid options are: Receive, Given, All Task.',
-//         ];
-
-//         // Validate the request
-//         $validator = Validator::make($request->all(), $rules, $message);
-//         if ($validator->fails()) {
-//             return response()->json([
-//                 'status_code' => 400,
-//                 'message' => $validator->errors(),
-//                 'data' => []
-//             ]);
-//         }
-
-//         $type = $request->type;
-//         $loginUser = auth()->user()->id;
-
-//         // Get the last message related to the task for the logged-in user
-//         $lastMessageTask = DB::table('message_task')
-//             ->select('id', 'message_id', 'task_name', 'checkbox', 'task_checked', 'task_checked_users', 'task_description', 'users', 'read_status', 'created_by', 'updated_by', 'deleted_by', 'created_at', 'updated_at', 'deleted_at')
-//             ->where('users', 'like', '%' . $loginUser . '%')
-//             ->orderBy('message_id', 'desc')
-//             ->first();
-
-//         // Base query for fetching message sender/receiver details
-//         $baseQuery = MessageSenderReceiver::with(['message', 'sender', 'receiver'])
-//             ->whereHas('message', function ($query) {
-//                 $query->where('message_type', 'Task');
-//             });
-
-//         // Filter based on the task type
-//         if ($type == 'Receive') {
-//             $userList = (clone $baseQuery)
-//                 ->where('receiver_id', $loginUser)
-//                 ->where('message_id', $lastMessageTask->message_id)
-//                 ->get();
-//         } elseif ($type == 'Given') {
-//             $userList = (clone $baseQuery)
-//                 ->where('sender_id', $loginUser)
-//                 ->where('message_id', $lastMessageTask->message_id)
-//                 ->get();
-//         } elseif ($type == 'All Task') {
-//             $userList = (clone $baseQuery)
-//                 ->where(function ($query) use ($loginUser) {
-//                     $query->where('sender_id', $loginUser)
-//                         ->where('message_id', $lastMessageTask->message_id)
-//                         ->orWhere('receiver_id', $loginUser);
-//                 })
-//                 ->get();
-//         }
-
-//         // Process the results
-//         $result = $userList->map(function ($messageSenderReceiver) use ($loginUser) {
-//             $sender = $messageSenderReceiver->sender;
-//             $receiver = $messageSenderReceiver->receiver;
-
-//             // Fetch the last message related to the task
-//             $lastMessage = MessageSenderReceiver::with(['message', 'sender', 'receiver'])
-//                 ->whereHas('message', function ($query) use ($loginUser) {
-//                     $query->where('message_type', 'Task');
-//                 })
-//                 ->orderBy('id', 'desc')
-//                 ->first();
-
-//             // Calculate completed tasks for the sender
-//             if ($sender && $sender->id != $loginUser) {
-//                 $totalTasks = MessageTask::where('message_id', $lastMessage->message_id)->count();
-//                 $profileUrl = $sender->profile ? setAssetPath('user-profile/' . $sender->profile) : setAssetPath('assets/media/avatars/blank.png');
-
-//                 // Fetch tasks that the sender has marked as completed
-//                 $completedTasks = MessageTask::where('message_id', $lastMessage->message_id)
-//                     ->whereRaw('FIND_IN_SET(?, task_checked_users)', [$sender->id])
-//                     ->get();
-
-//                 $completedCount = $completedTasks->count();
-
-//                 // Check task status based on who updated the task
-//                 $taskStatus = ($messageSenderReceiver->updated_by == 1);
-
-//                 return [
-//                     'id' => $sender->id,
-//                     'message_id' => $lastMessage->message_id,
-//                     'name' => $sender->first_name . ' ' . $sender->last_name,
-//                     'profile' => $profileUrl,
-//                     'taskStatus' => $taskStatus,
-//                     'totalTasks' => $totalTasks,
-//                     'completedCount' => $completedCount,
-//                 ];
-//             }
-
-//             // Calculate completed tasks for the receiver
-//             if ($receiver && $receiver->id != $loginUser) {
-//                 $totalTasks = MessageTask::where('message_id', $lastMessage->message_id)->count();
-//                 $profileUrl = $receiver->profile ? setAssetPath('user-profile/' . $receiver->profile) : setAssetPath('assets/media/avatars/blank.png');
-
-//                 // Fetch tasks that the receiver has marked as completed
-//                 $completedTasks = MessageTask::where('message_id', $lastMessage->message_id)
-//                     ->whereRaw('FIND_IN_SET(?, task_checked_users)', [$receiver->id])
-//                     ->get();
-
-//                 $completedCount = $completedTasks->count();
-
-//                 // Check task status based on who updated the task
-//                 $taskStatus = ($messageSenderReceiver->updated_by == 1);
-
-//                 return [
-//                     'id' => $receiver->id,
-//                     'message_id' => $lastMessage->message_id,
-//                     'name' => $receiver->first_name . ' ' . $receiver->last_name,
-//                     'profile' => $profileUrl,
-//                     'taskStatus' => $taskStatus,
-//                     'totalTasks' => $totalTasks,
-//                     'completedCount' => $completedCount,
-//                     'date' => $lastMessage->created_at,
-//                     'time' => $lastMessage->created_at,
-//                 ];
-//             }
-
-//             return null;
-//         });
-
-//         // Remove null values and ensure unique users based on user ID
-//         $uniqueResult = $result->filter()->unique('id')->values();
-
-//         // Prepare the final response data
-//         $data = [
-//             'status_code' => 200,
-//             'message' => "Task User List Get Successfully!",
-//             'data' => [
-//                 'userList' => $uniqueResult
-//             ]
-//         ];
-//         return $this->sendJsonResponse($data);
-//     } catch (\Exception $e) {
-//         // Log any errors and return an error response
-//         Log::error(
-//             [
-//                 'method' => __METHOD__,
-//                 'error' => [
-//                     'file' => $e->getFile(),
-//                     'line' => $e->getLine(),
-//                     'message' => $e->getMessage()
-//                 ],
-//                 'created_at' => date("Y-m-d H:i:s")
-//             ]
-//         );
-//         return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
-//     }
-// }
-
-
     // public function taskUserList(Request $request)
     // {
     //     try {
-
     //         $rules = [
     //             'type' => 'required|string|in:Receive,Given,All Task',
     //         ];
@@ -4825,7 +4342,14 @@ class ChatController extends Controller
 
     //         $type = $request->type;
     //         $loginUser = auth()->user()->id;
-
+            
+    //         $lastMessageTask = DB::table('message_task')
+    //                         ->select('id', 'message_id', 'task_name', 'checkbox', 'task_checked', 'task_checked_users', 'task_description', 'users', 'read_status', 'created_by', 'updated_by', 'deleted_by', 'created_at', 'updated_at', 'deleted_at')
+    //                         ->where('users', 'like', '%' .$loginUser. '%')
+    //                         ->where('created_by', $loginUser)
+    //                         ->orderBy('message_id', 'desc')
+    //                         ->first();
+            
     //         $baseQuery = MessageSenderReceiver::with(['message', 'sender', 'receiver'])
     //             ->whereHas('message', function ($query) {
     //                 $query->where('message_type', 'Task');
@@ -4833,61 +4357,131 @@ class ChatController extends Controller
     //         if ($type == 'Receive') {
     //             $userList = (clone $baseQuery)
     //                 ->where('receiver_id', $loginUser)
+    //                 ->where('message_id', $lastMessageTask->message_id)
     //                 ->get();
     //         } elseif ($type == 'Given') {
     //             $userList = (clone $baseQuery)
     //                 ->where('sender_id', $loginUser)
+    //                 ->where('message_id', $lastMessageTask->message_id)
     //                 ->get();
     //         } elseif ($type == 'All Task') {
     //             $userList = (clone $baseQuery)
     //                 ->where(function ($query) use ($loginUser) {
     //                     $query->where('sender_id', $loginUser)
+    //                           ->where('message_id', $lastMessageTask->message_id)
     //                         ->orWhere('receiver_id', $loginUser);
     //                 })
     //                 ->get();
     //         }
-    //         $result = $userList->map(function ($messageSenderReceiver) use ($loginUser) {
-    //             $sender = $messageSenderReceiver->sender;
-    //             $receiver = $messageSenderReceiver->receiver;
-
-    //             if ($sender && $sender->id != $loginUser) {
+           
+    //        $result = $userList->map(function ($messageSenderReceiver) use ($loginUser) {
+    //         $sender = $messageSenderReceiver->sender;
+    //         $receiver = $messageSenderReceiver->receiver;
+        
+    //         // Fetch the last message with task type
+    //         $lastMessage = MessageSenderReceiver::with(['message', 'sender', 'receiver'])
+    //             ->whereHas('message', function ($query) use ($loginUser) {
+    //                 $query->where('message_type', 'Task');
+    //             })
+    //             ->where('created_by', $loginUser)
+    //             ->orderBy('id', 'desc')
+    //             ->first();
+                        
+    //             if ($sender && $sender->id != $loginUser) {   
+    //                 $totalTasks = MessageTask::where('message_id', $lastMessage->message_id)->count();                  
     //                 $profileUrl = $sender->profile ? setAssetPath('user-profile/' . $sender->profile) : setAssetPath('assets/media/avatars/blank.png');
-    //                 if ($messageSenderReceiver->updated_by == 1) {
+
+    //                 if ($lastMessage) {
+    //                     // Fetch tasks related to the last message and that are marked as checked
+    //                     $completedTasks = MessageTask::where('message_id', $lastMessage->message_id)
+    //                         ->whereRaw('FIND_IN_SET(?, task_checked_users)', [$sender->id])
+    //                         ->get();
+                    
+    //                     // Initialize counters
+    //                     $completedCount = 0;
+           
+    //                     // Iterate through tasks to filter based on checked users
+    //                     foreach ($completedTasks as $task) {
+    //                         $taskCheckedUsers = explode(',', $task->task_checked_users);  // Split the string by comma
+    //                         $specificUserId = $sender->id;  // Example: Check if user 121 has completed the task
+                    
+    //                         if (in_array($specificUserId, $taskCheckedUsers)) {
+    //                             // This task is completed by the specific user
+    //                             $completedCount++; // Increment the completed counter
+    //                         }
+    //                     }
+    //                 }
+
+    //                 if ($messageSenderReceiver->updated_by == 1) {                        
+                      
     //                     $response['taskStatus'] = true;
+    //                     $response['totalTasks'] = $totalTasks;
     //                 }else 
     //                 {
     //                     $response['taskStatus'] = false;
+    //                     $response['totalTasks'] = $totalTasks;
     //                 }
     //                 return [
     //                     'id' => $sender->id,
+    //                     'message_id' => $lastMessage->message_id,
     //                     'name' => $sender->first_name . ' ' . $sender->last_name,
     //                     'profile' => $profileUrl,
     //                     'taskStatus' => $response['taskStatus'],
+    //                     'totalTasks' => $response['totalTasks'],
+    //                     'completedCount' => $completedCount,
     //                 ];
     //             }
 
     //             if ($receiver && $receiver->id != $loginUser) {
+    //                 $totalTasks = MessageTask::where('message_id', $lastMessage->message_id)->count();  
+                    
+    //                 if ($lastMessage) {
+    //                     // Fetch tasks related to the last message and that are marked as checked
+    //                     $completedTasks = MessageTask::where('message_id', $lastMessage->message_id)
+    //                         ->whereRaw('FIND_IN_SET(?, task_checked_users)', [$receiver->id])
+    //                         ->get();
+                    
+    //                     // Initialize counters
+    //                     $completedCount = 0;
+           
+    //                     // Iterate through tasks to filter based on checked users
+    //                     foreach ($completedTasks as $task) {
+    //                         $taskCheckedUsers = explode(',', $task->task_checked_users);  // Split the string by comma
+    //                         $specificUserId = $receiver->id;  // Example: Check if user 121 has completed the task
+                    
+    //                         if (in_array($specificUserId, $taskCheckedUsers)) {
+    //                             // This task is completed by the specific user
+    //                             $completedCount++; // Increment the completed counter
+    //                         }
+    //                     }
+    //                 }
     //                 $profileUrl = $receiver->profile ? setAssetPath('user-profile/' . $receiver->profile) : setAssetPath('assets/media/avatars/blank.png');
 
     //                 if ($messageSenderReceiver->updated_by == 1) {
     //                     $response['taskStatus'] = true;
+    //                     $response['totalTasks'] = $totalTasks;
     //                 }else{
     //                     $response['taskStatus'] = false;
+    //                     $response['totalTasks'] = $totalTasks;
     //                 }
 
     //                 return [
     //                     'id' => $receiver->id,
+    //                     'message_id' => $lastMessage->message_id,
     //                     'name' => $receiver->first_name . ' ' . $receiver->last_name,
     //                     'profile' => $profileUrl,
     //                     'taskStatus' => $response['taskStatus'],
+    //                     'totalTasks' => $response['totalTasks'],
+    //                     'completedCount' => $completedCount,
+    //                     'date' => $lastMessage->created_at,
+    //                     'time' => $lastMessage->created_at, 
     //                 ];
 
     //             }
 
     //             return null;
     //         });
-    //         $uniqueResult = $result->filter()->unique('id')->values();
-
+    //         $uniqueResult = $result->filter()->unique('id')->values();            
 
     //         $data = [
     //             'status_code' => 200,
@@ -4912,6 +4506,166 @@ class ChatController extends Controller
     //         return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
     //     }
     // }
+    // ****************************** Main Code **********************************//
+    public function taskUserList(Request $request)
+    {
+        try {
+            $rules = [
+                'type' => 'required|string|in:Receive,Given,All Task',
+            ];
+    
+            $message = [
+                'type.required' => 'The type field is required.',
+                'type.string' => 'The type field must be a string.',
+                'type.in' => 'The selected type is invalid. Valid options are: Receive, Given, All Task.',
+            ];
+    
+            $validator = Validator::make($request->all(), $rules, $message);
+            if ($validator->fails()) {
+                return response()->json([
+                    'status_code' => 400,
+                    'message' => $validator->errors(),
+                    'data' => []
+                ]);
+            }
+    
+            $type = $request->type;
+            $loginUser = auth()->user()->id;
+    
+            $baseQuery = MessageSenderReceiver::with(['message', 'sender', 'receiver'])
+                ->whereHas('message', function ($query) {
+                    $query->where('message_type', 'Task');
+                });
+    
+            // Apply filter for "Receive" type to exclude tasks created by the current user
+            if ($type == 'Receive') {
+                $userList = (clone $baseQuery)
+                    ->where('receiver_id', $loginUser)
+                    ->where('sender_id', '!=', $loginUser) // Exclude tasks created by the user
+                    ->get();
+
+                    $result = $userList->map(function ($messageSenderReceiver) use ($loginUser) {
+                        $sender = $messageSenderReceiver->sender;
+                        $receiver = $messageSenderReceiver->receiver;
+            
+                        // Get total tasks and completed tasks
+                        $totalTasks = MessageTask::where('message_id', $messageSenderReceiver->message_id)->count();
+                        $taskname = MessageTask::where('message_id', $messageSenderReceiver->message_id)->first();
+                        $completedTasks = MessageTask::where('message_id', $messageSenderReceiver->message_id)
+                            ->whereRaw('FIND_IN_SET(?, task_checked_users)', [$loginUser])
+                            ->count();
+                            
+                         // Fetch the task creator profile and name
+                        $creator = User::find($messageSenderReceiver->created_by);
+                        $creatorProfileUrl = !empty($creator->profile) ? setAssetPath('user-profile/' . $creator->profile) : setAssetPath('assets/media/avatars/blank.png');
+                        $creatorName = $creator ? $creator->first_name . ' ' . $creator->last_name : 'Unknown';
+            
+                        // Get the task name (assuming the task name is stored in 'message' or a related field)
+                        $taskName = $taskname->task_name ?? 'No Task Name';
+                        
+                        // Return unique message_id data with task details
+                        return [
+                            'message_id' => $messageSenderReceiver->message_id, // Unique message_id
+                            'task_name' => $taskName,
+                            'taskCreatorName' => $creatorName,
+                            'taskCreatorProfile' => $creatorProfileUrl,
+                            'taskStatus' => $messageSenderReceiver->updated_by == 1, // Task status (completed or not)
+                            'totalTasks' => $totalTasks,
+                            'completedTasks' => $completedTasks                    
+                        ];
+                    });
+            
+                    // Ensure unique message_id results (filter out duplicates)
+                    $uniqueResult = $result
+                                    ->filter() // Remove null or empty entries
+                                    ->unique('message_id') // Ensure unique entries by message_id
+                                    ->sortByDesc('message_id') // Sort by message_id in descending order
+                                    ->values(); // Reset keys to be sequential    
+                    $data = [
+                        'status_code' => 200,
+                        'message' => "Task User List Get Successfully!",
+                        'data' => [
+                            'userList' => $uniqueResult
+                        ]
+                    ];
+
+            } elseif ($type == 'Given') {           
+                $userList = (clone $baseQuery)                    
+                    ->where('sender_id', $loginUser)
+                    ->where('receiver_id', '!=', $loginUser)
+                    ->get();
+
+                    $result = $userList->map(function ($messageSenderReceiver) use ($loginUser) {
+                        $sender = $messageSenderReceiver->sender;
+                        $receiver = $messageSenderReceiver->receiver;
+            
+                        // Get total tasks and completed tasks
+                        $totalTasks = MessageTask::where('message_id', $messageSenderReceiver->message_id)->count();
+                        $taskname = MessageTask::where('message_id', $messageSenderReceiver->message_id)->first();
+                        $completedTasks = MessageTask::where('message_id', $messageSenderReceiver->message_id)
+                            ->whereRaw('FIND_IN_SET(?, task_checked_users)', [$messageSenderReceiver->receiver_id])
+                            ->count();
+                            
+                         // Fetch the task creator profile and name
+                        $creator = User::find($messageSenderReceiver->receiver_id);
+                        $creatorProfileUrl = !empty($creator->profile) ? setAssetPath('user-profile/' . $creator->profile) : setAssetPath('assets/media/avatars/blank.png');
+                        $creatorName = $creator ? $creator->first_name . ' ' . $creator->last_name : 'Unknown';
+            
+                        // Get the task name (assuming the task name is stored in 'message' or a related field)
+                        $taskName = $taskname->task_name ?? 'No Task Name';
+                        
+                        // Return unique message_id data with task details
+                        return [
+                            'message_id' => $messageSenderReceiver->message_id, // Unique message_id
+                            'task_name' => $taskName,
+                            'UserName' => $creatorName,
+                            'UserProfile' => $creatorProfileUrl,
+                            'taskStatus' => $messageSenderReceiver->updated_by == 1, // Task status (completed or not)
+                            'totalTasks' => $totalTasks,
+                            'completedTasks' => $completedTasks                    
+                        ];
+                    });
+            
+                    // Ensure unique message_id results (filter out duplicates)
+                    $uniqueResult = $result
+                                    ->filter() // Remove null or empty entries
+                                    // ->unique('message_id') // Ensure unique entries by message_id
+                                    ->sortByDesc('message_id') // Sort by message_id in descending order
+                                    ->values(); // Reset keys to be sequential    
+                    $data = [
+                        'status_code' => 200,
+                        'message' => "Task User List Get Successfully!",
+                        'data' => [
+                            'userList' => $uniqueResult
+                        ]
+                    ];
+            } elseif ($type == 'All Task') {
+                $userList = (clone $baseQuery)
+                    ->where(function ($query) use ($loginUser) {
+                        $query->where('sender_id', $loginUser)
+                            ->orWhere('receiver_id', $loginUser);
+                    })
+                    ->get();
+            }
+    
+
+    
+            return $this->sendJsonResponse($data);
+        } catch (\Exception $e) {
+            Log::error(
+                [
+                    'method' => __METHOD__,
+                    'error' => [
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'message' => $e->getMessage()
+                    ],
+                    'created_at' => date("Y-m-d H:i:s")
+                ]
+            );
+            return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
+        }
+    }    
 
     /**
      * @OA\Post(
@@ -5399,155 +5153,277 @@ class ChatController extends Controller
         }
     }
 
-        /**
-         * @OA\Post(
-         *     path="/api/v1/file-scan-upload",
-         *     summary="Upload a file",
-         *     description="Uploads a file and stores its information in the database",
-         *     tags={"Files"},
-         *     security={{"bearerAuth":{}}},
-         *     @OA\RequestBody(
-         *         required=true,
-         *         @OA\MediaType(
-         *             mediaType="multipart/form-data",
-         *             @OA\Schema(
-         *                 type="object",
-         *                 required={"file", "attachment_type"},
-         *                 @OA\Property(
-         *                     property="file",
-         *                     description="File to upload",
-         *                     type="string",
-         *                     format="binary"
-         *                 ),
-         *                 @OA\Property(
-         *                     property="attachment_type",
-         *                     description="Type of the attachment",
-         *                     type="string",
-         *                     example="scan"
-         *                 )
-         *             )
-         *         )
-         *     ),
-         *     @OA\Response(
-         *         response=200,
-         *         description="File Uploaded Successfully!",
-         *         @OA\JsonContent(
-         *             @OA\Property(property="status_code", type="integer", example=200),
-         *             @OA\Property(property="message", type="string", example="File Uploaded Successfully!"),
-         *             @OA\Property(
-         *                 property="data",
-         *                 type="object",
-         *                 @OA\Property(property="attachment_name", type="string", example="file_name_123456.jpg"),
-         *                 @OA\Property(property="file_type", type="string", example="jpg"),
-         *                 @OA\Property(property="attachment_path", type="string", example="https://yourdomain.com/chat-file/file_name_123456.jpg"),
-         *                 @OA\Property(
-         *                     property="attachment_type",
-         *                     type="string",
-         *                     default="scan",
-         *                     description="Type of the attachment"
-         *                 )
-         *             )
-         *         )
-         *     ),
-         *     @OA\Response(
-         *         response=400,
-         *         description="Bad Request",
-         *         @OA\JsonContent(
-         *             @OA\Property(property="status_code", type="integer", example=400),
-         *             @OA\Property(property="message", type="string", example="File is required."),
-         *             @OA\Property(property="data", type="string", example="")
-         *         )
-         *     ),
-         *     @OA\Response(
-         *         response=500,
-         *         description="Internal Server Error",
-         *         @OA\JsonContent(
-         *             @OA\Property(property="status_code", type="integer", example=500),
-         *             @OA\Property(property="message", type="string", example="Something went wrong")
-         *         )
-         *     )
-         * )
-         */
-        public function fileScanUpload(Request $request)
-        {
-            try {
-                $rules = [
-                    'file' => 'required|file',
-                    'attachment_type' => 'required|string|in:scan'
-                ];
 
-                $message = [
-                    'file.required' => 'File is required.',
-                    'file.file' => 'File must be a valid file.',
-                    'attachment_type.required' => 'Attachment type is required.',
-                    'attachment_type.in' => 'Attachment type must be "scan".'
-                ];
+    /**
+     * @OA\Get(
+     *     path="/api/v1/meetings/{id}",
+     *     summary="Get meeting details by message ID with user profiles",
+     *     description="Retrieve meeting details and include accepted and/or declined user profiles.",
+     *     tags={"Meetings"},
+     *     operationId="getMeetingById",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         description="Message ID of the meeting to retrieve",
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Parameter(
+     *         name="filter",
+     *         in="query",
+     *         required=false,
+     *         description="Filter users by 'accepted', 'declined', or leave blank for all",
+     *         @OA\Schema(type="string", enum={"accepted", "declined"})
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Meeting details retrieved successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status_code", type="integer", example=200),
+     *             @OA\Property(property="message", type="string", example="Meeting retrieved successfully"),
+     *             @OA\Property(property="data", type="object",
+     *                 @OA\Property(property="meeting", type="object"),
+     *                 @OA\Property(property="users", type="array", @OA\Items(type="object"))
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Meeting not found",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status_code", type="integer", example=404),
+     *             @OA\Property(property="message", type="string", example="Meeting not found")
+     *         )
+     *     )
+     * )
+     */
+    public function getMeetingById(Request $request, $id)
+    {
+        try {
+            // Retrieve the meeting record
+            $meeting = MessageMeeting::select('*')->where('message_id', $id)->first();
 
-                $validator = Validator::make($request->all(), $rules, $message);
-                if ($validator->fails()) {
-                    return $this->sendJsonResponse([
-                        'status_code' => 400,
-                        'message' => $validator->errors()->first(),
-                        'data' => ""
-                    ]);
-                }
-
-                if ($request->hasFile('file') && $request->input('attachment_type') === 'scan') {
-                    $file = $request->file('file');
-                    $extension = strtolower($file->getClientOriginalExtension());
-                    $originalNameWithExt = $file->getClientOriginalName();
-                    $originalName = pathinfo($originalNameWithExt, PATHINFO_FILENAME);
-                    $originalName = create_slug($originalName);
-                    $attachmentName = $originalName . '_' . time() . '.' . $extension;
-                    $attachmentPath = 'document-file/' . $attachmentName;
-                    $destinationPath = public_path('document-file/');
-                    if (!file_exists($destinationPath)) {
-                        mkdir($destinationPath, 0777, true);
-                    }
-                    $file->move($destinationPath, $attachmentName);
-
-                    if (in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
-                        $optimizerChain = OptimizerChainFactory::create();
-                        $optimizerChain->optimize($destinationPath . $attachmentName);
-                    }
-
-                    // Store file information in the user_documents table
-                    $userDocument = new UserDocument();
-                    $userDocument->attachment_name = $attachmentName;
-                    $userDocument->attachment_path = setAssetPath('document-file/' . $attachmentName);
-                    $userDocument->created_by = auth()->user()->id;
-                    $userDocument->save();
-
-                    return $this->sendJsonResponse([
-                        'status_code' => 200,
-                        'message' => 'File Uploaded Successfully!',
-                        'data' => [
-                            'attachment_name' => $attachmentName,
-                            'file_type' => $extension,
-                            'attachment_path' => setAssetPath('document-file/' . $attachmentName),
-                            'attachment_type' => 'scan'
-                        ]
-                    ]);
-                } else {
-                    return $this->sendJsonResponse([
-                        'status_code' => 400,
-                        'message' => 'File is required or attachment type is invalid.',
-                        'data' => ""
-                    ]);
-                }
-            } catch (\Exception $e) {
-                Log::error([
-                    'method' => __METHOD__,
-                    'error' => [
-                        'file' => $e->getFile(),
-                        'line' => $e->getLine(),
-                        'message' => $e->getMessage()
-                    ],
-                    'created_at' => now()->format("Y-m-d H:i:s")
-                ]);
-                return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
+            if (!$meeting) {
+                return response()->json([
+                    'status_code' => 404,
+                    'message' => 'Meeting not found'
+                ], 404);
             }
+
+            // Decode user IDs
+            $acceptedUserIds = $meeting->accepted_users ?? [];
+            $declinedUserIds = $meeting->decline_users ?? [];     
+            
+            // Filter users based on query parameter
+            $filter = $request->query('filter', 'all'); // Default to 'all'
+
+            $users = [];
+            if ($filter === 'accepted') {
+                if(!empty($acceptedUserIds))
+                {
+                    $users = User::whereIn('id', explode(',',$acceptedUserIds))->get(['id', 'profile', 'first_name', 'last_name']);
+                    // Assuming $comment has a user relation to set the profile URL
+                    foreach ($users as $user) {
+                        $user->profile = $user->profile
+                            ? setAssetPath('user-profile/' . $user->profile)  // Use relative path
+                            : setAssetPath('assets/media/avatars/blank.png'); // Default profile image
+
+                        $user->name = $user->first_name .' '. $user->last_name;
+                    }
+                }
+            } elseif ($filter === 'declined') {
+
+                if(!empty($declinedUserIds))
+                {
+                    $declinedUserIds = explode(',',$declinedUserIds);
+                    $users = User::whereIn('id', $declinedUserIds)->get(['id', 'profile', 'first_name', 'last_name']);
+                    // Assuming $comment has a user relation to set the profile URL
+                    foreach ($users as $user) {
+                        $user->profile = $user->profile
+                            ? setAssetPath('user-profile/' . $user->profile)  // Use relative path
+                            : setAssetPath('assets/media/avatars/blank.png'); // Default profile image
+                            $user->name = $user->first_name .' '. $user->last_name;
+                    }
+                }else{
+                    $users = [];
+                }                
+            }
+
+            return response()->json([
+                'status_code' => 200,
+                'message' => 'Meeting retrieved successfully',
+                'data' => [
+                    'meeting' => $meeting,
+                    'users' => $users
+                ]
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ]
+            ]);
+
+            return response()->json([
+                'status_code' => 500,
+                'message' => 'Something went wrong'
+            ], 500);
         }
+    }   
+
+    /**
+     * @OA\Post(
+     *     path="/api/v1/file-scan-upload",
+     *     summary="Upload a file",
+     *     description="Uploads a file and stores its information in the database",
+     *     tags={"Files"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 type="object",
+     *                 required={"file", "attachment_type"},
+     *                 @OA\Property(
+     *                     property="file",
+     *                     description="File to upload",
+     *                     type="string",
+     *                     format="binary"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="attachment_type",
+     *                     description="Type of the attachment",
+     *                     type="string",
+     *                     example="scan"
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="File Uploaded Successfully!",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status_code", type="integer", example=200),
+     *             @OA\Property(property="message", type="string", example="File Uploaded Successfully!"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 @OA\Property(property="attachment_name", type="string", example="file_name_123456.jpg"),
+     *                 @OA\Property(property="file_type", type="string", example="jpg"),
+     *                 @OA\Property(property="attachment_path", type="string", example="https://yourdomain.com/chat-file/file_name_123456.jpg"),
+     *                 @OA\Property(
+     *                     property="attachment_type",
+     *                     type="string",
+     *                     default="scan",
+     *                     description="Type of the attachment"
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Bad Request",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status_code", type="integer", example=400),
+     *             @OA\Property(property="message", type="string", example="File is required."),
+     *             @OA\Property(property="data", type="string", example="")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Internal Server Error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status_code", type="integer", example=500),
+     *             @OA\Property(property="message", type="string", example="Something went wrong")
+     *         )
+     *     )
+     * )
+     */
+    public function fileScanUpload(Request $request)
+    {
+        try {
+            $rules = [
+                'file' => 'required|file',
+                'attachment_type' => 'required|string|in:scan'
+            ];
+
+            $message = [
+                'file.required' => 'File is required.',
+                'file.file' => 'File must be a valid file.',
+                'attachment_type.required' => 'Attachment type is required.',
+                'attachment_type.in' => 'Attachment type must be "scan".'
+            ];
+
+            $validator = Validator::make($request->all(), $rules, $message);
+            if ($validator->fails()) {
+                return $this->sendJsonResponse([
+                    'status_code' => 400,
+                    'message' => $validator->errors()->first(),
+                    'data' => ""
+                ]);
+            }
+
+            if ($request->hasFile('file') && $request->input('attachment_type') === 'scan') {
+                $file = $request->file('file');
+                $extension = strtolower($file->getClientOriginalExtension());
+                $originalNameWithExt = $file->getClientOriginalName();
+                $originalName = pathinfo($originalNameWithExt, PATHINFO_FILENAME);
+                $originalName = create_slug($originalName);
+                $attachmentName = $originalName . '_' . time() . '.' . $extension;
+                $attachmentPath = 'document-file/' . $attachmentName;
+                $destinationPath = public_path('document-file/');
+                if (!file_exists($destinationPath)) {
+                    mkdir($destinationPath, 0777, true);
+                }
+                $file->move($destinationPath, $attachmentName);
+
+                if (in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
+                    $optimizerChain = OptimizerChainFactory::create();
+                    $optimizerChain->optimize($destinationPath . $attachmentName);
+                }
+
+                // Store file information in the user_documents table
+                $userDocument = new UserDocument();
+                $userDocument->attachment_name = $attachmentName;
+                $userDocument->attachment_path = setAssetPath('document-file/' . $attachmentName);
+                $userDocument->created_by = auth()->user()->id;
+                $userDocument->save();
+
+                return $this->sendJsonResponse([
+                    'status_code' => 200,
+                    'message' => 'File Uploaded Successfully!',
+                    'data' => [
+                        'attachment_name' => $attachmentName,
+                        'file_type' => $extension,
+                        'attachment_path' => setAssetPath('document-file/' . $attachmentName),
+                        'attachment_type' => 'scan'
+                    ]
+                ]);
+            } else {
+                return $this->sendJsonResponse([
+                    'status_code' => 400,
+                    'message' => 'File is required or attachment type is invalid.',
+                    'data' => ""
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => now()->format("Y-m-d H:i:s")
+            ]);
+            return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
+        }
+    }
 
      /**
      * @OA\Get(
@@ -5727,7 +5603,7 @@ class ChatController extends Controller
      }
      
    
-       /**
+    /**
      * @OA\Post(
      *     path="/api/v1/sent-meeting-done",
      *     summary="sent meeting done",
@@ -5849,6 +5725,128 @@ class ChatController extends Controller
         }
     } 
 
+
+    /**
+     * @OA\Post(
+     *     path="/api/v1/sent-event-done",
+     *     summary="sent event done",
+     *     tags={"Messages"},
+     *     description="Event done",
+     *     operationId="eventDone",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Add Event Done Request",
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"event_id","user_id", "type"},
+     *                 @OA\Property(
+     *                     property="event_id",
+     *                     type="string",
+     *                     example="111",
+     *                     description="Enter event_id"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="user_id",
+     *                     type="string",
+     *                     example="1,2,3",
+     *                     description="Enter Comma Separated User Id"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="type",
+     *                     type="string",
+     *                     example="attend",
+     *                     description="Enter 'attend' or 'notattend'"
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *      @OA\Response(
+     *         response=200,
+     *         description="json schema",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *         ),
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Invalid Request"
+     *     ),
+     * )
+     */
+
+     public function sentEventDone(Request $request)
+     {
+         try {
+             $rules = [
+                 'event_id' => 'required|string',
+                 'user_id' => 'required|string|regex:/^(\d+)(,\d+)*$/',
+                 'type' => 'required|string|in:attend,notattend', // Add type validation
+             ];
+     
+             $messages = [
+                 'event_id.required' => 'The event_id field is required.',
+                 'event_id.string' => 'The event_id field must be a string.',
+                 'user_id.required' => 'The user_id field is required.',
+                 'user_id.string' => 'The user_id field must be a string.',
+                 'user_id.regex' => 'The user_id field must be a comma-separated list of integers.',
+                 'type.required' => 'The type field is required.',
+                 'type.string' => 'The type field must be a string.',
+                 'type.in' => 'The type field must be either attend or notattend.',
+             ];
+     
+             $validator = Validator::make($request->all(), $rules, $messages);
+             if ($validator->fails()) {
+                 return response()->json([
+                     'status_code' => 400,
+                     'message' => $validator->errors(),
+                     'data' => []
+                 ]);
+             }
+     
+             $recipient = explode(',', $request->user_id);
+             $loginUser = auth()->user()->id;
+     
+             // Fetch the meeting record
+             $eventDetails = ProjectEvent::where('id', $request->event_id)->first();
+             if ($eventDetails) {
+                 // Process based on type (accept or decline)
+                 if ($request->type === 'attend') {
+                     // Update attend_users
+                     $existingAcceptedUsers = $eventDetails->attend_users ? explode(',', $eventDetails->attend_users) : [];
+                     $newAcceptedUsers = array_unique(array_merge($existingAcceptedUsers, $recipient));
+                     $eventDetails->attend_users = implode(',', $newAcceptedUsers);
+                 } elseif ($request->type === 'notattend') {
+                     // Update declined_users
+                     $existingDeclinedUsers = $eventDetails->notAttend_users ? explode(',', $eventDetails->notAttend_users) : [];
+                     $newDeclinedUsers = array_unique(array_merge($existingDeclinedUsers, $recipient));
+                     $eventDetails->notAttend_users = implode(',', $newDeclinedUsers);
+                 }
+     
+                 // Save the updated meeting data
+                 $eventDetails->save();
+             }
+     
+             $data = [
+                 'status_code' => 200,
+                 'message' => $request->type === 'attend' ? 'Event attend!' : 'Event NotAttend!',
+                 'data' => []
+             ];
+             return $this->sendJsonResponse($data);
+         } catch (\Exception $e) {
+             Log::error([
+                 'method' => __METHOD__,
+                 'error' => [
+                     'file' => $e->getFile(),
+                     'line' => $e->getLine(),
+                     'message' => $e->getMessage()
+                 ],
+                 'created_at' => date("Y-m-d H:i:s")
+             ]);
+             return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
+         }
+     } 
 
 
    /**

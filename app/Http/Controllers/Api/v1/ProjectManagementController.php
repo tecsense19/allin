@@ -227,8 +227,9 @@ class ProjectManagementController extends Controller
                  return $workHour;
              });
      
-             // Convert total hours back to h:min format
-             $formattedTotalHours = floor($totalHours / 60) . 'h:' . ($totalHours % 60) . 'mi';
+            // Convert total hours back to h:min format
+            //  $formattedTotalHours = floor($totalHours / 60) . 'h:' . ($totalHours % 60) . 'mi';
+            $formattedTotalHours = sprintf('%02dh:%02dmi', floor($totalHours / 60), $totalHours % 60);
      
              $data = [
                  'status_code' => 200,
@@ -1371,4 +1372,218 @@ class ProjectManagementController extends Controller
             return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
         }
     }
+
+
+     /**
+     * @OA\Get(
+     *     path="/api/v1/event/{id}",
+     *     summary="Get event details by event ID with user profiles",
+     *     description="Retrieve event details and include attend and/or notattned user profiles.",
+     *     tags={"Project Management"},
+     *     operationId="getEventById",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         description="event ID of the event to retrieve",
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Parameter(
+     *         name="filter",
+     *         in="query",
+     *         required=false,
+     *         description="Filter users by 'attend', 'notattend', or leave blank for all",
+     *         @OA\Schema(type="string", enum={"attend", "notattend"})
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Event details retrieved successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status_code", type="integer", example=200),
+     *             @OA\Property(property="message", type="string", example="Event retrieved successfully"),
+     *             @OA\Property(property="data", type="object",
+     *                 @OA\Property(property="event", type="object"),
+     *                 @OA\Property(property="users", type="array", @OA\Items(type="object"))
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Event not found",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status_code", type="integer", example=404),
+     *             @OA\Property(property="message", type="string", example="Event not found")
+     *         )
+     *     )
+     * )
+     */
+    // public function getEventById(Request $request, $id)
+    // {
+    //     try {
+    //         // Retrieve the meeting record
+    //         $event = ProjectEvent::select('*')->where('id', $id)->first();
+
+    //         if (!$event) {
+    //             return response()->json([
+    //                 'status_code' => 404,
+    //                 'message' => 'Event not found'
+    //             ], 404);
+    //         }
+
+    //         // Decode user IDs
+    //         $acceptedUserIds = $event->attend_users ?? [];
+    //         $declinedUserIds = $event->notAttend_users ?? [];     
+            
+    //         // Filter users based on query parameter
+    //         $filter = $request->query('filter', 'all'); // Default to 'all'
+
+    //         $users = [];
+    //         if ($filter === 'attend') {
+    //             if(!empty($acceptedUserIds))
+    //             {
+    //                 $users = User::whereIn('id', explode(',',$acceptedUserIds))->get(['id', 'profile', 'first_name', 'last_name']);
+    //                 // Assuming $comment has a user relation to set the profile URL
+    //                 foreach ($users as $user) {
+    //                     $user->profile = $user->profile
+    //                         ? setAssetPath('user-profile/' . $user->profile)  // Use relative path
+    //                         : setAssetPath('assets/media/avatars/blank.png'); // Default profile image
+
+    //                     $user->name = $user->first_name .' '. $user->last_name;
+    //                 }
+    //             }
+    //         } elseif ($filter === 'notattend') {
+
+    //             if(!empty($declinedUserIds))
+    //             {
+    //                 $declinedUserIds = explode(',',$declinedUserIds);
+    //                 $users = User::whereIn('id', $declinedUserIds)->get(['id', 'profile', 'first_name', 'last_name']);
+    //                 // Assuming $comment has a user relation to set the profile URL
+    //                 foreach ($users as $user) {
+    //                     $user->profile = $user->profile
+    //                         ? setAssetPath('user-profile/' . $user->profile)  // Use relative path
+    //                         : setAssetPath('assets/media/avatars/blank.png'); // Default profile image
+    //                         $user->name = $user->first_name .' '. $user->last_name;
+    //                 }
+    //             }else{
+    //                 $users = [];
+    //             }                
+    //         } 
+
+    //         return response()->json([
+    //             'status_code' => 200,
+    //             'message' => 'Meeting retrieved successfully',
+    //             'data' => [
+    //                 'meeting' => $event,
+    //                 'users' => $users
+    //             ]
+    //         ], 200);
+    //     } catch (\Exception $e) {
+    //         Log::error([
+    //             'method' => __METHOD__,
+    //             'error' => [
+    //                 'file' => $e->getFile(),
+    //                 'line' => $e->getLine(),
+    //                 'message' => $e->getMessage()
+    //             ]
+    //         ]);
+
+    //         return response()->json([
+    //             'status_code' => 500,
+    //             'message' => 'Something went wrong'
+    //         ], 500);
+    //     }
+    // }
+
+       public function getEventById(Request $request, $id)
+        {
+            try {
+                // Retrieve the event record
+                $event = ProjectEvent::find($id);
+
+                if (!$event) {
+                    return response()->json([
+                        'status_code' => 404,
+                        'message' => 'Event not found'
+                    ], 404);
+                }
+
+                // Decode user IDs
+                $acceptedUserIds = $event->attend_users ? explode(',', $event->attend_users) : [];
+                $declinedUserIds = $event->notAttend_users ? explode(',', $event->notAttend_users) : [];
+
+                // Determine filter type
+                $filter = $request->query('filter', 'all'); // Default to 'all'
+                $userIds = $this->getFilteredUserIds($filter, $acceptedUserIds, $declinedUserIds);
+
+                // Retrieve filtered users
+                $users = $this->getUsersWithProfiles($userIds);
+
+                return response()->json([
+                    'status_code' => 200,
+                    'message' => 'Event retrieved successfully',
+                    'data' => [
+                        'event' => $event,
+                        'users' => $users
+                    ]
+                ], 200);
+            } catch (\Exception $e) {
+                Log::error([
+                    'method' => __METHOD__,
+                    'error' => [
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'message' => $e->getMessage()
+                    ]
+                ]);
+
+                return response()->json([
+                    'status_code' => 500,
+                    'message' => 'Something went wrong'
+                ], 500);
+            }
+        }
+
+        /**
+         * Get user IDs based on the filter.
+         *
+         * @param string $filter
+         * @param array $acceptedUserIds
+         * @param array $declinedUserIds
+         * @return array
+         */
+        public static function getFilteredUserIds($filter, $acceptedUserIds, $declinedUserIds)
+        {
+            return match ($filter) {
+                'attend' => $acceptedUserIds,
+                'notattend' => $declinedUserIds,
+                default => array_merge($acceptedUserIds, $declinedUserIds),
+            };
+        }
+
+        /**
+         * Retrieve users with profile URLs.
+         *
+         * @param array $userIds
+         * @return \Illuminate\Support\Collection
+         */
+        public static function getUsersWithProfiles($userIds)
+        {
+            if (empty($userIds)) {
+                return collect();
+            }
+
+            $users = User::whereIn('id', $userIds)->get(['id', 'profile', 'first_name', 'last_name']);
+
+            return $users->map(function ($user) {
+                $user->profile = $user->profile
+                    ? setAssetPath('user-profile/' . $user->profile)
+                    : setAssetPath('assets/media/avatars/blank.png');
+
+                $user->name = "{$user->first_name} {$user->last_name}";
+
+                return $user;
+            });
+        }
+
 }
