@@ -5198,56 +5198,54 @@ class ChatController extends Controller
      *     )
      * )
      */
-    public function getMeetingById(Request $request, $id)
+  
+     public function getMeetingById(Request $request, $id)
     {
         try {
             // Retrieve the meeting record
-            $meeting = MessageMeeting::select('*')->where('message_id', $id)->first();
+            $meeting = MessageMeeting::where('message_id', $id)->first();
 
             if (!$meeting) {
                 return response()->json([
                     'status_code' => 404,
-                    'message' => 'Meeting not found'
+                    'message' => 'Meeting not found',
                 ], 404);
             }
 
             // Decode user IDs
-            $acceptedUserIds = $meeting->accepted_users ?? [];
-            $declinedUserIds = $meeting->decline_users ?? [];     
-            
+            $acceptedUserIds = $meeting->accepted_users ? explode(',', $meeting->accepted_users) : [];
+            $declinedUserIds = $meeting->decline_users ? explode(',', $meeting->decline_users) : [];
+
             // Filter users based on query parameter
-            $filter = $request->query('filter', 'all'); // Default to 'all'
-
+            $filter = $request->query('filter', 'all');
             $users = [];
-            if ($filter === 'accepted') {
-                if(!empty($acceptedUserIds))
-                {
-                    $users = User::whereIn('id', explode(',',$acceptedUserIds))->get(['id', 'profile', 'first_name', 'last_name']);
-                    // Assuming $comment has a user relation to set the profile URL
-                    foreach ($users as $user) {
-                        $user->profile = $user->profile
-                            ? setAssetPath('user-profile/' . $user->profile)  // Use relative path
-                            : setAssetPath('assets/media/avatars/blank.png'); // Default profile image
 
-                        $user->name = $user->first_name .' '. $user->last_name;
-                    }
+            // Common function to fetch and process users
+            $fetchUsers = function ($userIds) {
+                if (empty($userIds)) {
+                    return [];
                 }
-            } elseif ($filter === 'declined') {
 
-                if(!empty($declinedUserIds))
-                {
-                    $declinedUserIds = explode(',',$declinedUserIds);
-                    $users = User::whereIn('id', $declinedUserIds)->get(['id', 'profile', 'first_name', 'last_name']);
-                    // Assuming $comment has a user relation to set the profile URL
-                    foreach ($users as $user) {
+                return User::whereIn('id', $userIds)
+                    ->get(['id', 'profile', 'first_name', 'last_name'])
+                    ->map(function ($user) {
                         $user->profile = $user->profile
-                            ? setAssetPath('user-profile/' . $user->profile)  // Use relative path
-                            : setAssetPath('assets/media/avatars/blank.png'); // Default profile image
-                            $user->name = $user->first_name .' '. $user->last_name;
-                    }
-                }else{
-                    $users = [];
-                }                
+                            ? setAssetPath('user-profile/' . $user->profile)
+                            : setAssetPath('assets/media/avatars/blank.png');
+                        $user->name = "{$user->first_name} {$user->last_name}";
+                        return $user;
+                    });
+            };
+
+            if ($filter === 'accepted') {
+                $users['accepted_users'] = $fetchUsers($acceptedUserIds);
+            } elseif ($filter === 'declined') {
+                $users['declined_users'] = $fetchUsers($declinedUserIds);
+            } else { // 'all'
+                $users = [
+                    'accepted_users' => $fetchUsers($acceptedUserIds),
+                    'declined_users' => $fetchUsers($declinedUserIds),
+                ];
             }
 
             return response()->json([
@@ -5255,8 +5253,8 @@ class ChatController extends Controller
                 'message' => 'Meeting retrieved successfully',
                 'data' => [
                     'meeting' => $meeting,
-                    'users' => $users
-                ]
+                    'users' => $users,
+                ],
             ], 200);
         } catch (\Exception $e) {
             Log::error([
@@ -5264,16 +5262,17 @@ class ChatController extends Controller
                 'error' => [
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
-                    'message' => $e->getMessage()
-                ]
+                    'message' => $e->getMessage(),
+                ],
             ]);
 
             return response()->json([
                 'status_code' => 500,
-                'message' => 'Something went wrong'
+                'message' => 'Something went wrong',
             ], 500);
         }
-    }   
+    }
+
 
     /**
      * @OA\Post(
