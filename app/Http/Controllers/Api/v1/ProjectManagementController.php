@@ -1470,9 +1470,9 @@ class ProjectManagementController extends Controller
 
             return response()->json([
                 'status_code' => 200,
-                'message' => 'Meeting retrieved successfully',
+                'message' => 'Event retrieved successfully',
                 'data' => [
-                    'meeting' => $event,
+                    'event' => $event,
                     'users' => $users,
                 ]
             ], 200);
