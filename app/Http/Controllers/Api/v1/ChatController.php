@@ -669,7 +669,7 @@ class ChatController extends Controller
 
             // Create message payload for broadcasting and notifications
             $message = [
-                'id' => $msg->id,
+                'message_id' => $msg->id,
                 'sender' => auth()->user()->id,
                 'group_id' => $request->group_id,
                 'message_type' => 'Options',
@@ -679,7 +679,7 @@ class ChatController extends Controller
             ];
 
             // Pusher: Broadcast the message to group members
-            // broadcast(new MessageSent($message))->toOthers();
+            broadcast(new MessageSent($message))->toOthers();
 
             // Push Notification
             $validTokens = [];

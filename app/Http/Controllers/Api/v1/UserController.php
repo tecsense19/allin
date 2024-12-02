@@ -1986,6 +1986,10 @@ class UserController extends Controller
             }
 
             $groupData = Group::find($request->group_id);
+            $memberCount = GroupMembers::where('group_id', $request->group_id)
+                        ->distinct('user_id')
+                        ->count('user_id');
+    
             $groupData->profile_pic = @$groupData->profile_pic ? setAssetPath('group-profile/' . $groupData->profile_pic) : setAssetPath('assets/media/avatars/blank.png');
             $groupData->cover_image = @$groupData->cover_image ? setAssetPath('group-profile/' . $groupData->cover_image) : setAssetPath('assets/media/avatars/blank.png');
 
@@ -1995,86 +1999,175 @@ class UserController extends Controller
                 'Reminder'
             ];
 
-            // Collect Messages
-            $messages = MessageSenderReceiver::whereHas('message', function ($q) use ($request) {
+            // // Collect Messages
+            // $messages = MessageSenderReceiver::whereHas('message', function ($q) use ($request) {
+            //     $q->where('message_type', '!=', 'Task Chat')
+            //     ->where('group_id', $request->group_id);
+            // })
+            // ->whereNull('deleted_at')
+            // ->with(['sender',
+            // 'message.options:id,message_id,option,option_id,users'])
+            // ->orderByDesc('created_at')
+            // ->skip($start)
+            // ->take($limit)
+            // ->get();
+
+            // $groupedChat = $messages->map(function ($message) use ($loginUser, $request) {
+            //     // Message Details mapping
+            //     $messageDetails = []; 
+            //     switch ($message->message->message_type) {
+            //         case 'Text':
+            //             $messageDetails = $message->message->message;
+            //             break;
+            //         case 'Options':
+            //             // $messageDetails = $message->message->options;
+            //             $messageDetails = $message->message->options->map(function ($option) {
+            //                 if ($option->users) {
+            //                     // Split the users string into an array of user IDs
+            //                     $userIds = explode(',', $option->users);
+                        
+            //                     // Fetch user data (id, profile, name)
+            //                     $users = User::whereIn('id', $userIds)->get();
+                        
+            //                     // Map the user data to include id, profile (with fallback), and name
+            //                     $userData = $users->map(function ($user) {
+            //                         return [
+            //                             'id' => $user->id,
+            //                             'profile' => $user->profile 
+            //                                 ? setAssetPath('user-profile/' . $user->profile) 
+            //                                 : setAssetPath('assets/media/avatars/blank.png'),
+            //                             'name' => $user->first_name .''. $user->lastname_name,
+            //                         ];
+            //                     });
+                        
+            //                     // Add the user data to the option
+            //                     $option->user_data = $userData;
+            //                 }
+                        
+            //                 return $option;
+            //             });                
+                        
+            //             break;
+            //         case 'Attachment':
+            //             $messageDetails = $message->message->attachment;
+            //             break;
+            //         case 'Location':
+            //             $messageDetails = $message->message->location;
+            //             break;
+            //         case 'Meeting':
+            //             $messageDetails = $message->message->meeting;
+            //             break;
+            //         case 'Task':
+            //             $messageDetails = $message->message->task;
+            //             break;
+            //         case 'Reminder':
+            //             $messageDetails = $message->message->reminder;
+            //             break;
+            //         case 'Contact':
+            //             $messageDetails = $message->message->message;
+            //             break;
+            //     }
+
+            //     $senderName = @$message->sender->first_name .' '. @$message->sender->last_name;
+            //     $senderProfile = @$message->sender->profile ? setAssetPath('user-profile/' . $message->sender->profile) : setAssetPath('assets/media/avatars/blank.png');
+
+            //     return [
+            //         'messageId' => $message->message->id,                
+            //         'messageType' => $message->message->message_type,
+            //         'message' => $message->message->message,
+            //         'attachmentType' => $message->message->attachment_type,                
+            //         'date' => Carbon::parse($message->message->created_at)->format('Y-m-d H:i:s'),
+            //         'time' => Carbon::parse($message->message->created_at)->format('h:i a'),
+            //         'sentBy' => ($message->sender_id == auth()->user()->id) ? 'loginUser' : 'User',
+            //         'senderName' => $senderName,
+            //         'senderProfile' => $senderProfile,
+            //         'messageDetails' => $messageDetails,
+            //     ];
+            // })->unique('messageId')->values();
+            
+            
+             $distinctMessageIds = MessageSenderReceiver::whereHas('message', function ($q) use ($request) {
                 $q->where('message_type', '!=', 'Task Chat')
-                ->where('group_id', $request->group_id);
+                    ->where('group_id', $request->group_id);
             })
             ->whereNull('deleted_at')
-            ->with(['sender',
-            'message.options:id,message_id,option,option_id,users'])
-            ->orderByDesc('created_at')
-            ->skip($start)
-            ->take($limit)
-            ->get();
+            ->with(['sender', 'message.options:id,message_id,option,option_id,users']) // eager load 'sender'
+            ->orderByDesc('message_id')
+            ->pluck('message_id')
+            ->unique(); // Get unique message_ids
 
+            // Step 2: Pagination setup
+            $currentPage = $request->page ?? 1; // Current page from the request (default to 1 if not provided)
+            $perPage = $limit; // Number of messages per page
+            $offset = ($currentPage - 1) * $perPage; // Calculate offset for pagination
+
+            // Step 3: Paginate the distinct message_ids
+            $paginatedMessageIds = $distinctMessageIds->slice($offset, $perPage); // Paginate the unique message_ids
+
+            // Step 4: Fetch messages based on the paginated message_ids
+            $messages = Message::whereIn('id', $paginatedMessageIds)
+                ->with(['sender','options:id,message_id,option,option_id,users'])
+                // ->orderByDesc('created_at')
+                ->get();
+
+            // Step 5: Map the messages (same as your previous logic)
             $groupedChat = $messages->map(function ($message) use ($loginUser, $request) {
-                // Message Details mapping
-                $messageDetails = []; 
-                switch ($message->message->message_type) {
+                $messageDetails = [];
+                switch ($message->message_type) {
                     case 'Text':
-                        $messageDetails = $message->message->message;
+                        $messageDetails = $message->message;
                         break;
                     case 'Options':
-                        // $messageDetails = $message->message->options;
-                        $messageDetails = $message->message->options->map(function ($option) {
+                        $messageDetails = $message->options->map(function ($option) {
                             if ($option->users) {
-                                // Split the users string into an array of user IDs
+                                // Fetch users
                                 $userIds = explode(',', $option->users);
-                        
-                                // Fetch user data (id, profile, name)
                                 $users = User::whereIn('id', $userIds)->get();
-                        
-                                // Map the user data to include id, profile (with fallback), and name
                                 $userData = $users->map(function ($user) {
                                     return [
                                         'id' => $user->id,
                                         'profile' => $user->profile 
                                             ? setAssetPath('user-profile/' . $user->profile) 
                                             : setAssetPath('assets/media/avatars/blank.png'),
-                                        'name' => $user->first_name .''. $user->lastname_name,
+                                        'name' => $user->first_name . ' ' . $user->last_name,
                                     ];
                                 });
-                        
-                                // Add the user data to the option
                                 $option->user_data = $userData;
                             }
-                        
                             return $option;
-                        });                
-                        
+                        });
                         break;
                     case 'Attachment':
-                        $messageDetails = $message->message->attachment;
+                        $messageDetails = $message->attachment;
                         break;
                     case 'Location':
-                        $messageDetails = $message->message->location;
+                        $messageDetails = $message->location;
                         break;
                     case 'Meeting':
-                        $messageDetails = $message->message->meeting;
+                        $messageDetails = $message->meeting;
                         break;
                     case 'Task':
-                        $messageDetails = $message->message->task;
+                        $messageDetails = $message->task;
                         break;
                     case 'Reminder':
-                        $messageDetails = $message->message->reminder;
+                        $messageDetails = $message->reminder;
                         break;
                     case 'Contact':
-                        $messageDetails = $message->message->message;
+                        $messageDetails = $message->message;
                         break;
                 }
 
-                $senderName = @$message->sender->first_name .' '. @$message->sender->last_name;
+                $senderName = @$message->sender->first_name . ' ' . @$message->sender->last_name;
                 $senderProfile = @$message->sender->profile ? setAssetPath('user-profile/' . $message->sender->profile) : setAssetPath('assets/media/avatars/blank.png');
 
                 return [
-                    'messageId' => $message->message->id,                
-                    'messageType' => $message->message->message_type,
-                    'message' => $message->message->message,
-                    'attachmentType' => $message->message->attachment_type,                
-                    'date' => Carbon::parse($message->message->created_at)->format('Y-m-d H:i:s'),
-                    'time' => Carbon::parse($message->message->created_at)->format('h:i a'),
-                    'sentBy' => ($message->sender_id == auth()->user()->id) ? 'loginUser' : 'User',
+                    'messageId' => $message->id,
+                    'messageType' => $message->message_type,
+                    'message' => $message->message,
+                    'attachmentType' => $message->attachment_type,
+                    'date' => @$request->timezone ? Carbon::parse($message->created_at)->setTimezone($request->timezone)->format('Y-m-d H:i:s') : Carbon::parse($message->created_at)->format('Y-m-d H:i:s'),
+                    'time' => @$request->timezone ? Carbon::parse($message->created_at)->setTimezone($request->timezone)->format('h:i a') : Carbon::parse($message->created_at)->format('h:i a'),
+                    'sentBy' => ($message->sender->id == auth()->user()->id) ? 'loginUser' : 'User',
                     'senderName' => $senderName,
                     'senderProfile' => $senderProfile,
                     'messageDetails' => $messageDetails,
@@ -2082,7 +2175,7 @@ class UserController extends Controller
             })->unique('messageId')->values();
 
 
-            // Grouping the messages by Today and Yesterday
+          // Grouping the messages by Today and Yesterday
             $groupedChatData = [        
                 'Yesterday' => [],
                 'Today' => [],            
@@ -2092,16 +2185,30 @@ class UserController extends Controller
             $today = Carbon::now()->startOfDay();
             $yesterday = Carbon::now()->subDay()->startOfDay();
 
+            // Temporary array for grouping other dates
+            $otherDates = [];
+
             foreach ($groupedChat as $chat) {
                 $messageDate = Carbon::parse($chat['date'])->startOfDay();
-
+                            
                 if ($messageDate->equalTo($today)) {
                     $groupedChatData['Today'][] = $chat;
                 } elseif ($messageDate->equalTo($yesterday)) {
                     $groupedChatData['Yesterday'][] = $chat;
-                }
+                } else {
+                    // Use the message's date as the key in the temporary array
+                    $dateKey = $messageDate->format('d M Y'); // Format the date as 'YYYY-MM-DD'
+                    $otherDates[$dateKey][] = $chat;
+                }                
             }
 
+            // Sort other dates in ascending order
+            ksort($otherDates);
+
+            // Merge the sorted dates with the main grouped array
+            $groupedChatData = array_merge($otherDates, $groupedChatData);
+            
+            $groupData['members_count']= $memberCount;
             $data = [
                 "status" => "Success",
                 "status_code" => 200,

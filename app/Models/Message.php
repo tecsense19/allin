@@ -109,4 +109,9 @@ class Message extends Model
     {
         return $this->hasMany(MessageSenderReceiver::class, 'message_id');
     }
+
+     public function sender()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
 }
