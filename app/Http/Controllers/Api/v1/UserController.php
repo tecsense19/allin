@@ -39,6 +39,7 @@ class UserController extends Controller
         $this->twilio_verify_sid = Config('services.twilio.TWILIO_OTP_SERVICE_ID');
         $this->twilio = new Client($this->twilio_sid, $this->token);
     }
+    
     /**
      * @OA\Post(
      *     path="/api/v1/check-mobile-exists",
@@ -1054,44 +1055,32 @@ class UserController extends Controller
                                     $allTasksCheckedByOthers = true; // Flag to track if all tasks are checked by other users                                
                                     // Loop through each task to check if the user has checked it
                                     foreach ($taskDetails as $task) {
-                                        $checkedUsers = explode(',', $task->task_checked_users);
-                                      
-                                        
+                                        $checkedUsers = explode(',', $task->task_checked_users);                                                                          
                                         // Remove the first empty element (if there is any)
                                         if (empty($checkedUsers[0])) {
                                             array_shift($checkedUsers);
                                         }
-
                                         // Remove the $message->message->created_by ID from the checked users list when checking other users' task status
                                         $checkedByOthers = array_diff($checkedUsers, [$message->message->created_by]);
-
                                         // If the user ID is in the checked users list, mark the task as done for the user
                                         if (in_array($user->id, $checkedUsers)) {
                                             $user->task_ids .= $task->id . ','; // Append with a comma
                                             $doneTaskId[] = $task->id;
-                                        }
-   
+                                        }   
                                         $assignedUsers = explode(',', $task->users);                                       
                                         // If not all other users have checked this task, mark the flag as false
-                                        if (empty($checkedByOthers) || count($checkedByOthers) < count($assignedUsers) - 1) {
-
-                                          
+                                        if (empty($checkedByOthers) || count($checkedByOthers) < count($assignedUsers) - 1) {                                          
                                             $allTasksCheckedByOthers = false; // At least one task is not checked by all other users
                                         }                                 
                                         // Add all task IDs, including those created by others
                                         $allTaskId[] = $task->id;
-                                    }
-
-                                
-
+                                    }                            
                                     // Remove the trailing comma if task_ids is not empty
                                     if (!empty($user->task_ids)) {
                                         $user->task_ids = rtrim($user->task_ids, ','); // Remove the last comma
                                     }
-
                                     // Calculate pending tasks by removing the done tasks from all tasks
                                     $pendingTaskId = array_diff($allTaskId, $doneTaskId);
-
                                     // If the current user is the one who created the message, set task_done status based on all other users' task completion
                                     if ($user->id == $message->message->created_by) {
                                         // Check if all tasks are done by other users
@@ -1099,15 +1088,12 @@ class UserController extends Controller
                                     } else{
                                         $user->task_done = false;   
                                     }
-
                                     // Initialize an empty array to hold task IDs
                                     $taskids = [];
-
                                     // Loop through each task to collect task IDs
                                     foreach ($taskDetails as $task) {
                                         $taskids[] = $task->id;
-                                    }
-                                  
+                                    }                                  
                                     return $user;
                             });                                                      
                             $messageDetails = [
@@ -1117,15 +1103,11 @@ class UserController extends Controller
                                 'users' => $userList,// Assuming task_name is available here
                                 'tasks' => $taskDetails->map(function ($task) {
                                       // Assuming $task->task_checked_users contains ",131,132"
-                                        $checkedUsers = explode(',', $task->task_checked_users);
-
-                                        
-
+                                        $checkedUsers = explode(',', $task->task_checked_users);                                    
                                         // Remove the first empty element (if there is any)
                                         if ($checkedUsers[0] === '') {
                                             array_shift($checkedUsers);
-                                        }
-                                        
+                                        }                                        
                                         // Convert the array back to a string
                                         $task->task_checked_users = implode(',', $checkedUsers);                                       
 
@@ -1135,12 +1117,7 @@ class UserController extends Controller
                                                 'id' => $user->id,
                                                 'profile_url' => @$user->profile ? setAssetPath('user-profile/' . $user->profile) : setAssetPath('assets/media/avatars/blank.png')
                                             ];
-                                        });      
-                                                                            
-                                        // $comments = MessageTaskChatComment::with('user')->where('task_chat_id', $task->id)
-                                        //             ->orderBy('created_at', 'desc')
-                                        //             ->take(5)
-                                        //             ->get();
+                                        });                                                                                                                         
 
                                         $comments = MessageTaskChatComment::with('user')
                                                     ->where('task_chat_id', $task->id)
@@ -1173,27 +1150,7 @@ class UserController extends Controller
                                             'comments' => $comments, // Attach task comments
                                         ];
                                     })->toArray(), // Convert to array if needed
-                                ];                        
-
-                            //     // Assuming $task->task_checked_users contains ",131,132"
-                            //     $checkedUsers = explode(',', $task->task_checked_users);
-
-                            //     // Remove the first empty element (if there is any)
-                            //     if ($checkedUsers[0] === '') {
-                            //         array_shift($checkedUsers);
-                            //     }
-
-                            //     // Convert the array back to a string
-                            //     $task->task_checked_users = implode(',', $checkedUsers);
-                            //         return [
-                            //             'id' => $task->id,
-                            //             'message_id' => $task->message_id,
-                            //             'checkbox' => $task->checkbox,
-                            //             'task_checked' => (bool) $task->task_checked, // Convert to boolean
-                            //             'task_checked_users' => $task->task_checked_users,
-                            //         ];
-                            //     })->toArray(), // Convert to array if needed
-                            // ];                        
+                                ];                                                  
                         break;                                             
                     case 'Reminder':
                         $messageDetails = $message->message->reminder;
@@ -1552,7 +1509,7 @@ class UserController extends Controller
     // }
 
 
- /**
+    /**
      * @OA\Post(
      *     path="/api/v1/user-group-details",
      *     summary="User Group Details",
@@ -1998,93 +1955,6 @@ class UserController extends Controller
                 'Meeting',
                 'Reminder'
             ];
-
-            // // Collect Messages
-            // $messages = MessageSenderReceiver::whereHas('message', function ($q) use ($request) {
-            //     $q->where('message_type', '!=', 'Task Chat')
-            //     ->where('group_id', $request->group_id);
-            // })
-            // ->whereNull('deleted_at')
-            // ->with(['sender',
-            // 'message.options:id,message_id,option,option_id,users'])
-            // ->orderByDesc('created_at')
-            // ->skip($start)
-            // ->take($limit)
-            // ->get();
-
-            // $groupedChat = $messages->map(function ($message) use ($loginUser, $request) {
-            //     // Message Details mapping
-            //     $messageDetails = []; 
-            //     switch ($message->message->message_type) {
-            //         case 'Text':
-            //             $messageDetails = $message->message->message;
-            //             break;
-            //         case 'Options':
-            //             // $messageDetails = $message->message->options;
-            //             $messageDetails = $message->message->options->map(function ($option) {
-            //                 if ($option->users) {
-            //                     // Split the users string into an array of user IDs
-            //                     $userIds = explode(',', $option->users);
-                        
-            //                     // Fetch user data (id, profile, name)
-            //                     $users = User::whereIn('id', $userIds)->get();
-                        
-            //                     // Map the user data to include id, profile (with fallback), and name
-            //                     $userData = $users->map(function ($user) {
-            //                         return [
-            //                             'id' => $user->id,
-            //                             'profile' => $user->profile 
-            //                                 ? setAssetPath('user-profile/' . $user->profile) 
-            //                                 : setAssetPath('assets/media/avatars/blank.png'),
-            //                             'name' => $user->first_name .''. $user->lastname_name,
-            //                         ];
-            //                     });
-                        
-            //                     // Add the user data to the option
-            //                     $option->user_data = $userData;
-            //                 }
-                        
-            //                 return $option;
-            //             });                
-                        
-            //             break;
-            //         case 'Attachment':
-            //             $messageDetails = $message->message->attachment;
-            //             break;
-            //         case 'Location':
-            //             $messageDetails = $message->message->location;
-            //             break;
-            //         case 'Meeting':
-            //             $messageDetails = $message->message->meeting;
-            //             break;
-            //         case 'Task':
-            //             $messageDetails = $message->message->task;
-            //             break;
-            //         case 'Reminder':
-            //             $messageDetails = $message->message->reminder;
-            //             break;
-            //         case 'Contact':
-            //             $messageDetails = $message->message->message;
-            //             break;
-            //     }
-
-            //     $senderName = @$message->sender->first_name .' '. @$message->sender->last_name;
-            //     $senderProfile = @$message->sender->profile ? setAssetPath('user-profile/' . $message->sender->profile) : setAssetPath('assets/media/avatars/blank.png');
-
-            //     return [
-            //         'messageId' => $message->message->id,                
-            //         'messageType' => $message->message->message_type,
-            //         'message' => $message->message->message,
-            //         'attachmentType' => $message->message->attachment_type,                
-            //         'date' => Carbon::parse($message->message->created_at)->format('Y-m-d H:i:s'),
-            //         'time' => Carbon::parse($message->message->created_at)->format('h:i a'),
-            //         'sentBy' => ($message->sender_id == auth()->user()->id) ? 'loginUser' : 'User',
-            //         'senderName' => $senderName,
-            //         'senderProfile' => $senderProfile,
-            //         'messageDetails' => $messageDetails,
-            //     ];
-            // })->unique('messageId')->values();
-            
             
              $distinctMessageIds = MessageSenderReceiver::whereHas('message', function ($q) use ($request) {
                 $q->where('message_type', '!=', 'Task Chat')
@@ -2322,7 +2192,7 @@ class UserController extends Controller
      */
 
 
-         public function updateTask(Request $request)
+    public function updateTask(Request $request)
     {
         try {
             // Validation for form-data input
@@ -2508,6 +2378,7 @@ class UserController extends Controller
             ]);
         }
     }
+    
     /**
      * @OA\Post(
      *     path="/api/v1/edit-profile",

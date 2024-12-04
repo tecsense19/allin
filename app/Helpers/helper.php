@@ -149,6 +149,7 @@ if (!function_exists('sendPushNotification')) {
             $title = (string)$message['title'];
             $body = (string)$message['body'];
             $image = $message['image'];
+  
             $notification = Notification::create($title, $body);
 
             $androidConfig = AndroidConfig::fromArray([
@@ -157,7 +158,7 @@ if (!function_exists('sendPushNotification')) {
                     "body" => $body,
                     "image" => $image
                 ]
-            ]);
+            ]);     
 
             $appleConfig = ApnsConfig::fromArray([
                 'headers' => [
@@ -211,6 +212,11 @@ if (!function_exists('sendPushNotification')) {
 
 function generateMessage($deviceToken, $notification, $data, $androidConfig, $appleConfig)
 {
+
+  if (isset($data['options']) && is_array($data['options'])) {
+      $data['options'] = implode(',', $data['options']);
+  }
+
   $message = CloudMessage::withTarget('token', $deviceToken)
     ->withNotification($notification)
     ->withData($data)

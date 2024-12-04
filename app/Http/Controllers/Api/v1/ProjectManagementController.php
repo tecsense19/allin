@@ -127,8 +127,6 @@ class ProjectManagementController extends Controller
             $workHours->total_hours = $totalWorkingTime;
             $workHours->save();
 
-
-
             $data = [
                 'status_code' => 200,
                 'message' => "Work Hours Successfully Add!",
@@ -1372,7 +1370,6 @@ class ProjectManagementController extends Controller
             return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
         }
     }
-
 
      /**
      * @OA\Get(

@@ -317,7 +317,6 @@ class ChatController extends Controller
             ];
 
             return $this->sendJsonResponse($data);
-
      
          } catch (\Exception $e) {
              Log::error([
@@ -334,7 +333,6 @@ class ChatController extends Controller
          }
      }
      
-
     
     /**
      * @OA\Post(
@@ -498,9 +496,6 @@ class ChatController extends Controller
             return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
         }
     }
-
-
-    // new code 
     
     /**
      * @OA\Post(
@@ -631,29 +626,58 @@ class ChatController extends Controller
                 $result[] = $parsed;
             }
 
-            if ($request->has('options') && is_array($request->options)) {
-                foreach ($result[0] as $option) {
-                    // Ensure the option is a valid string and not empty
-                    if (!empty($option)) {
-                        // Check if this option already exists for the same message
-                        $existingOption = Option::where('message_id', $msg->id)
-                                                ->where('option', $option)
-                                                ->first();
+            // if ($request->has('options') && is_array($request->options)) {
+            //     foreach ($result[0] as $option) {
+            //         // Ensure the option is a valid string and not empty
+            //         if (!empty($option)) {
+            //             // Check if this option already exists for the same message
+            //             $existingOption = Option::where('message_id', $msg->id)
+            //                                     ->where('option', $option)
+            //                                     ->first();
             
-                        if (!$existingOption) {
-                            // Save the option with a unique ID
-                            $msgOption = new Option();
-                            $msgOption->message_id = $msg->id;       // Link to the message
-                            $msgOption->option = $option;           // Individual option text
-                            $msgOption->option_id = (string) Str::uuid(); // Unique option ID
-                            $msgOption->save();                     // Save to database
-                        }
+            //             if (!$existingOption) {
+            //                 // Save the option with a unique ID
+            //                 $msgOption = new Option();
+            //                 $msgOption->message_id = $msg->id;       // Link to the message
+            //                 $msgOption->option = $option;           // Individual option text
+            //                 $msgOption->option_id = (string) Str::uuid(); // Unique option ID
+            //                 $msgOption->save();                     // Save to database
+            //             }
+            //         }
+            //     }
+            // }
+        
+            if ($request->has('options') && is_array($request->options)) {
+                // Fetch all existing options for the message in one query
+                $existingOptions = Option::where('message_id', $msg->id)
+                                         ->pluck('option')
+                                         ->toArray();
+            
+                // Prepare data for new options
+                $optionData = [];
+                foreach ($result[0] as $option) {
+                    if (!empty($option) && !in_array($option, $existingOptions)) {
+                        $optionData[] = [
+                            'message_id' => $msg->id,
+                            'option' => $option,
+                            'option_id' => (string) Str::uuid(),
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ];
                     }
                 }
+            
+                // Bulk insert new options
+                if (!empty($optionData)) {
+                    Option::insert($optionData);
+                }
             }
-        
+            
             // Fetch group members
             $groupMembers = GroupMembers::where('group_id', $request->group_id)->pluck('user_id')->toArray();
+
+            $groupMembers = array_unique($groupMembers);
+            
             if (empty($groupMembers)) {
                 return $this->sendJsonResponse(['status_code' => 404, 'message' => 'No members found in this group']);
             }
@@ -678,7 +702,7 @@ class ChatController extends Controller
                 "screen" => "groupchat"
             ];
 
-            // Pusher: Broadcast the message to group members
+          // Pusher: Broadcast the message to group members
             broadcast(new MessageSent($message))->toOthers();
 
             // Push Notification
@@ -688,25 +712,25 @@ class ChatController extends Controller
             foreach ($groupMembers as $memberId) {
                 $validationResults = validateToken($memberId);
                 foreach ($validationResults as $result) {
-                    $validTokens = array_merge($validTokens, $result['valid']);
-                    $invalidTokens = array_merge($invalidTokens, $result['invalid']);
+                    $validTokens = array_merge($validTokens, is_array($result['valid']) ? $result['valid'] : []);
+                    $invalidTokens = array_merge($invalidTokens, is_array($result['invalid']) ? $result['invalid'] : []);
                 }
             }
-
-            if (count($invalidTokens) > 0) {
+        
+            if (count($invalidTokens) > 0) {                
                 foreach ($invalidTokens as $singleInvalidToken) {
-                    userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
+                    UserDeviceToken::where('token', $singleInvalidToken)->forceDelete();
                 }
             }
 
             $notification = [
-                'title' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
+                'title' => auth()->user() ? auth()->user()->first_name . ' ' . auth()->user()->last_name : 'Unknown User',
                 'body' => $request->message,
-                'image' => '',
-            ];
+                'image' => "", // Update with a default image if required
+            ];         
 
             if (count($validTokens) > 0) {
-               // sendPushNotification($validTokens, $notification, $message);
+                sendPushNotification(array_unique($validTokens), $notification, $message);
             }
 
             $data = [
@@ -728,7 +752,6 @@ class ChatController extends Controller
             return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
         }
     }
-
 
     /**
      * @OA\Post(
@@ -1092,8 +1115,6 @@ class ChatController extends Controller
             ]);
         }
     }
-
-    // edn new code
     
     /**
      * @OA\Post(
@@ -1483,118 +1504,6 @@ class ChatController extends Controller
          }
      }
      
-    // public function messageTask(Request $request)
-    // {
-    //     try {
-    //         $rules = [
-    //             'message_type' => 'required|string',
-    //             'receiver_id' => 'required|string',
-    //             'task_name' => 'required|string',
-    //         ];
-
-    //         $message = [
-    //             'message_type.required' => 'The message type is required.',
-    //             'message_type.string' => 'The message type must be a string.',
-    //             'receiver_id.required' => 'The receiver ID is required.',
-    //             'receiver_id.string' => 'The receiver ID must be an string.',
-    //             'task_name.required' => 'The Task Name is required.',
-    //             'task_name.string' => 'The Task Name must be an string.',
-    //         ];
-
-    //         $validator = Validator::make($request->all(), $rules, $message);
-    //         if ($validator->fails()) {
-    //             $data = [
-    //                 'status_code' => 400,
-    //                 'message' => $validator->errors()->first(),
-    //                 'data' => ""
-    //             ];
-    //             return $this->sendJsonResponse($data);
-    //         }
-
-    //         $msg = new Message();
-    //         $msg->message_type = $request->message_type;
-    //         $msg->status = "Unread";
-    //         $msg->save();
-
-    //         $receiverIdsArray = explode(',', $request->receiver_id);
-    //         $senderId = auth()->user()->id;
-
-    //         $receiverIdsArray[] = $senderId;
-    //         $uniqueIdsArray = array_unique($receiverIdsArray);
-    //         $mergedIds = implode(',', $uniqueIdsArray);
-
-    //         $messageTask = new MessageTask();
-    //         $messageTask->message_id = $msg->id;
-    //         $messageTask->task_name = $request->task_name;
-    //         $messageTask->task_description = @$request->task_description ? $request->task_description : NULL;
-    //         $messageTask->users = $mergedIds;
-    //         $messageTask->save();
-
-    //         foreach ($receiverIdsArray as $receiverId) {
-    //             $messageSenderReceiver = new MessageSenderReceiver();
-    //             $messageSenderReceiver->message_id = $msg->id;
-    //             $messageSenderReceiver->sender_id = $senderId;
-    //             $messageSenderReceiver->receiver_id = $receiverId;
-    //             $messageSenderReceiver->save();
-
-    //             $message = [
-    //                 'id' => $msg->id,
-    //                 'sender' => auth()->user()->id,
-    //                 'receiver' => $receiverId,
-    //                 'message_type' => $request->message_type,
-    //                 'task_name' => $request->task_name,
-    //                 'task_description' => @$request->task_description ? $request->task_description : NULL,
-    //                 "screen" => "chatinner"
-    //             ];
-
-    //             broadcast(new MessageSent($message))->toOthers();
-
-
-    //             //Push Notification
-    //             $validationResults = validateToken($receiverId);
-    //             $validTokens = [];
-    //             $invalidTokens = [];
-    //             foreach ($validationResults as $result) {
-    //                 $validTokens = array_merge($validTokens, $result['valid']);
-    //                 $invalidTokens = array_merge($invalidTokens, $result['invalid']);
-    //             }
-    //             if (count($invalidTokens) > 0) {
-    //                 foreach ($invalidTokens as $singleInvalidToken) {
-    //                     userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
-    //                 }
-    //             }
-
-    //             $notification = [
-    //                 'title' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
-    //                 'body' => 'Task : ' . $request->task_name,
-    //                 'image' => "",
-    //             ];
-
-    //             if (count($validTokens) > 0) {
-    //                 sendPushNotification($validTokens, $notification, $message);
-    //             }
-    //         }
-
-    //         $data = [
-    //             'status_code' => 200,
-    //             'message' => 'Message Sent Successfully!',
-    //             'data' => ""
-    //         ];
-    //         return $this->sendJsonResponse($data);
-    //     } catch (\Exception $e) {
-    //         Log::error([
-    //             'method' => __METHOD__,
-    //             'error' => [
-    //                 'file' => $e->getFile(),
-    //                 'line' => $e->getLine(),
-    //                 'message' => $e->getMessage()
-    //             ],
-    //             'created_at' => now()->format("Y-m-d H:i:s")
-    //         ]);
-    //         return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
-    //     }
-    // }
-
     /**
      * @OA\Post(
      *     path="/api/v1/message-task-chat",
@@ -1785,6 +1694,7 @@ class ChatController extends Controller
             return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
         }
     }
+
     /**
      * @OA\Post(
      *     path="/api/v1/message-location",
@@ -1950,6 +1860,7 @@ class ChatController extends Controller
             return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
         }
     }
+
     /**
      * @OA\Post(
      *     path="/api/v1/message-meeting",
@@ -2326,7 +2237,6 @@ class ChatController extends Controller
         }
     }
 
-
     /**
      * @OA\Post(
      *     path="/api/v1/unread-message-count",
@@ -2447,9 +2357,7 @@ class ChatController extends Controller
                               ->orWhereNull('read_status'); // In case 'read_status' is empty or NULL
                     })
                     // ->distinct('message_id') // Ensure unique message IDs
-                    ->count(); // Count the distinct message IDs
-                
-                
+                    ->count(); // Count the distinct message IDs                
                     
                  }elseif ($trimmedType === 'event') {
                      $unreadCounts[$trimmedType] = ProjectEvent::where('created_by', $loginUser)
@@ -3438,7 +3346,6 @@ class ChatController extends Controller
                         userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
                     }
                 }
-
                 $notification = [
                     'title' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
                     'body' => 'Reminder: ' . @$request->title ? $request->title : '',
@@ -3578,7 +3485,6 @@ class ChatController extends Controller
                                     userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
                                 }
                             }
-
                             $notification = [
                                 'title' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
                                 'body' => $messageDetails->message,
@@ -3628,7 +3534,6 @@ class ChatController extends Controller
                                     userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
                                 }
                             }
-
                             $notification = [
                                 'title' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
                                 'body' => $messageDetails->message_type,
@@ -3783,7 +3688,6 @@ class ChatController extends Controller
                             ];
 
                             broadcast(new MessageSent($message))->toOthers();
-
 
                             //Push Notification
                             $validationResults = validateToken($receiver_id);
@@ -4031,8 +3935,6 @@ class ChatController extends Controller
         }
     }
 
-    // New task fatch complete incomplete 
-    
     /**
      * @OA\Get(
      *     path="/api/v1/task-complete-incomplete",
@@ -4184,7 +4086,7 @@ class ChatController extends Controller
             // Validate the incoming request to ensure message_id and select are provided
             $validator = Validator::make($request->all(), [
                 'message_id' => 'required|integer',
-                'select' => 'required|in:complete,incomplete', // Validate select field
+                'select' => 'required|in:complete,incomplete,all', // Validate select field
             ]);
 
             if ($validator->fails()) {
@@ -4243,7 +4145,6 @@ class ChatController extends Controller
                     }),
                 ];
             }
-
             // Return null for tasks with no valid selected users
             return null;
         });
@@ -4278,7 +4179,6 @@ class ChatController extends Controller
             ]);
         }
     }     
-    //End 
 
     /**
      * @OA\Post(
@@ -4317,6 +4217,7 @@ class ChatController extends Controller
      *     ),
      * )
      */
+
     // ****************************** Main Code **********************************//
     // public function taskUserList(Request $request)
     // {
@@ -4569,6 +4470,8 @@ class ChatController extends Controller
                             'task_name' => $taskName,
                             'taskCreatorName' => $creatorName,
                             'taskCreatorProfile' => $creatorProfileUrl,
+                            'date' => @$request->timezone ? Carbon::parse($message->created_at)->setTimezone($request->timezone)->format('Y-m-d H:i:s') : Carbon::parse($messageSenderReceiver->created_at)->format('Y-m-d H:i:s'),
+                            'time' => @$request->timezone ? Carbon::parse($message->created_at)->setTimezone($request->timezone)->format('h:i a') : Carbon::parse($messageSenderReceiver->created_at)->format('h:i a'),
                             'taskStatus' => $messageSenderReceiver->updated_by == 1, // Task status (completed or not)
                             'totalTasks' => $totalTasks,
                             'completedTasks' => $completedTasks                    
@@ -4607,22 +4510,24 @@ class ChatController extends Controller
                             ->count();
                             
                          // Fetch the task creator profile and name
-                        $creator = User::find($messageSenderReceiver->receiver_id);
-                        $creatorProfileUrl = !empty($creator->profile) ? setAssetPath('user-profile/' . $creator->profile) : setAssetPath('assets/media/avatars/blank.png');
-                        $creatorName = $creator ? $creator->first_name . ' ' . $creator->last_name : 'Unknown';
+                         $receiver = User::find($messageSenderReceiver->receiver_id);
+                         $receiverProfileUrl = !empty($receiver->profile) ? setAssetPath('user-profile/' . $receiver->profile) : setAssetPath('assets/media/avatars/blank.png');
+                         $receiverName = $receiver ? $receiver->first_name . ' ' . $receiver->last_name : 'Unknown';
             
                         // Get the task name (assuming the task name is stored in 'message' or a related field)
                         $taskName = $taskname->task_name ?? 'No Task Name';
                         
                         // Return unique message_id data with task details
                         return [
-                            'message_id' => $messageSenderReceiver->message_id, // Unique message_id
-                            'task_name' => $taskName,
-                            'UserName' => $creatorName,
-                            'UserProfile' => $creatorProfileUrl,
-                            'taskStatus' => $messageSenderReceiver->updated_by == 1, // Task status (completed or not)
+                            'message_id' => $messageSenderReceiver->message_id,
+                            'task_name' => $taskname->task_name ?? 'No Task Name',
+                            'taskReceiverName' => $receiverName,
+                            'taskReceiverProfile' => $receiverProfileUrl,
+                            'date' => @$request->timezone ? Carbon::parse($message->created_at)->setTimezone($request->timezone)->format('Y-m-d H:i:s') : Carbon::parse($messageSenderReceiver->created_at)->format('Y-m-d H:i:s'),
+                            'time' => @$request->timezone ? Carbon::parse($message->created_at)->setTimezone($request->timezone)->format('h:i a') : Carbon::parse($messageSenderReceiver->created_at)->format('h:i a'),
+                            'taskStatus' => $messageSenderReceiver->updated_by == 1,
                             'totalTasks' => $totalTasks,
-                            'completedTasks' => $completedTasks                    
+                            'completedTasks' => $completedTasks,
                         ];
                     });
             
@@ -4640,16 +4545,80 @@ class ChatController extends Controller
                         ]
                     ];
             } elseif ($type == 'All Task') {
-                $userList = (clone $baseQuery)
-                    ->where(function ($query) use ($loginUser) {
-                        $query->where('sender_id', $loginUser)
-                            ->orWhere('receiver_id', $loginUser);
+                // Fetch 'Receive' tasks
+                $receiveArray = (clone $baseQuery)
+                    ->where('receiver_id', $loginUser)
+                    ->where('sender_id', '!=', $loginUser)
+                    ->get()
+                    ->map(function ($messageSenderReceiver) use ($loginUser) {
+                        $totalTasks = MessageTask::where('message_id', $messageSenderReceiver->message_id)->count();
+                        $taskname = MessageTask::where('message_id', $messageSenderReceiver->message_id)->first();
+                        $completedTasks = MessageTask::where('message_id', $messageSenderReceiver->message_id)
+                            ->whereRaw('FIND_IN_SET(?, task_checked_users)', [$loginUser])
+                            ->count();
+            
+                        $creator = User::find($messageSenderReceiver->created_by);
+                        $creatorProfileUrl = !empty($creator->profile) ? setAssetPath('user-profile/' . $creator->profile) : setAssetPath('assets/media/avatars/blank.png');
+                        $creatorName = $creator ? $creator->first_name . ' ' . $creator->last_name : 'Unknown';
+            
+                        return [
+                            'message_id' => $messageSenderReceiver->message_id,
+                            'task_name' => $taskname->task_name ?? 'No Task Name',
+                            'taskCreatorName' => $creatorName,
+                            'taskCreatorProfile' => $creatorProfileUrl,
+                            'date' => @$request->timezone ? Carbon::parse($message->created_at)->setTimezone($request->timezone)->format('Y-m-d H:i:s') : Carbon::parse($messageSenderReceiver->created_at)->format('Y-m-d H:i:s'),
+                            'time' => @$request->timezone ? Carbon::parse($message->created_at)->setTimezone($request->timezone)->format('h:i a') : Carbon::parse($messageSenderReceiver->created_at)->format('h:i a'),
+                            'taskStatus' => $messageSenderReceiver->updated_by == 1,
+                            'totalTasks' => $totalTasks,
+                            'completedTasks' => $completedTasks,
+                        ];
                     })
-                    ->get();
-            }
-    
-
-    
+                    ->unique('message_id')
+                    ->sortByDesc('message_id') // Sort by message_id in descending order
+                    ->values();
+            
+                // Fetch 'Given' tasks
+                $givenArray = (clone $baseQuery)
+                    ->where('sender_id', $loginUser)
+                    ->where('receiver_id', '!=', $loginUser)
+                    ->get()
+                    ->map(function ($messageSenderReceiver) {
+                        $totalTasks = MessageTask::where('message_id', $messageSenderReceiver->message_id)->count();
+                        $taskname = MessageTask::where('message_id', $messageSenderReceiver->message_id)->first();
+                        $completedTasks = MessageTask::where('message_id', $messageSenderReceiver->message_id)
+                            ->whereRaw('FIND_IN_SET(?, task_checked_users)', [$messageSenderReceiver->receiver_id])
+                            ->count();
+            
+                        $receiver = User::find($messageSenderReceiver->receiver_id);
+                        $receiverProfileUrl = !empty($receiver->profile) ? setAssetPath('user-profile/' . $receiver->profile) : setAssetPath('assets/media/avatars/blank.png');
+                        $receiverName = $receiver ? $receiver->first_name . ' ' . $receiver->last_name : 'Unknown';
+            
+                        return [
+                            'message_id' => $messageSenderReceiver->message_id,
+                            'task_name' => $taskname->task_name ?? 'No Task Name',
+                            'taskReceiverName' => $receiverName,
+                            'taskReceiverProfile' => $receiverProfileUrl,
+                            'date' => @$request->timezone ? Carbon::parse($message->created_at)->setTimezone($request->timezone)->format('Y-m-d H:i:s') : Carbon::parse($messageSenderReceiver->created_at)->format('Y-m-d H:i:s'),
+                            'time' => @$request->timezone ? Carbon::parse($message->created_at)->setTimezone($request->timezone)->format('h:i a') : Carbon::parse($messageSenderReceiver->created_at)->format('h:i a'),
+                            'taskStatus' => $messageSenderReceiver->updated_by == 1,
+                            'totalTasks' => $totalTasks,
+                            'completedTasks' => $completedTasks,
+                        ];
+                    })
+                    ->unique('message_id')
+                    ->sortByDesc('message_id') // Sort by message_id in descending order
+                    ->values();
+            
+                // Construct response data
+                $data = [
+                    'status_code' => 200,
+                    'message' => "All Tasks Retrieved Successfully!",
+                    'data' => [
+                        'receiveArray' => $receiveArray,
+                        'givenArray' => $givenArray,
+                    ],
+                ];
+            }                
             return $this->sendJsonResponse($data);
         } catch (\Exception $e) {
             Log::error(
@@ -4718,7 +4687,7 @@ class ChatController extends Controller
      */
 
      public function sentTaskSummaryEmail(Request $request)
-    {
+     {
         try {
 
             $rules = [
@@ -4795,7 +4764,7 @@ class ChatController extends Controller
     }
 
 
-        /**
+    /**
      * @OA\Post(
      *     path="/api/v1/sent-task-done",
      *     summary="sent task done",
@@ -4846,7 +4815,7 @@ class ChatController extends Controller
      */
 
      public function sentTaskDone(Request $request)
-    {
+     {
         try {
 
             $rules = [
@@ -5463,6 +5432,7 @@ class ChatController extends Controller
      *     )
      * )
      */
+
     public function getUserDocuments(Request $request)
     {
         try {
@@ -5489,7 +5459,7 @@ class ChatController extends Controller
         }
     }
     
-      /**
+     /**
      * @OA\Post(
      *     path="/api/v1/message-task-notification",
      *     summary="Send notifications for message tasks",
@@ -5722,8 +5692,7 @@ class ChatController extends Controller
             ]);
             return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
         }
-    } 
-
+    }
 
     /**
      * @OA\Post(
@@ -5847,8 +5816,7 @@ class ChatController extends Controller
          }
      } 
 
-
-   /**
+    /**
     * @OA\Post(
     *     path="/api/v1/tasks/comments",
     *     summary="Add a comment to a task",
@@ -5924,7 +5892,7 @@ class ChatController extends Controller
 
 
 
-   /**
+     /**
      * @OA\Post(
      *     path="/api/v1/getTasks/comments",
      *     summary="Fetch all comments with pagination",
