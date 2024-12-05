@@ -1189,20 +1189,113 @@ class ProjectManagementController extends Controller
      *     ),
      * )
      */
+    // public function eventsList(Request $request)
+    // {
+    //     try {
+    //         $rules = [
+    //             'id' => 'required|integer|exists:users,id',
+    //         ];
+
+    //         $message = [
+    //             'id.required' => 'User ID is required.',
+    //             'id.integer' => 'User ID must be an integer.',
+    //             'id.exists' => 'The specified user does not exist.',
+    //         ];
+
+    //         $validator = Validator::make($request->all(), $rules, $message);
+    //         if ($validator->fails()) {
+    //             $data = [
+    //                 'status_code' => 400,
+    //                 'message' => $validator->errors()->first(),
+    //                 'data' => ""
+    //             ];
+    //             return $this->sendJsonResponse($data);
+    //         }
+    //         $user = new User();
+    //         $userData = $user->find($request->id);
+
+    //         $timezone = @$request->timezone ? $request->timezone : 'UTC';
+    //         $eventTitle = $request->filter;
+
+    //         $eventList = ProjectEvent::where('created_by', auth()->user()->id)
+    //                     ->when($eventTitle, function ($query, $eventTitle) {
+    //                         return $query->where('event_title', 'like', "%{$eventTitle}%");
+    //                     })
+    //                     ->get()
+    //                     ->map(function($event) use ($timezone) {
+    //                         $event->event_date = Carbon::parse($event->event_date)->setTimezone($timezone)->format('Y-m-d H:i:s');
+    //                         $event->event_time = Carbon::parse($event->event_time)->setTimezone($timezone)->format('h:i a');
+
+    //                         $event->event_image = @$event->event_image ?  $event->event_image : setAssetPath('assets/media/avatars/blank.png');
+
+    //                         $userList = [];
+    //                         if($event->users)
+    //                         {
+    //                             // Convert comma-separated string to array
+    //                             $userIds = explode(',', $event->users);
+
+    //                             // Get the current user's ID
+    //                             $currentUserId = auth()->user()->id;
+
+    //                             // Remove the current user's ID from the list of user IDs
+    //                             $userIds = array_filter($userIds, function($id) use ($currentUserId) {
+    //                                 return $id != $currentUserId;
+    //                             });
+
+    //                             // Get the user details based on the remaining user IDs
+    //                             $userList = User::whereIn('id', $userIds)->get(['id', 'first_name', 'last_name', 'country_code', 'mobile', 'profile'])
+    //                             ->map(function ($user) {
+    //                                 $user->profile = @$user->profile ? setAssetPath('user-profile/' . $user->profile) : setAssetPath('assets/media/avatars/blank.png');
+    //                                 return $user;
+    //                             });
+    //                         }
+
+    //                         // Assign the user array
+    //                         $event->usersArr = $userList;
+
+    //                         return $event;
+    //                     });
+            
+    //         $data = [
+    //             'status_code' => 200,
+    //             'message' => "Get Data Successfully!",
+    //             'data' => [
+    //                 'eventList' => $eventList,
+    //             ]
+    //         ];
+    //         return $this->sendJsonResponse($data);
+    //     } catch (\Exception $e) {
+    //         Log::error(
+    //             [
+    //                 'method' => __METHOD__,
+    //                 'error' => [
+    //                     'file' => $e->getFile(),
+    //                     'line' => $e->getLine(),
+    //                     'message' => $e->getMessage()
+    //                 ],
+    //                 'created_at' => date("Y-m-d H:i:s")
+    //             ]
+    //         );
+    //         return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
+    //     }
+    // }
+
+
     public function eventsList(Request $request)
     {
         try {
             $rules = [
                 'id' => 'required|integer|exists:users,id',
             ];
-
-            $message = [
+    
+            $messages = [
                 'id.required' => 'User ID is required.',
                 'id.integer' => 'User ID must be an integer.',
                 'id.exists' => 'The specified user does not exist.',
             ];
-
-            $validator = Validator::make($request->all(), $rules, $message);
+    
+            $validator = Validator::make($request->all(), $rules, $messages);
+    
             if ($validator->fails()) {
                 $data = [
                     'status_code' => 400,
@@ -1211,72 +1304,66 @@ class ProjectManagementController extends Controller
                 ];
                 return $this->sendJsonResponse($data);
             }
-            $user = new User();
-            $userData = $user->find($request->id);
-
-            $timezone = @$request->timezone ? $request->timezone : 'UTC';
+    
+            $timezone = $request->timezone ?? 'UTC';
             $eventTitle = $request->filter;
-
-            $eventList = ProjectEvent::where('created_by', auth()->user()->id)
-                        ->when($eventTitle, function ($query, $eventTitle) {
-                            return $query->where('event_title', 'like', "%{$eventTitle}%");
-                        })
-                        ->get()
-                        ->map(function($event) use ($timezone) {
-                            $event->event_date = Carbon::parse($event->event_date)->setTimezone($timezone)->format('Y-m-d H:i:s');
-                            $event->event_time = Carbon::parse($event->event_time)->setTimezone($timezone)->format('h:i a');
-
-                            $event->event_image = @$event->event_image ?  $event->event_image : setAssetPath('assets/media/avatars/blank.png');
-
-                            $userList = [];
-                            if($event->users)
-                            {
-                                // Convert comma-separated string to array
-                                $userIds = explode(',', $event->users);
-
-                                // Get the current user's ID
-                                $currentUserId = auth()->user()->id;
-
-                                // Remove the current user's ID from the list of user IDs
-                                $userIds = array_filter($userIds, function($id) use ($currentUserId) {
-                                    return $id != $currentUserId;
-                                });
-
-                                // Get the user details based on the remaining user IDs
-                                $userList = User::whereIn('id', $userIds)->get(['id', 'first_name', 'last_name', 'country_code', 'mobile', 'profile'])
-                                ->map(function ($user) {
-                                    $user->profile = @$user->profile ? setAssetPath('user-profile/' . $user->profile) : setAssetPath('assets/media/avatars/blank.png');
-                                    return $user;
-                                });
-                            }
-
-                            // Assign the user array
-                            $event->usersArr = $userList;
-
-                            return $event;
+            $currentUserId = auth()->user()->id;
+    
+            // Fetch events where the logged-in user is in the `users` column
+            $eventList = ProjectEvent::whereRaw("FIND_IN_SET(?, users)", [$currentUserId])
+                ->when($eventTitle, function ($query, $eventTitle) {
+                    return $query->where('event_title', 'like', "%{$eventTitle}%");
+                })
+                ->orderBy('id', 'desc') // Sort events by event_date in descending order
+                ->get()
+                ->map(function ($event) use ($timezone, $currentUserId) {
+                    $event->event_date = Carbon::parse($event->event_date)->setTimezone($timezone)->format('Y-m-d H:i:s');
+                    $event->event_time = Carbon::parse($event->event_time)->setTimezone($timezone)->format('h:i a');
+                    $event->event_image = $event->event_image ?: setAssetPath('assets/media/avatars/blank.png');
+    
+                    $userList = [];
+                    if ($event->users) {
+                        $userIds = explode(',', $event->users);
+    
+                        // Remove the current user's ID from the list
+                        $userIds = array_filter($userIds, function ($id) use ($currentUserId) {
+                            return $id != $currentUserId;
                         });
-            
+    
+                        // Fetch details of other users
+                        $userList = User::whereIn('id', $userIds)
+                            ->get(['id', 'first_name', 'last_name', 'country_code', 'mobile', 'profile'])
+                            ->map(function ($user) {
+                                $user->profile = $user->profile ? setAssetPath('user-profile/' . $user->profile) : setAssetPath('assets/media/avatars/blank.png');
+                                return $user;
+                            });
+                    }
+    
+                    $event->usersArr = $userList;
+    
+                    return $event;
+                });
+    
             $data = [
                 'status_code' => 200,
-                'message' => "Get Data Successfully!",
+                'message' => "Data retrieved successfully!",
                 'data' => [
                     'eventList' => $eventList,
                 ]
             ];
             return $this->sendJsonResponse($data);
+    
         } catch (\Exception $e) {
-            Log::error(
-                [
-                    'method' => __METHOD__,
-                    'error' => [
-                        'file' => $e->getFile(),
-                        'line' => $e->getLine(),
-                        'message' => $e->getMessage()
-                    ],
-                    'created_at' => date("Y-m-d H:i:s")
-                ]
-            );
-            return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => now()->toDateTimeString()
+            ]);
+            return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
         }
     }
 
