@@ -5966,4 +5966,117 @@ class ChatController extends Controller
 
         return response()->json(['success' => true, 'comments' => $comments]);
     }
+
+        /**
+     * @OA\Post(
+     *     path="/api/v1/image-to-pdf",
+     *     summary="Convert an image to a PDF file",
+     *     tags={"Documents"},
+     *     security={{"bearerAuth": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 @OA\Property(
+     *                     property="image",
+     *                     type="string",
+     *                     format="binary",
+     *                     description="Image file (jpg, png, jpeg)"
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="PDF generated successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="PDF generated successfully!"),
+     *             @OA\Property(property="pdf_url", type="string", example="http://your-domain/storage/pdfs/1672445389.pdf")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error"
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Internal server error"
+     *     )
+     * )
+     */
+    public function imageToPdf(Request $request)
+    {
+        try {
+            // Validate the image input
+            $request->validate([
+                'image' => 'required|image|mimes:jpg,png,jpeg',
+            ]);
+    
+            // If validation passes, print a debug message (remove in production)
+            \Log::info('Validation Passed');
+    
+            // Handle image upload
+            $uploadedImage = $request->file('image');
+            $imagePath = $uploadedImage->store('images', 'public');
+    
+            // Generate the full path to the image stored in the public directory
+            $imageUrl = public_path('' . $imagePath); // Full local path to the image
+          
+            // Check if the image exists
+            if (!file_exists($imageUrl)) {
+                throw new \Exception("Image not found at path: " . $imageUrl);
+            }
+
+            // Generate PDF content using the image with file:// protocol
+            $htmlContent = "
+            <html>
+                <body>
+                    <img src='file://" . $imageUrl . "' style='width:100%; height:auto;' />
+                </body>
+            </html>";
+    
+            // Generate PDF
+            $pdf = Pdf::loadHTML($htmlContent);
+            $pdfOutput = $pdf->output();
+    
+            // Save PDF to storage
+            $pdfPath = 'pdfs/' . time() . '.pdf';
+            Storage::put("public/{$pdfPath}", $pdfOutput);
+        
+            // Additional data for the response (example: image details)
+            $imageDetails = [
+                'original_image_path' => asset("/public/{$imagePath}"),
+                'image_size' => $uploadedImage->getSize(), // in bytes
+                'image_type' => $uploadedImage->getClientMimeType(), // MIME type
+                'uploaded_at' => now()->toDateTimeString(),
+            ];
+    
+            // Return response with the PDF URL and additional data
+            return response()->json([
+                'message' => 'PDF generated successfully!',
+                'pdf_url' => asset("storage/app/public/{$pdfPath}"),
+                'data' => $imageDetails, // Additional image details
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // If validation fails, return validation error
+            \Log::error('Validation failed: ' . json_encode($e->errors()));
+            return response()->json([
+                'status' => 'Failure',
+                'status_code' => 422,
+                'message' => 'Validation error',
+                'data' => $e->errors(),
+            ]);
+        } catch (\Exception $e) {
+            // If any other exception occurs, return the error message
+            \Log::error('Error generating PDF: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'Failure',
+                'status_code' => 500,
+                'message' => 'Internal server error',
+                'data' => $e->getMessage(),
+            ]);
+        }
+    
+    }
 }
