@@ -49,7 +49,10 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
             Route::post('/delete-chat-user', 'deleteChatUsers');
             Route::post('/deleted-user-list', 'deletedUserList');
             Route::post('/deleted-user-account', 'deletedUserAccount');
-            Route::post('/tasks/update', 'updateTask');            
+            Route::post('/tasks/update', 'updateTask');    
+            // Route::post('/update-task-details', 'updateTaskDetails');      
+            // Route::post('/update-task-details', 'updateTaskDetails');
+      
         });
         Route::controller(ChatController::class)->group(function () {
             Route::post('/text-message', 'textMessage');
@@ -86,7 +89,9 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
             Route::post('group/question-with-options', 'questionWithOptions'); 
             Route::post('group/select-option', 'selectOption'); 
             Route::get('group/votes/fetch', 'fetchVotes');     
-            Route::get('/meetings/{id}', 'getMeetingById');                 
+            Route::get('/meetings/{id}', 'getMeetingById');    
+            Route::post('/image-to-pdf',  'imageToPdf');
+             
         });
         Route::controller(ProjectManagementController::class)->group(function () {
             Route::post('/add-work-hours', 'addWorkHours');
