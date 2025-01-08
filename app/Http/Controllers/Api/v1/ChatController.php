@@ -5968,37 +5968,40 @@ class ChatController extends Controller
         return response()->json(['success' => true, 'comments' => $comments]);
     }
 
-        /**
+    /**
      * @OA\Post(
      *     path="/api/v1/image-to-pdf",
-     *     summary="Convert an image to a PDF file",
+     *     summary="Upload multiple images",
      *     tags={"Documents"},
      *     security={{"bearerAuth": {}}},
+     * 
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\MediaType(
      *             mediaType="multipart/form-data",
      *             @OA\Schema(
+     *                 type="object",
      *                 @OA\Property(
-     *                     property="image",
-     *                     type="string",
-     *                     format="binary",
-     *                     description="Image file (jpg, png, jpeg)"
+     *                     property="images[]",
+     *                     type="array",
+     *                     items=@OA\Items(type="file")
      *                 )
      *             )
      *         )
      *     ),
      *     @OA\Response(
      *         response=200,
-     *         description="PDF generated successfully",
+     *         description="Images uploaded successfully",
      *         @OA\JsonContent(
-     *             @OA\Property(property="message", type="string", example="PDF generated successfully!"),
-     *             @OA\Property(property="pdf_url", type="string", example="http://your-domain/storage/pdfs/1672445389.pdf")
+     *             @OA\Property(property="message", type="string", example="Images uploaded successfully"),
+     *             @OA\Property(property="files", type="array", 
+     *                 @OA\Items(type="string", example="images/filename.jpg")
+     *             )
      *         )
      *     ),
      *     @OA\Response(
-     *         response=422,
-     *         description="Validation error"
+     *         response=400,
+     *         description="Invalid file format"
      *     ),
      *     @OA\Response(
      *         response=500,
@@ -6006,78 +6009,66 @@ class ChatController extends Controller
      *     )
      * )
      */
-    public function imageToPdf(Request $request)
-    {
-        try {
-            // Validate the image input
-            $request->validate([
-                'image' => 'required|image|mimes:jpg,png,jpeg',
-            ]);
-    
-            // If validation passes, print a debug message (remove in production)
-            \Log::info('Validation Passed');
-    
-            // Handle image upload
-            $uploadedImage = $request->file('image');
-            $imagePath = $uploadedImage->store('images', 'public');
-    
-            // Generate the full path to the image stored in the public directory
-            $imageUrl = public_path('' . $imagePath); // Full local path to the image
-          
-            // Check if the image exists
-            if (!file_exists($imageUrl)) {
-                throw new \Exception("Image not found at path: " . $imageUrl);
-            }
 
-            // Generate PDF content using the image with file:// protocol
-            $htmlContent = "
-            <html>
-                <body>
-                    <img src='file://" . $imageUrl . "' style='width:100%; height:auto;' />
-                </body>
-            </html>";
-    
-            // Generate PDF
-            $pdf = Pdf::loadHTML($htmlContent);
-            $pdfOutput = $pdf->output();
-    
-            // Save PDF to storage
-            $pdfPath = 'pdfs/' . time() . '.pdf';
-            Storage::put("public/{$pdfPath}", $pdfOutput);
-        
-            // Additional data for the response (example: image details)
-            $imageDetails = [
-                'original_image_path' => asset("/public/{$imagePath}"),
-                'image_size' => $uploadedImage->getSize(), // in bytes
-                'image_type' => $uploadedImage->getClientMimeType(), // MIME type
-                'uploaded_at' => now()->toDateTimeString(),
-            ];
-    
-            // Return response with the PDF URL and additional data
-            return response()->json([
-                'message' => 'PDF generated successfully!',
-                'pdf_url' => asset("storage/app/public/{$pdfPath}"),
-                'data' => $imageDetails, // Additional image details
-            ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            // If validation fails, return validation error
-            \Log::error('Validation failed: ' . json_encode($e->errors()));
-            return response()->json([
-                'status' => 'Failure',
-                'status_code' => 422,
-                'message' => 'Validation error',
-                'data' => $e->errors(),
-            ]);
-        } catch (\Exception $e) {
-            // If any other exception occurs, return the error message
-            \Log::error('Error generating PDF: ' . $e->getMessage());
-            return response()->json([
-                'status' => 'Failure',
-                'status_code' => 500,
-                'message' => 'Internal server error',
-                'data' => $e->getMessage(),
-            ]);
-        }
-    
-    }
+     public function imageToPdf(Request $request)
+     {
+         try {
+             // Validate the request
+             $request->validate([
+                 'images' => 'required|array',
+                 'images.*' => 'image|mimes:jpeg,png,jpg|max:5120', // Max size 5MB per file
+             ]);
+ 
+             // Upload images and store paths
+             $uploadedImages = $request->file('images');
+             $imagePaths = [];
+ 
+             foreach ($uploadedImages as $key => $image) {
+                 $path = $image->store('images', 'public'); // Store in the public disk
+                 $imagePaths[] = [
+                     'url' => asset("/public/{$path}"), // URL that can be used in the PDF
+                     'path' => public_path("{$path}"), // Local path for debugging
+                     'name' => $image->getClientOriginalName(), // Original file name
+                 ];
+             }
+ 
+             // Generate PDF content
+             $htmlContent = '<html><body>';
+             foreach ($imagePaths as $index => $image) {
+                 $htmlContent .= '<div style="margin-bottom: 20px; text-align: center;">';
+                 // Use the URL directly in the img src
+                 $imageData = base64_encode(file_get_contents($image['path']));
+                 $htmlContent .= "<img src='data:image/png;base64,{$imageData} ' style='width:100%; height:auto; margin-bottom: 10px;' />";
+                 $htmlContent .= '</div>';
+             }
+             $htmlContent .= '</body></html>';
+ 
+             // Generate PDF
+             $pdf = Pdf::loadHTML($htmlContent);
+             $pdf->set_option('isHtml5ParserEnabled', true);
+             $pdf->set_option('DOMPDF_ENABLE_REMOTE', true); // Allow remote images
+ 
+             $pdfPath = 'pdfs/' . time() . '.pdf';
+             Storage::put("public/{$pdfPath}", $pdf->output());
+ 
+             // Return response
+             return response()->json([
+                 'status' => true,
+                 'message' => 'PDF generated successfully!',
+                 'pdf_url' => asset("public/storage/{$pdfPath}"),
+             ], 200);
+         } catch (\Illuminate\Validation\ValidationException $e) {
+             return response()->json([
+                 'status' => 'Failure',
+                 'message' => 'Validation error',
+                 'data' => $e->errors(),
+             ], 422);
+         } catch (\Exception $e) {
+             return response()->json([
+                 'status' => 'Failure',
+                 'message' => 'Internal server error',
+                 'data' => $e->getMessage(),
+             ], 500);
+         }
+     }
 }
