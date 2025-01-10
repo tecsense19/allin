@@ -30,17 +30,42 @@ class MessageTask extends Model
     protected $auditEvents = [
         'created',
         'updated',
-        'deleted'
+        'deleted',
     ];
 
     public function message()
     {
-        return $this->belongsTo(Message::class);
+        return $this->belongsTo(Message::class, 'message_id', 'id');
     }
 
     public function chats()
     {
         return $this->hasMany(MessageTaskChat::class, 'task_id');
     }
+
+    public function getChats()
+    {
+        return $this->hasMany(MessageTaskChatComment::class, 'task_chat_id');
+    }
+
+    public function createdByUser()
+    {
+        return $this->belongsTo(User::class, 'created_by', 'id');
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'task_checked_users');
+    }
+
+    public function getUserProfile()
+    {
+        return $this->belongsTo(User::class, 'profile','id');
+    }
     
+    public function getUserDetails()
+    {
+        return $this->belongsTo(User::class, 'user_id'); // Adjust 'user_id' to your actual foreign key
+    }
+
 }

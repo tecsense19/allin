@@ -5974,7 +5974,7 @@ class ChatController extends Controller
      *     summary="Upload multiple images",
      *     tags={"Documents"},
      *     security={{"bearerAuth": {}}},
-     * 
+     *
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\MediaType(
@@ -5994,7 +5994,7 @@ class ChatController extends Controller
      *         description="Images uploaded successfully",
      *         @OA\JsonContent(
      *             @OA\Property(property="message", type="string", example="Images uploaded successfully"),
-     *             @OA\Property(property="files", type="array", 
+     *             @OA\Property(property="files", type="array",
      *                 @OA\Items(type="string", example="images/filename.jpg")
      *             )
      *         )
@@ -6021,13 +6021,30 @@ class ChatController extends Controller
  
              // Upload images and store paths
              $uploadedImages = $request->file('images');
+             $imageDirectory = public_path('images');
+             if (!file_exists($imageDirectory)) {
+                 mkdir($imageDirectory, 0755, true); // Create the directory if it doesn't exist
+             }
+ 
+             $uploadedImages = $request->file('images');
              $imagePaths = [];
  
              foreach ($uploadedImages as $key => $image) {
-                 $path = $image->store('images', 'public'); // Store in the public disk
+                 $imageHash = md5_file($image->getRealPath());
+ 
+                 // Define a unique file name based on the hash
+                 $filename = $imageHash . '.' . $image->getClientOriginalExtension();
+                 $filePath = $imageDirectory . '/' . $filename;
+     
+                 // Check if the image already exists
+                 if (!file_exists($filePath)) {
+                     // Move the image to the target directory if it doesn't exist
+                     $image->move($imageDirectory, $filename);
+                 }
+     
                  $imagePaths[] = [
-                     'url' => asset("/public/{$path}"), // URL that can be used in the PDF
-                     'path' => public_path("{$path}"), // Local path for debugging
+                     'url' => asset("images/{$filename}"), // URL to be used in the PDF
+                     'path' => $filePath, // Local path for file processing
                      'name' => $image->getClientOriginalName(), // Original file name
                  ];
              }
@@ -6050,6 +6067,13 @@ class ChatController extends Controller
  
              $pdfPath = 'pdfs/' . time() . '.pdf';
              Storage::put("public/{$pdfPath}", $pdf->output());
+ 
+             // Delete images from the folder
+             foreach ($imagePaths as $image) {
+                 if (file_exists($image['path'])) {
+                     unlink($image['path']); // Delete the image file
+                 }
+             }
  
              // Return response
              return response()->json([

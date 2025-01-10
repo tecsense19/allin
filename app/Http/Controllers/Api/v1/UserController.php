@@ -24,6 +24,7 @@ use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 use PHPOpenSourceSaver\JWTAuth\Exceptions\JWTException;
 use Twilio\Exceptions\TwilioException;
 use Twilio\Rest\Client;
+use Auth;
 
 class UserController extends Controller
 {
@@ -2840,5 +2841,232 @@ class UserController extends Controller
             );
             return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
         }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/v1/update-task-details",
+     *     summary="Update task details",
+     *     description="Updates the details of a specific task assigned to the authenticated user.",
+     *     operationId="updateTaskDetails",
+     *     tags={"User"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="query",
+     *         example="2",
+     *         description="Enter taskId",
+     *         required=true,
+     *         @OA\Schema(
+     *             type="number",
+     *         )
+     *     ),
+     *      @OA\Parameter(
+     *         name="message_id",
+     *         in="query",
+     *         example="1",
+     *         description="Enter messageId",
+     *         required=true,
+     *         @OA\Schema(
+     *             type="number",
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Task updated successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status", type="string", example="Success"),
+     *             @OA\Property(property="message", type="string", example="Task updated successfully"),
+     *             @OA\Property(property="data", type="object",
+     *                 @OA\Property(property="task_id", type="integer", example=1),
+     *                 @OA\Property(property="task_name", type="string", example="Sample Task"),
+     *                 @OA\Property(property="task_checked_users", type="string", example="1,2,3"),
+     *                 @OA\Property(property="read_status", type="string", example="1,2,3"),
+     *                 @OA\Property(property="updated_at", type="string", format="date-time", example="2025-01-08T10:18:02")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Task not found",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status", type="string", example="Failure"),
+     *             @OA\Property(property="message", type="string", example="Task not found")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="User not assigned to this task",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status", type="string", example="Failure"),
+     *             @OA\Property(property="message", type="string", example="User not assigned to this task")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="An error occurred while updating the task",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status", type="string", example="Failure"),
+     *             @OA\Property(property="message", type="string", example="An error occurred while updating the task"),
+     *             @OA\Property(property="error", type="string", example="Detailed error message")
+     *         )
+     *     )
+     * )
+     */
+    public function updateTaskDetails(Request $request)
+    {
+        try {
+            // Validate the input data
+            $request->validate([
+                'id' => 'required',
+                'message_id' => 'required',
+            ]);
+
+            $taskId = $request->input('id');
+            $messageId = $request->input('message_id');
+            $userId = Auth::id();
+
+            // Fetch the task and check existence
+            $task = MessageTask::find($taskId);
+            if (!$task || !$task->where('message_id', $messageId)->exists()) {
+                return response()->json(['status' => 'Failure', 'message' => 'Task or Message not found'], 404);
+            }
+
+            // Check if the user is assigned to the task
+            $assignedUsers = explode(',', $task->users);
+            if (!in_array($userId, $assignedUsers)) {
+                return response()->json(['status' => 'Failure', 'message' => 'User not assigned to this task'], 403);
+            }
+
+            // Update read_status and task_checked_users
+            $createdByUserId = $task->created_by;
+            $currentUserId = Auth::id();
+
+            $task->read_status = $this->updateUserList($task->read_status, $currentUserId, $createdByUserId);
+            $task->task_checked_users = $this->updateUserList($task->task_checked_users, $currentUserId, $createdByUserId);
+
+            // Update task_checked
+            $assignedUserIds = array_diff($assignedUsers, [$createdByUserId]);
+            $currentCheckedUsers = explode(',', $task->task_checked_users);
+            $task->task_checked = count($assignedUserIds) == count($currentCheckedUsers) ? 1 : 0;
+
+            // Save the updated task
+            $task->timestamps = false;
+            $task->fill($request->except(['id', 'message_id', 'updated_by']));
+            unset($task->updated_by);
+            $task->save();
+
+            // Prepare task data response
+            $taskData = $this->prepareTaskData($messageId);
+            $messageDetails = $this->prepareMessageDetails($task, $messageId, $taskData);
+
+            return response()->json(['status' => 'Success', 'message' => 'Task updated successfully', 'data' => $messageDetails]);
+        } catch (\Exception $e) {
+            \Log::error('Error updating Task: ' . $e->getMessage());
+            return response()->json(['status' => 'Failure', 'message' => 'An error occurred while updating the task', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    private function updateUserList($existingList, $currentUserId, $createdByUserId)
+    {
+        $userList = $existingList ? explode(',', $existingList) : [];
+        if ($currentUserId !== $createdByUserId) {
+            $userList[] = $currentUserId;
+        }
+        return implode(',', array_unique($userList));
+    }
+
+    private function prepareTaskData($messageId)
+    {
+        $tasks = MessageTask::where('message_id', $messageId)->get();
+        return $tasks->map(function ($task) {
+            $comments = $task->getChats->where('message_id', $task->message_id)->map(function ($comment) {
+                return [
+                    'id' => $comment->id,
+                    'task_chat_id' => $comment->task_chat_id,
+                    'message_id' => $comment->message_id,
+                    'user' => $this->formatUser($comment->user),
+                    'comment' => $comment->comment,
+                    'created_at' => $comment->created_at->toDateTimeString(),
+                ];
+            });
+
+            $profiles = User::whereIn('id', explode(',', $task->task_checked_users))->get()->map(function ($user) {
+                return ['id' => $user->id, 'profile_url' => $user->profile ? asset('/public/user-profile/' . $user->profile) : null];
+            });
+
+            return [
+                'id' => $task->id,
+                'message_id' => $task->message_id,
+                'checkbox' => $task->checkbox,
+                'task_checked' => $task->task_checked,
+                'task_checked_users' => $task->task_checked_users,
+                'profiles' => $profiles,
+                'comments' => $comments,
+            ];
+        })->toArray();
+    }
+
+    private function prepareMessageDetails($task, $messageId, $taskData)
+    {
+        $getMessageName = MessageTask::with(['message', 'createdByUser:id,role'])->where('message_id', $messageId)->first();
+
+        if (!$getMessageName) {
+            return null;
+        }
+
+        $allTasksCompleted = $task->getUserDetails ? $task->getUserDetails->tasks->every(function ($task) {
+            return $task->task_checked;
+        }) : false;
+
+        $idsArray = explode(',', $task->users);
+        // Prepare complete_users array
+        $allUsers = [];
+        foreach ($idsArray as $users) {
+
+            // Skip the created_by user
+            if ($users == $task->created_by) {
+                continue;
+            }
+            $user = User::find($users); // Assuming you have a User model
+            if ($user) {
+                $allUsers[] = [
+                    'id' => $user->id,
+                    'first_name' => $user->first_name,
+                    'last_name' => $user->last_name,
+                    'country_code' => $user->country_code,
+                    'mobile' => $user->mobile,
+                    'profile' => asset('/public/user-prfile/' . $user->profile) ?? '', // Use the profile attribute or a placeholder
+                    'task_ids' => $task->id,
+                    'task_done' => $allTasksCompleted,
+                ];
+            }
+        }
+
+        return [
+            'messageId' => $messageId,
+            'messageType' => $getMessageName->message->message_type,
+            'attachmentType' => $getMessageName->message->attachment_type,
+            'date' => $getMessageName->message->date,
+            'time' => $getMessageName->message->time,
+            'sentBy' => $getMessageName->createdByUser->role,
+            'messageDetails' => [
+                'task_name' => $task->task_name,
+                'date' => Carbon::parse($task->created_at)->format('Y-m-d H:i:s'),
+                'time' => Carbon::parse($task->created_at)->format('H:i A'),
+                'users' => $allUsers,
+                'tasks' => $taskData,
+            ],
+        ];
+    }
+
+    private function formatUser($user)
+    {
+        return $user ? [
+            'id' => $user->id,
+            'first_name' => $user->first_name,
+            'last_name' => $user->last_name,
+            'profile_picture' => $user->profile ? asset('/public/user-profile/' . $user->profile) : null,
+        ] : null;
     }
 }
