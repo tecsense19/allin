@@ -5,6 +5,8 @@ use App\Http\Controllers\Api\v1\GroupController;
 use App\Http\Controllers\Api\v1\OtpController;
 use App\Http\Controllers\Api\v1\ProjectManagementController;
 use App\Http\Controllers\Api\v1\UserController;
+use App\Http\Controllers\Api\v1\SimpleTasksController;
+use App\Http\Controllers\Api\v1\DailyTaskController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -115,6 +117,12 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
             Route::post('/add-group-user', 'addGroupUser');
             Route::post('/remove-group-user', 'removeGroupUser');
             Route::delete('/group-delete', 'deleteGroup');            
+        });
+        Route::controller(SimpleTasksController::class)->group(function () {
+            Route::post('/simple-task-create-or-update', 'simpleTaskCreateOrUpdate');
+        });
+        Route::controller(DailyTaskController::class)->group(function () {
+            Route::post('/daily-task-create-or-update', 'dailyTaskCreateOrUpdate');
         });
     });
 });

@@ -4436,7 +4436,7 @@ class ChatController extends Controller
     
             $baseQuery = MessageSenderReceiver::with(['message', 'sender', 'receiver'])
                 ->whereHas('message', function ($query) {
-                    $query->where('message_type', 'Task');
+                    $query->whereIn('message_type', array('Task', 'SimpleTask'));
                 });
     
             // Apply filter for "Receive" type to exclude tasks created by the current user
@@ -4464,12 +4464,15 @@ class ChatController extends Controller
             
                         // Get the task name (assuming the task name is stored in 'message' or a related field)
                         $taskName = $taskname->task_name ?? 'No Task Name';
+
+                        $getMessage = Message::where('id', $messageSenderReceiver->message_id)->first();
     
                         // Return unique message_id data with task details
                         return [
                             'unique_id' => $index + 1, // Unique ID for each entry
                             'user_id' => isset($messageSenderReceiver->created_by) ? $messageSenderReceiver->created_by : '',
                             'message_id' => $messageSenderReceiver->message_id, // Unique message_id
+                            'message_type' => $getMessage ? $getMessage->message_type : '',
                             'task_name' => $taskName,
                             'taskCreatorName' => $creatorName,
                             'taskCreatorProfile' => $creatorProfileUrl,
@@ -4520,11 +4523,13 @@ class ChatController extends Controller
                         // Get the task name (assuming the task name is stored in 'message' or a related field)
                         $taskName = $taskname->task_name ?? 'No Task Name';
                         
+                        $getMessage = Message::where('id', $messageSenderReceiver->message_id)->first();
                         // Return unique message_id data with task details
                         return [
                             'unique_id' => $index + 1, // Unique ID for each entry
                             'user_id' => isset($messageSenderReceiver->receiver_id) ? $messageSenderReceiver->receiver_id : '',
                             'message_id' => $messageSenderReceiver->message_id,
+                            'message_type' => $getMessage ? $getMessage->message_type : '',
                             'task_name' => $taskname->task_name ?? 'No Task Name',
                             'taskReceiverName' => $receiverName,
                             'taskReceiverProfile' => $receiverProfileUrl,
@@ -4551,7 +4556,7 @@ class ChatController extends Controller
                     ];
             } elseif ($type == 'All Task') {
            
-                $receiveList = (clone $baseQuery)
+            $receiveList = (clone $baseQuery)
                 ->where('receiver_id', $loginUser)
                 ->where('sender_id', '!=', $loginUser)
                 ->get();
@@ -4570,6 +4575,7 @@ class ChatController extends Controller
 
         
                 // Get total tasks and completed tasks
+                $getMessage = Message::where('id', $messageSenderReceiver->message_id)->first();
                 $totalTasks = MessageTask::where('message_id', $messageSenderReceiver->message_id)->count();
                 $taskname = MessageTask::where('message_id', $messageSenderReceiver->message_id)->first();
                 $completedTasks = MessageTask::where('message_id', $messageSenderReceiver->message_id)
@@ -4580,6 +4586,7 @@ class ChatController extends Controller
                     'unique_id' => $index + 1, // Unique ID for each entry
                     'user_id' => $userId,
                     'message_id' => $messageSenderReceiver->message_id,
+                    'message_type' => $getMessage ? $getMessage->message_type : '',
                     'task_name' => $taskname->task_name ?? 'No Task Name',
                     'userName' => $userName,
                     'userProfile' => $userProfileUrl,

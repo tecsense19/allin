@@ -2946,9 +2946,9 @@ class UserController extends Controller
             $task->task_checked_users = $this->updateUserList($task->task_checked_users, $currentUserId, $createdByUserId);
 
             // Update task_checked
-            $assignedUserIds = array_diff($assignedUsers, [$createdByUserId]);
+            // $assignedUserIds = array_diff($assignedUsers, [$createdByUserId]);
             $currentCheckedUsers = explode(',', $task->task_checked_users);
-            $task->task_checked = count($assignedUserIds) == count($currentCheckedUsers) ? 1 : 0;
+            $task->task_checked = count($assignedUsers) == count($currentCheckedUsers) ? 1 : 0;
 
             // Save the updated task
             $task->timestamps = false;
@@ -2970,9 +2970,9 @@ class UserController extends Controller
     private function updateUserList($existingList, $currentUserId, $createdByUserId)
     {
         $userList = $existingList ? explode(',', $existingList) : [];
-        if ($currentUserId !== $createdByUserId) {
+        // if ($currentUserId !== $createdByUserId) {
             $userList[] = $currentUserId;
-        }
+        // }
         return implode(',', array_unique($userList));
     }
 

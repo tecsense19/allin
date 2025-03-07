@@ -17,6 +17,7 @@ class MessageTask extends Model
         'message_id',
         'task_name',
         'task_description',
+        'priority_task',
         'task_checked',
         'task_checked_users',
         'checkbox',
