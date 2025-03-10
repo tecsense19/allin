@@ -1184,7 +1184,7 @@ class UserController extends Controller
                     'attachmentType' => $message->message->attachment_type,
                     'date' => @$request->timezone ? Carbon::parse($message->message->created_at)->setTimezone($request->timezone)->format('Y-m-d H:i:s') : Carbon::parse($message->message->created_at)->format('Y-m-d H:i:s'),
                     'time' => @$request->timezone ? Carbon::parse($message->message->updated_at)->setTimezone($request->timezone)->format('h:i a') : Carbon::parse($message->message->updated_at)->format('h:i a'),
-                    'timeZone' => $message->message->updated_at,
+                    'timeZone' => @$request->timezone ? Carbon::parse($message->message->updated_at)->setTimezone($request->timezone)->format('Y-m-d\TH:i:s.u\Z') : Carbon::parse($message->message->updated_at)->format('Y-m-d\TH:i:s.u\Z'),
                     'sentBy' => ($message->sender_id == $loginUser) ? 'loginUser' : 'User',
                     'messageDetails' => $messageDetails,
                 ];
