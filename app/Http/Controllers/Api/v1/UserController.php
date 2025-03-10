@@ -1034,14 +1034,15 @@ class UserController extends Controller
                     case 'Meeting':
                         $messageDetails = $message->message->meeting;
                         break;
-                    case 'Task':                                              
+                    case 'Task':
+                    case 'SimpleTask':
                         $taskDetails = DB::table('message_task')
-                                ->select('id', 'message_id', 'task_name', 'users', 'checkbox', 'task_checked', 'task_checked_users')
+                                ->select('id', 'message_id', 'task_name', 'users', 'checkbox', 'task_checked', 'task_checked_users', 'priority_task')
                                 ->where('message_id', $message->message->id)
                                 ->whereNull('deleted_at') // Ensure to get only not deleted rows
                                 ->get();
                             $taskDetails_task = DB::table('message_task')
-                                ->select('id', 'message_id', 'task_name', 'users','checkbox', 'task_checked', 'task_checked_users')
+                                ->select('id', 'message_id', 'task_name', 'users','checkbox', 'task_checked', 'task_checked_users', 'priority_task')
                                 ->where('message_id', $message->message->id)
                                 ->first();                            
                             // Prepare the messageDetails array with task information
@@ -1149,6 +1150,7 @@ class UserController extends Controller
                                             'task_checked_users' => $task->task_checked_users,
                                             'profiles' => $profiles, // Attach profiles of users who checked the task
                                             'comments' => $comments, // Attach task comments
+                                            'priority_task' => $task->priority_task, // Attach task comments
                                         ];
                                     })->toArray(), // Convert to array if needed
                                 ];                                                  
@@ -1182,6 +1184,7 @@ class UserController extends Controller
                     'attachmentType' => $message->message->attachment_type,
                     'date' => @$request->timezone ? Carbon::parse($message->message->created_at)->setTimezone($request->timezone)->format('Y-m-d H:i:s') : Carbon::parse($message->message->created_at)->format('Y-m-d H:i:s'),
                     'time' => @$request->timezone ? Carbon::parse($message->message->updated_at)->setTimezone($request->timezone)->format('h:i a') : Carbon::parse($message->message->updated_at)->format('h:i a'),
+                    'timeZone' => $message->message->updated_at,
                     'sentBy' => ($message->sender_id == $loginUser) ? 'loginUser' : 'User',
                     'messageDetails' => $messageDetails,
                 ];

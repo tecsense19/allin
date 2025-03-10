@@ -159,8 +159,8 @@ class SimpleTasksController extends Controller
             $msg = Message::firstOrNew(['id' => $request->message_id]);
             $msg->message_type = $request->message_type;
             $msg->status = "Unread";
-            $msg->date = $request->task_date ? Carbon::parse($request->task_date)->setTimezone($request->timezone) : ""; // Save date
-            $msg->time = $request->task_time ? Carbon::parse($request->task_time)->setTimezone($request->timezone) : ""; // Save time
+            $msg->date = $request->task_date; // Save date
+            $msg->time = $request->task_time; // Save time
             $msg->save();
     
             $receiverIdsArray = explode(',', $request->users);
