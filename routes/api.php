@@ -69,6 +69,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
             Route::post('/clear-message', 'clearMessage');
             Route::post('/export-chat', 'exportChat');
             Route::post('/task-chat', 'taskChat');
+            Route::post('/get-single-message', 'getSingleMessage');
             Route::post('/add-reminder', 'addReminder');
             Route::post('/forward-message', 'forwardMessage');
             Route::post('/message-contact', 'contactDetails');

@@ -2452,6 +2452,12 @@ class UserController extends Controller
      *                     description="Profile Image"
      *                 ),
      *                 @OA\Property(
+     *                     property="website_url",
+     *                     type="string",
+     *                     example="",
+     *                     description="Enter Website Url"
+     *                 ),
+     *                 @OA\Property(
      *                     property="cover_image",
      *                     type="file",
      *                     description="Cover Image"
@@ -2620,6 +2626,7 @@ class UserController extends Controller
             $user->cover_image = $coverImageName;
             $user->title = @$request->title ? $request->title : NULL;
             $user->description = @$request->description ? $request->description : NULL;
+            $user->website_url = @$request->website_url ? $request->website_url : NULL;
             $user->instagram_profile_url = @$request->instagram_profile_url ? $request->instagram_profile_url : NULL;
             $user->facebook_profile_url = @$request->facebook_profile_url ? $request->facebook_profile_url : NULL;
             $user->twitter_profile_url = @$request->twitter_profile_url ? $request->twitter_profile_url : NULL;
