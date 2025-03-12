@@ -1036,6 +1036,7 @@ class UserController extends Controller
                         break;
                     case 'Task':
                     case 'SimpleTask':
+                    case 'DailyTask':
                         $taskDetails = DB::table('message_task')
                                 ->select('id', 'message_id', 'task_name', 'users', 'checkbox', 'task_checked', 'task_checked_users', 'priority_task')
                                 ->where('message_id', $message->message->id)

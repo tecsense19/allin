@@ -4441,252 +4441,380 @@ class ChatController extends Controller
             $type = $request->type;
             $timezone = $request->timezone;
             $loginUser = auth()->user()->id;
-    
+
             $baseQuery = MessageSenderReceiver::with(['message', 'sender', 'receiver'])
-                ->whereHas('message', function ($query) {
-                    $query->whereIn('message_type', array('Task', 'SimpleTask'));
-                });
-    
-            // Apply filter for "Receive" type to exclude tasks created by the current user
+                                                ->whereHas('message', function ($query) {
+                                                    $query->whereIn('message_type', ['Task', 'SimpleTask', 'DailyTask']);
+                                                });
+            $userList = [];
             if ($type == 'Receive') {
                 $userList = (clone $baseQuery)
-                    ->where('receiver_id', $loginUser)
-                    ->where('sender_id', '!=', $loginUser) // Exclude tasks created by the user
-                    ->distinct()
-                    ->get(['message_id']);
-
-                $result = $userList->map(function ($messageSenderReceiver, $index ) use ($loginUser, $request) {
-                    $sender = $messageSenderReceiver->sender;
-                    $receiver = $messageSenderReceiver->receiver;
-        
-                    // Get total tasks and completed tasks
-                    $totalTasks = MessageTask::where('message_id', $messageSenderReceiver->message_id)->count();
-                    $taskname = MessageTask::where('message_id', $messageSenderReceiver->message_id)->first();
-                    $completedTasks = MessageTask::where('message_id', $messageSenderReceiver->message_id)
-                        ->whereRaw('FIND_IN_SET(?, task_checked_users)', [$loginUser])
-                        ->count();
-                        
-                        // Fetch the task creator profile and name
-                    $creator = User::find($messageSenderReceiver->created_by);
-                    $creatorProfileUrl = !empty($creator->profile) ? setAssetPath('user-profile/' . $creator->profile) : setAssetPath('assets/media/avatars/blank.png');
-                    $creatorName = $creator ? $creator->first_name . ' ' . $creator->last_name : 'Unknown';
-        
-                    // Get the task name (assuming the task name is stored in 'message' or a related field)
-                    $taskName = $taskname->task_name ?? 'No Task Name';
-
-                    $getMessage = Message::where('id', $messageSenderReceiver->message_id)->first();
-
-                    $profiles = [];
-                    $taskUsers = array_filter(explode(',', $taskname->users)); // Remove empty values
-                    
-                    // Ensure all values are integers
-                    $taskUsers = array_map('intval', $taskUsers);
-                    
-                    // Fetch and process users only if taskUsers is not empty
-                    if (!empty($taskUsers)) {
-                        $profiles = User::whereIn('id', $taskUsers)
-                            ->get(['id', 'profile', 'first_name', 'last_name'])
-                            ->map(function ($user) {
-                                $user->profile = $user->profile
-                                    ? setAssetPath('user-profile/' . $user->profile)
-                                    : setAssetPath('assets/media/avatars/blank.png');
-                                $user->name = "{$user->first_name} {$user->last_name}";
-                                return $user;
-                            });
-                    }
-
-                    // Return unique message_id data with task details
-                    return [
-                        'unique_id' => $index + 1, // Unique ID for each entry
-                        'user_id' => isset($messageSenderReceiver->created_by) ? $messageSenderReceiver->created_by : '',
-                        'message_id' => $messageSenderReceiver->message_id, // Unique message_id
-                        'message_type' => $getMessage ? $getMessage->message_type : '',
-                        'task_name' => $taskName,
-                        'taskCreatorName' => $creatorName,
-                        'taskCreatorProfile' => $creatorProfileUrl,
-                        'date' => @$request->timezone ? Carbon::parse($getMessage->created_at)->setTimezone($request->timezone)->format('Y-m-d H:i:s') : Carbon::parse($getMessage->created_at)->format('Y-m-d H:i:s'),
-                        'time' => @$request->timezone ? Carbon::parse($getMessage->created_at)->setTimezone($request->timezone)->format('h:i a') : Carbon::parse($getMessage->created_at)->format('h:i a'),
-                        'timeZone' => @$request->timezone ? Carbon::parse($getMessage->created_at)->setTimezone($request->timezone)->format('Y-m-d\TH:i:s.u\Z') : Carbon::parse($getMessage->created_at)->format('Y-m-d\TH:i:s.u\Z'),
-                        'taskStatus' => $messageSenderReceiver->updated_by == 1, // Task status (completed or not)
-                        'totalTasks' => $totalTasks,
-                        'completedTasks' => $completedTasks,
-                        'priority_task' => $taskname->priority_task,
-                        'profiles' => $profiles,
-                        'task_checked_users' => $taskname->task_checked_users
-                    ];
-                });
-        
-                // Ensure unique message_id results (filter out duplicates)
-                $uniqueResult = $result
-                                ->filter() // Remove null or empty entries
-                                ->unique('message_id') // Ensure unique entries by message_id
-                                ->sortByDesc('message_id') // Sort by message_id in descending order
-                                ->sortBy(fn($item) => $item['completedTasks'] > 0) // Prioritize completedTasks = 0
-                                ->values(); // Reset keys to be sequential    
-                $data = [
-                    'status_code' => 200,
-                    'message' => "Task User List Get Successfully!",
-                    'data' => [
-                        'userList' => $uniqueResult
-                    ]
-                ];
-            } elseif ($type == 'Given') {           
-                $userList = (clone $baseQuery)                    
-                    ->where('sender_id', $loginUser)
-                    ->where('receiver_id', '!=', $loginUser)
-                    ->distinct()
-                    ->get(['message_id']);
-
-                $result = $userList->map(function ($messageSenderReceiver,$index) use ($loginUser, $request) {
-                    $sender = $messageSenderReceiver->sender;
-                    $receiver = $messageSenderReceiver->receiver;
-        
-                    // Get total tasks and completed tasks
-                    $totalTasks = MessageTask::where('message_id', $messageSenderReceiver->message_id)->count();
-                    $taskname = MessageTask::where('message_id', $messageSenderReceiver->message_id)->first();
-                    $completedTasks = MessageTask::where('message_id', $messageSenderReceiver->message_id)
-                        ->whereRaw('FIND_IN_SET(?, task_checked_users)', [$messageSenderReceiver->receiver_id])
-                        ->count();
-                        
-                        // Fetch the task creator profile and name
-                        $receiver = User::find($messageSenderReceiver->receiver_id);
-                        $receiverProfileUrl = !empty($receiver->profile) ? setAssetPath('user-profile/' . $receiver->profile) : setAssetPath('assets/media/avatars/blank.png');
-                        $receiverName = $receiver ? $receiver->first_name . ' ' . $receiver->last_name : 'Unknown';
-        
-                    // Get the task name (assuming the task name is stored in 'message' or a related field)
-                    $taskName = $taskname->task_name ?? 'No Task Name';
-                    
-                    $getMessage = Message::where('id', $messageSenderReceiver->message_id)->first();
-
-                    $profiles = [];
-                    $taskUsers = array_filter(explode(',', $taskname->users)); // Remove empty values
-                    
-                    // Ensure all values are integers
-                    $taskUsers = array_map('intval', $taskUsers);
-                    
-                    // Fetch and process users only if taskUsers is not empty
-                    if (!empty($taskUsers)) {
-                        $profiles = User::whereIn('id', $taskUsers)
-                            ->get(['id', 'profile', 'first_name', 'last_name'])
-                            ->map(function ($user) {
-                                $user->profile = $user->profile
-                                    ? setAssetPath('user-profile/' . $user->profile)
-                                    : setAssetPath('assets/media/avatars/blank.png');
-                                $user->name = "{$user->first_name} {$user->last_name}";
-                                return $user;
-                            });
-                    }
-                    // Return unique message_id data with task details
-                    return [
-                        'unique_id' => $index + 1, // Unique ID for each entry
-                        'user_id' => isset($messageSenderReceiver->receiver_id) ? $messageSenderReceiver->receiver_id : '',
-                        'message_id' => $messageSenderReceiver->message_id,
-                        'inner_task_id' => $taskname->id,
-                        'message_type' => $getMessage ? $getMessage->message_type : '',
-                        'task_name' => $taskname->task_name ?? 'No Task Name',
-                        'taskReceiverName' => $receiverName,
-                        'taskReceiverProfile' => $receiverProfileUrl,
-                        'date' => @$request->timezone ? Carbon::parse($getMessage->created_at)->setTimezone($request->timezone)->format('Y-m-d H:i:s') : Carbon::parse($getMessage->created_at)->format('Y-m-d H:i:s'),
-                        'time' => @$request->timezone ? Carbon::parse($getMessage->created_at)->setTimezone($request->timezone)->format('h:i a') : Carbon::parse($getMessage->created_at)->format('h:i a'),
-                        'timeZone' => @$request->timezone ? Carbon::parse($getMessage->created_at)->setTimezone($request->timezone)->format('Y-m-d\TH:i:s.u\Z') : Carbon::parse($getMessage->created_at)->format('Y-m-d\TH:i:s.u\Z'),
-                        'taskStatus' => $messageSenderReceiver->updated_by == 1,
-                        'totalTasks' => $totalTasks,
-                        'completedTasks' => $completedTasks,
-                        'priority_task' => $taskname->priority_task,
-                        'profiles' => $profiles,
-                        'task_checked_users' => $taskname->task_checked_users
-                    ];
-                });
-        
-                // Ensure unique message_id results (filter out duplicates)
-                $uniqueResult = $result
-                                ->filter() // Remove null or empty entries
-                                // ->unique('message_id') // Ensure unique entries by message_id
-                                ->sortByDesc('message_id') // Sort by message_id in descending order
-                                ->sortBy(fn($item) => $item['completedTasks'] > 0) // Prioritize completedTasks = 0
-                                ->values(); // Reset keys to be sequential    
-                $data = [
-                    'status_code' => 200,
-                    'message' => "Task User List Get Successfully!",
-                    'data' => [
-                        'userList' => $uniqueResult
-                    ]
-                ];
-            } elseif ($type == 'All Task') {
-           
-                $receiveList = (clone $baseQuery)
-                    ->where('receiver_id', $loginUser)
-                    ->where('sender_id', '!=', $loginUser)
-                    ->distinct()
-                    ->get(['message_id']);
-            
-                $givenList = (clone $baseQuery)
-                    ->where('sender_id', $loginUser)
-                    ->where('receiver_id', '!=', $loginUser)
-                    ->distinct()
-                    ->get(['message_id']);
-            
-                $combinedResult = $receiveList->merge($givenList)->map(function ($messageSenderReceiver,$index) use ($loginUser, $request) {
-                    $user = User::find($messageSenderReceiver->created_by ?? $messageSenderReceiver->receiver_id);
-                    $userProfileUrl = !empty($user->profile) ? setAssetPath('user-profile/' . $user->profile) : setAssetPath('assets/media/avatars/blank.png');
-                    $userName = $user ? $user->first_name . ' ' . $user->last_name : 'Unknown';
-                    $isGivenTask = $messageSenderReceiver->sender_id == $loginUser;
-                    $userId = $isGivenTask ? $messageSenderReceiver->receiver_id : $messageSenderReceiver->created_by;
-
-            
-                    // Get total tasks and completed tasks
-                    $getMessage = Message::where('id', $messageSenderReceiver->message_id)->first();
-                    $totalTasks = MessageTask::where('message_id', $messageSenderReceiver->message_id)->count();
-                    $taskname = MessageTask::where('message_id', $messageSenderReceiver->message_id)->first();
-                    $completedTasks = MessageTask::where('message_id', $messageSenderReceiver->message_id)
-                        ->whereRaw('FIND_IN_SET(?, task_checked_users)', [$loginUser])
-                        ->count();
-
-                    $profiles = [];
-                    $taskUsers = array_filter(explode(',', $taskname->users)); // Remove empty values
-                    
-                    // Ensure all values are integers
-                    $taskUsers = array_map('intval', $taskUsers);
-                    
-                    // Fetch and process users only if taskUsers is not empty
-                    if (!empty($taskUsers)) {
-                        $profiles = User::whereIn('id', $taskUsers)
-                            ->get(['id', 'profile', 'first_name', 'last_name'])
-                            ->map(function ($user) {
-                                $user->profile = $user->profile
-                                    ? setAssetPath('user-profile/' . $user->profile)
-                                    : setAssetPath('assets/media/avatars/blank.png');
-                                $user->name = "{$user->first_name} {$user->last_name}";
-                                return $user;
-                            });
-                    }
-            
-                    return [
-                        'unique_id' => $index + 1, // Unique ID for each entry
-                        'user_id' => $userId,
-                        'message_id' => $messageSenderReceiver->message_id,
-                        'message_type' => $getMessage ? $getMessage->message_type : '',
-                        'task_name' => $taskname->task_name ?? 'No Task Name',
-                        'userName' => $userName,
-                        'userProfile' => $userProfileUrl,
-                        'date' => @$request->timezone ? Carbon::parse($getMessage->created_at)->setTimezone($request->timezone)->format('Y-m-d H:i:s') : Carbon::parse($getMessage->created_at)->format('Y-m-d H:i:s'),
-                        'time' => @$request->timezone ? Carbon::parse($getMessage->created_at)->setTimezone($request->timezone)->format('h:i a') : Carbon::parse($getMessage->created_at)->format('h:i a'),
-                        'timeZone' => @$request->timezone ? Carbon::parse($getMessage->created_at)->setTimezone($request->timezone)->format('Y-m-d\TH:i:s.u\Z') : Carbon::parse($getMessage->created_at)->format('Y-m-d\TH:i:s.u\Z'),
-                        'taskStatus' => $messageSenderReceiver->updated_by == 1,
-                        'totalTasks' => $totalTasks,
-                        'completedTasks' => $completedTasks,
-                        'priority_task' => $taskname->priority_task,
-                        'profiles' => $profiles
-                    ];
-                });
-            
-                $data = [
-                    'status_code' => 200,
-                    'message' => "All Tasks Retrieved Successfully!",
-                    'data' => ['userList' => $combinedResult->sortByDesc('message_id')->sortBy(fn($item) => $item['completedTasks'] > 0)->values()]
-                ];
+                        ->where('receiver_id', $loginUser)
+                        ->where('sender_id', '!=', $loginUser)
+                        // ->get();
+                        ->distinct()
+                        ->get(['message_id', 'created_by']);
+            } else {
+                $userList = (clone $baseQuery)
+                        ->where('sender_id', $loginUser)
+                        ->where('receiver_id', '!=', $loginUser)
+                        // ->get();
+                        ->distinct()
+                        ->get(['message_id', 'created_by']);
             }
+
+            $messageIds = $userList->pluck('message_id')->unique();
+
+            $tasksByMessage = MessageTask::whereIn('message_id', $messageIds)->get()->groupBy('message_id');
+
+            $allTaskUserIds = [];
+            foreach ($tasksByMessage as $messageTasks) {
+                foreach ($messageTasks as $task) {
+                    $taskUserIds = array_filter(explode(',', $task->users));
+                    $allTaskUserIds = array_merge($allTaskUserIds, $taskUserIds);
+                }
+            }
+            $allTaskUserIds = array_unique($allTaskUserIds);
+
+            $taskUsersProfiles = User::whereIn('id', $allTaskUserIds)->get(['id', 'profile', 'first_name', 'last_name'])->keyBy('id');
+
+            $result = $userList->map(function ($messageSenderReceiver, $index) use ($loginUser, $request, $tasksByMessage, $taskUsersProfiles) {
+    
+                $message = $messageSenderReceiver->message;
+                $receiver = $messageSenderReceiver->receiver;
+                
+                $tasks = $tasksByMessage->get($messageSenderReceiver->message_id, collect());
+                $totalTasks = $tasks->count();
+                $firstTask = $tasks->first();
+                
+                $completedTasks = $tasks->filter(function ($task) use ($messageSenderReceiver) {
+                    $checkedUsers = array_filter(explode(',', $task->task_checked_users));
+                    return in_array($messageSenderReceiver->created_by, $checkedUsers);
+                })->count();
+                
+                $receiverProfileUrl = $receiver && !empty($receiver->profile)
+                    ? setAssetPath('user-profile/' . $receiver->profile)
+                    : setAssetPath('assets/media/avatars/blank.png');
+                $receiverName = $receiver ? "{$receiver->first_name} {$receiver->last_name}" : 'Unknown';
+
+                $getMessage = $message;
+                
+                $taskUsers = array_filter(explode(',', $firstTask->users ?? ''));
+                $profiles = empty($taskUsers) ? [] : User::whereIn('id', array_map('intval', $taskUsers))
+                            ->get(['id', 'profile', 'first_name', 'last_name'])
+                            ->map(fn($user) => [
+                                'id' => $user->id,
+                                'profile' => $user->profile ? setAssetPath('user-profile/' . $user->profile) 
+                                                            : setAssetPath('assets/media/avatars/blank.png'),
+                                'name' => "{$user->first_name} {$user->last_name}"
+                            ]);
+
+                return [
+                    'unique_id'            => $index + 1,
+                    'user_id'              => $messageSenderReceiver->created_by ?? '',
+                    'message_id'           => $messageSenderReceiver->message_id,
+                    'inner_task_id'        => $firstTask ? $firstTask->id : null,
+                    'message_type'         => $getMessage ? $getMessage->message_type : '',
+                    'task_name'            => $firstTask ? $firstTask->task_name : 'No Task Name',
+                    'taskReceiverName'     => $receiverName,
+                    'taskReceiverProfile'  => $receiverProfileUrl,
+                    'date'                 => $getMessage
+                                                ? (isset($request->timezone)
+                                                    ? Carbon::parse($getMessage->created_at)
+                                                            ->setTimezone($request->timezone)
+                                                            ->format('Y-m-d H:i:s')
+                                                    : Carbon::parse($getMessage->created_at)
+                                                            ->format('Y-m-d H:i:s'))
+                                                : null,
+                    'time'                 => $getMessage
+                                                ? (isset($request->timezone)
+                                                    ? Carbon::parse($getMessage->created_at)
+                                                            ->setTimezone($request->timezone)
+                                                            ->format('h:i a')
+                                                    : Carbon::parse($getMessage->created_at)
+                                                            ->format('h:i a'))
+                                                : null,
+                    'timeZone'             => $getMessage
+                                                ? (isset($request->timezone)
+                                                    ? Carbon::parse($getMessage->created_at)
+                                                            ->setTimezone($request->timezone)
+                                                            ->format('Y-m-d\TH:i:s.u\Z')
+                                                    : Carbon::parse($getMessage->created_at)
+                                                            ->format('Y-m-d\TH:i:s.u\Z'))
+                                                : null,
+                    'taskStatus'           => $messageSenderReceiver->updated_by == 1,
+                    'totalTasks'           => $totalTasks,
+                    'completedTasks'       => $completedTasks,
+                    'priority_task'        => $firstTask ? $firstTask->priority_task : null,
+                    'profiles'             => $profiles,
+                    'task_checked_users'   => $firstTask ? $firstTask->task_checked_users : '',
+                ];
+            });
+
+            // Apply final filtering and sorting
+            $uniqueResult = $result
+                        ->filter() // Remove null or empty entries if any
+                        ->sortByDesc('message_id')
+                        ->sortBy(function ($item) {
+                            // Prioritize items with no completed tasks (i.e. false when cast to boolean)
+                            return $item['completedTasks'] > 0;
+                        })
+                        ->values(); // Reset keys to be sequential
+
+            $data = [
+                'status_code' => 200,
+                'message'     => "Task User List Get Successfully!",
+                'data'        => [
+                    'userList' => $uniqueResult
+                ]
+            ];
             return $this->sendJsonResponse($data);
+    
+            // $baseQuery = MessageSenderReceiver::with(['message', 'sender', 'receiver'])
+            //     ->whereHas('message', function ($query) {
+            //         $query->whereIn('message_type', array('Task', 'SimpleTask'));
+            //     });
+    
+            // // Apply filter for "Receive" type to exclude tasks created by the current user
+            // if ($type == 'Receive') {
+            //     $userList = (clone $baseQuery)
+            //         ->where('receiver_id', $loginUser)
+            //         ->where('sender_id', '!=', $loginUser) // Exclude tasks created by the user
+            //         ->distinct()
+            //         ->get(['message_id']);
+
+            //     $result = $userList->map(function ($messageSenderReceiver, $index ) use ($loginUser, $request) {
+            //         $sender = $messageSenderReceiver->sender;
+            //         $receiver = $messageSenderReceiver->receiver;
+        
+            //         // Get total tasks and completed tasks
+            //         $totalTasks = MessageTask::where('message_id', $messageSenderReceiver->message_id)->count();
+            //         $taskname = MessageTask::where('message_id', $messageSenderReceiver->message_id)->first();
+            //         $completedTasks = MessageTask::where('message_id', $messageSenderReceiver->message_id)
+            //             ->whereRaw('FIND_IN_SET(?, task_checked_users)', [$loginUser])
+            //             ->count();
+                        
+            //             // Fetch the task creator profile and name
+            //         $creator = User::find($messageSenderReceiver->created_by);
+            //         $creatorProfileUrl = !empty($creator->profile) ? setAssetPath('user-profile/' . $creator->profile) : setAssetPath('assets/media/avatars/blank.png');
+            //         $creatorName = $creator ? $creator->first_name . ' ' . $creator->last_name : 'Unknown';
+        
+            //         // Get the task name (assuming the task name is stored in 'message' or a related field)
+            //         $taskName = $taskname->task_name ?? 'No Task Name';
+
+            //         $getMessage = Message::where('id', $messageSenderReceiver->message_id)->first();
+
+            //         $profiles = [];
+            //         $taskUsers = array_filter(explode(',', $taskname->users)); // Remove empty values
+                    
+            //         // Ensure all values are integers
+            //         $taskUsers = array_map('intval', $taskUsers);
+                    
+            //         // Fetch and process users only if taskUsers is not empty
+            //         if (!empty($taskUsers)) {
+            //             $profiles = User::whereIn('id', $taskUsers)
+            //                 ->get(['id', 'profile', 'first_name', 'last_name'])
+            //                 ->map(function ($user) {
+            //                     $user->profile = $user->profile
+            //                         ? setAssetPath('user-profile/' . $user->profile)
+            //                         : setAssetPath('assets/media/avatars/blank.png');
+            //                     $user->name = "{$user->first_name} {$user->last_name}";
+            //                     return $user;
+            //                 });
+            //         }
+
+            //         // Return unique message_id data with task details
+            //         return [
+            //             'unique_id' => $index + 1, // Unique ID for each entry
+            //             'user_id' => isset($messageSenderReceiver->created_by) ? $messageSenderReceiver->created_by : '',
+            //             'message_id' => $messageSenderReceiver->message_id, // Unique message_id
+            //             'message_type' => $getMessage ? $getMessage->message_type : '',
+            //             'task_name' => $taskName,
+            //             'taskCreatorName' => $creatorName,
+            //             'taskCreatorProfile' => $creatorProfileUrl,
+            //             'date' => @$request->timezone ? Carbon::parse($getMessage->created_at)->setTimezone($request->timezone)->format('Y-m-d H:i:s') : Carbon::parse($getMessage->created_at)->format('Y-m-d H:i:s'),
+            //             'time' => @$request->timezone ? Carbon::parse($getMessage->created_at)->setTimezone($request->timezone)->format('h:i a') : Carbon::parse($getMessage->created_at)->format('h:i a'),
+            //             'timeZone' => @$request->timezone ? Carbon::parse($getMessage->created_at)->setTimezone($request->timezone)->format('Y-m-d\TH:i:s.u\Z') : Carbon::parse($getMessage->created_at)->format('Y-m-d\TH:i:s.u\Z'),
+            //             'taskStatus' => $messageSenderReceiver->updated_by == 1, // Task status (completed or not)
+            //             'totalTasks' => $totalTasks,
+            //             'completedTasks' => $completedTasks,
+            //             'priority_task' => $taskname->priority_task,
+            //             'profiles' => $profiles,
+            //             'task_checked_users' => $taskname->task_checked_users
+            //         ];
+            //     });
+        
+            //     // Ensure unique message_id results (filter out duplicates)
+            //     $uniqueResult = $result
+            //                     ->filter() // Remove null or empty entries
+            //                     ->unique('message_id') // Ensure unique entries by message_id
+            //                     ->sortByDesc('message_id') // Sort by message_id in descending order
+            //                     ->sortBy(fn($item) => $item['completedTasks'] > 0) // Prioritize completedTasks = 0
+            //                     ->values(); // Reset keys to be sequential    
+            //     $data = [
+            //         'status_code' => 200,
+            //         'message' => "Task User List Get Successfully!",
+            //         'data' => [
+            //             'userList' => $uniqueResult
+            //         ]
+            //     ];
+            // } elseif ($type == 'Given') {           
+            //     $userList = (clone $baseQuery)                    
+            //         ->where('sender_id', $loginUser)
+            //         ->where('receiver_id', '!=', $loginUser)
+            //         ->distinct()
+            //         ->get(['message_id']);
+
+            //     $result = $userList->map(function ($messageSenderReceiver,$index) use ($loginUser, $request) {
+            //         $sender = $messageSenderReceiver->sender;
+            //         $receiver = $messageSenderReceiver->receiver;
+        
+            //         // Get total tasks and completed tasks
+            //         $totalTasks = MessageTask::where('message_id', $messageSenderReceiver->message_id)->count();
+            //         $taskname = MessageTask::where('message_id', $messageSenderReceiver->message_id)->first();
+            //         $completedTasks = MessageTask::where('message_id', $messageSenderReceiver->message_id)
+            //             ->whereRaw('FIND_IN_SET(?, task_checked_users)', [$messageSenderReceiver->receiver_id])
+            //             ->count();
+                        
+            //             // Fetch the task creator profile and name
+            //             $receiver = User::find($messageSenderReceiver->receiver_id);
+            //             $receiverProfileUrl = !empty($receiver->profile) ? setAssetPath('user-profile/' . $receiver->profile) : setAssetPath('assets/media/avatars/blank.png');
+            //             $receiverName = $receiver ? $receiver->first_name . ' ' . $receiver->last_name : 'Unknown';
+        
+            //         // Get the task name (assuming the task name is stored in 'message' or a related field)
+            //         $taskName = $taskname->task_name ?? 'No Task Name';
+                    
+            //         $getMessage = Message::where('id', $messageSenderReceiver->message_id)->first();
+
+            //         $profiles = [];
+            //         $taskUsers = array_filter(explode(',', $taskname->users)); // Remove empty values
+                    
+            //         // Ensure all values are integers
+            //         $taskUsers = array_map('intval', $taskUsers);
+                    
+            //         // Fetch and process users only if taskUsers is not empty
+            //         if (!empty($taskUsers)) {
+            //             $profiles = User::whereIn('id', $taskUsers)
+            //                 ->get(['id', 'profile', 'first_name', 'last_name'])
+            //                 ->map(function ($user) {
+            //                     $user->profile = $user->profile
+            //                         ? setAssetPath('user-profile/' . $user->profile)
+            //                         : setAssetPath('assets/media/avatars/blank.png');
+            //                     $user->name = "{$user->first_name} {$user->last_name}";
+            //                     return $user;
+            //                 });
+            //         }
+            //         // Return unique message_id data with task details
+            //         return [
+            //             'unique_id' => $index + 1, // Unique ID for each entry
+            //             'user_id' => isset($messageSenderReceiver->receiver_id) ? $messageSenderReceiver->receiver_id : '',
+            //             'message_id' => $messageSenderReceiver->message_id,
+            //             'inner_task_id' => $taskname->id,
+            //             'message_type' => $getMessage ? $getMessage->message_type : '',
+            //             'task_name' => $taskname->task_name ?? 'No Task Name',
+            //             'taskReceiverName' => $receiverName,
+            //             'taskReceiverProfile' => $receiverProfileUrl,
+            //             'date' => @$request->timezone ? Carbon::parse($getMessage->created_at)->setTimezone($request->timezone)->format('Y-m-d H:i:s') : Carbon::parse($getMessage->created_at)->format('Y-m-d H:i:s'),
+            //             'time' => @$request->timezone ? Carbon::parse($getMessage->created_at)->setTimezone($request->timezone)->format('h:i a') : Carbon::parse($getMessage->created_at)->format('h:i a'),
+            //             'timeZone' => @$request->timezone ? Carbon::parse($getMessage->created_at)->setTimezone($request->timezone)->format('Y-m-d\TH:i:s.u\Z') : Carbon::parse($getMessage->created_at)->format('Y-m-d\TH:i:s.u\Z'),
+            //             'taskStatus' => $messageSenderReceiver->updated_by == 1,
+            //             'totalTasks' => $totalTasks,
+            //             'completedTasks' => $completedTasks,
+            //             'priority_task' => $taskname->priority_task,
+            //             'profiles' => $profiles,
+            //             'task_checked_users' => $taskname->task_checked_users
+            //         ];
+            //     });
+        
+            //     // Ensure unique message_id results (filter out duplicates)
+            //     $uniqueResult = $result
+            //                     ->filter() // Remove null or empty entries
+            //                     // ->unique('message_id') // Ensure unique entries by message_id
+            //                     ->sortByDesc('message_id') // Sort by message_id in descending order
+            //                     ->sortBy(fn($item) => $item['completedTasks'] > 0) // Prioritize completedTasks = 0
+            //                     ->values(); // Reset keys to be sequential    
+            //     $data = [
+            //         'status_code' => 200,
+            //         'message' => "Task User List Get Successfully!",
+            //         'data' => [
+            //             'userList' => $uniqueResult
+            //         ]
+            //     ];
+            // } elseif ($type == 'All Task') {
+           
+            //     $receiveList = (clone $baseQuery)
+            //         ->where('receiver_id', $loginUser)
+            //         ->where('sender_id', '!=', $loginUser)
+            //         ->distinct()
+            //         ->get(['message_id']);
+            
+            //     $givenList = (clone $baseQuery)
+            //         ->where('sender_id', $loginUser)
+            //         ->where('receiver_id', '!=', $loginUser)
+            //         ->distinct()
+            //         ->get(['message_id']);
+            
+            //     $combinedResult = $receiveList->merge($givenList)->map(function ($messageSenderReceiver,$index) use ($loginUser, $request) {
+            //         $user = User::find($messageSenderReceiver->created_by ?? $messageSenderReceiver->receiver_id);
+            //         $userProfileUrl = !empty($user->profile) ? setAssetPath('user-profile/' . $user->profile) : setAssetPath('assets/media/avatars/blank.png');
+            //         $userName = $user ? $user->first_name . ' ' . $user->last_name : 'Unknown';
+            //         $isGivenTask = $messageSenderReceiver->sender_id == $loginUser;
+            //         $userId = $isGivenTask ? $messageSenderReceiver->receiver_id : $messageSenderReceiver->created_by;
+
+            
+            //         // Get total tasks and completed tasks
+            //         $getMessage = Message::where('id', $messageSenderReceiver->message_id)->first();
+            //         $totalTasks = MessageTask::where('message_id', $messageSenderReceiver->message_id)->count();
+            //         $taskname = MessageTask::where('message_id', $messageSenderReceiver->message_id)->first();
+            //         $completedTasks = MessageTask::where('message_id', $messageSenderReceiver->message_id)
+            //             ->whereRaw('FIND_IN_SET(?, task_checked_users)', [$loginUser])
+            //             ->count();
+
+            //         $profiles = [];
+            //         $taskUsers = array_filter(explode(',', $taskname->users)); // Remove empty values
+                    
+            //         // Ensure all values are integers
+            //         $taskUsers = array_map('intval', $taskUsers);
+                    
+            //         // Fetch and process users only if taskUsers is not empty
+            //         if (!empty($taskUsers)) {
+            //             $profiles = User::whereIn('id', $taskUsers)
+            //                 ->get(['id', 'profile', 'first_name', 'last_name'])
+            //                 ->map(function ($user) {
+            //                     $user->profile = $user->profile
+            //                         ? setAssetPath('user-profile/' . $user->profile)
+            //                         : setAssetPath('assets/media/avatars/blank.png');
+            //                     $user->name = "{$user->first_name} {$user->last_name}";
+            //                     return $user;
+            //                 });
+            //         }
+            
+            //         return [
+            //             'unique_id' => $index + 1, // Unique ID for each entry
+            //             'user_id' => $userId,
+            //             'message_id' => $messageSenderReceiver->message_id,
+            //             'message_type' => $getMessage ? $getMessage->message_type : '',
+            //             'task_name' => $taskname->task_name ?? 'No Task Name',
+            //             'userName' => $userName,
+            //             'userProfile' => $userProfileUrl,
+            //             'date' => @$request->timezone ? Carbon::parse($getMessage->created_at)->setTimezone($request->timezone)->format('Y-m-d H:i:s') : Carbon::parse($getMessage->created_at)->format('Y-m-d H:i:s'),
+            //             'time' => @$request->timezone ? Carbon::parse($getMessage->created_at)->setTimezone($request->timezone)->format('h:i a') : Carbon::parse($getMessage->created_at)->format('h:i a'),
+            //             'timeZone' => @$request->timezone ? Carbon::parse($getMessage->created_at)->setTimezone($request->timezone)->format('Y-m-d\TH:i:s.u\Z') : Carbon::parse($getMessage->created_at)->format('Y-m-d\TH:i:s.u\Z'),
+            //             'taskStatus' => $messageSenderReceiver->updated_by == 1,
+            //             'totalTasks' => $totalTasks,
+            //             'completedTasks' => $completedTasks,
+            //             'priority_task' => $taskname->priority_task,
+            //             'profiles' => $profiles
+            //         ];
+            //     });
+            
+            //     $data = [
+            //         'status_code' => 200,
+            //         'message' => "All Tasks Retrieved Successfully!",
+            //         'data' => ['userList' => $combinedResult->sortByDesc('message_id')->sortBy(fn($item) => $item['completedTasks'] > 0)->values()]
+            //     ];
+            // }
+            // return $this->sendJsonResponse($data);
         } catch (\Exception $e) {
             Log::error(
                 [

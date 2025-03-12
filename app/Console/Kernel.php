@@ -14,7 +14,7 @@ class Kernel extends ConsoleKernel
     {
         // $schedule->command('inspire')->hourly();
         $schedule->command('app:set-reminder')->everyMinute();
-        $schedule->command('task:send-daily')->daily();
+        $schedule->command('task:send-daily')->everyMinute();
     }
 
     /**

@@ -124,6 +124,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
         });
         Route::controller(DailyTaskController::class)->group(function () {
             Route::post('/daily-task-create-or-update', 'dailyTaskCreateOrUpdate');
+            Route::post('/daily-task-delete', 'deleteDailyTask');
         });
     });
 });

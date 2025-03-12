@@ -165,16 +165,13 @@ class DailyTaskController extends Controller
                     'data' => ""
                 ]);
             }
-
-            // Convert task_time with timezone handling
-            $taskTime = $request->task_time ? Carbon::parse($request->task_time, $request->timezone)->format('H:i:s') : null;
-
+            
             // Create or update the task
             $dailyTask = DailyTask::updateOrCreate(
                 ['id' => $request->message_id],
                 [
                     'task_day'  => $request->task_day,
-                    'task_time' => $taskTime,
+                    'task_time' => $request->task_time,
                     'payload'   => [
                         'message_type' => $request->message_type,
                         'task_name'    => $request->task_name,
@@ -185,87 +182,9 @@ class DailyTaskController extends Controller
                 ]
             );
 
-            return response()->json([ 'status_code' => 200, 'message' => 'Daily task created successfully.', 'data' => $dailyTask ]);
+            $message = $dailyTask->wasRecentlyCreated ? 'Daily task created successfully.' : 'Daily task updated successfully.';
 
-            $msg = Message::firstOrNew(['id' => $request->message_id]);
-            $msg->message_type = $request->message_type;
-            $msg->status = "Unread";
-            $msg->date = $request->task_date ? Carbon::parse($request->task_date)->setTimezone($request->timezone) : ""; // Save date
-            $msg->time = $request->task_time ? Carbon::parse($request->task_time)->setTimezone($request->timezone) : ""; // Save time
-            $msg->save();
-    
-            $receiverIdsArray = explode(',', $request->users);
-            $senderId = auth()->user()->id;
-    
-            $receiverIdsArray[] = $senderId;
-            $uniqueIdsArray = array_unique($receiverIdsArray);
-            $mergedIds = implode(',', $uniqueIdsArray);
-
-            $task_name_Array = explode(',', $request->checkbox);
-            $task_name_UArray = array_unique($task_name_Array);
-
-            foreach ($task_name_UArray as $index => $taskName) { // Loop through multiple task names
-                $messageTask = new MessageTask();
-                $messageTask->message_id = $msg->id;
-                $messageTask->task_name = $request->task_name;
-                
-                // Use the corresponding task description if available
-                $messageTask->task_description = $taskDescriptions ? $taskDescriptions[$index] : null;
-                
-                $messageTask->checkbox = $taskName; // Save each task name
-                $messageTask->users = $mergedIds;
-                $messageTask->save();
-            }
-
-            if(isset($request->message_id)) {
-                MessageSenderReceiver::where('message_id', $msg->id)->delete();
-            }
-
-            foreach ($receiverIdsArray as $receiverId) 
-            {
-                $messageSenderReceiver = new MessageSenderReceiver();
-                $messageSenderReceiver->message_id = $msg->id;
-                $messageSenderReceiver->sender_id = $senderId;
-                $messageSenderReceiver->receiver_id = $receiverId;
-                $messageSenderReceiver->save();
-    
-                $message = [
-                    'id' => $msg->id,
-                    'sender' => auth()->user()->id,
-                    'receiver' => $receiverId,
-                    'message_type' => $request->message_type,
-                    'task_name' => $request->task_name, // You may want to send all task names here
-                    "screen" => "simpletask"
-                ];
-    
-                broadcast(new MessageSent($message))->toOthers();
-    
-                // Push Notification
-                $validationResults = validateToken($receiverId);
-                $validTokens = [];
-                $invalidTokens = [];
-                foreach ($validationResults as $result) {
-                    $validTokens = array_merge($validTokens, $result['valid']);
-                    $invalidTokens = array_merge($invalidTokens, $result['invalid']);
-                }
-                if (count($invalidTokens) > 0) {
-                    foreach ($invalidTokens as $singleInvalidToken) {
-                        userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
-                    }
-                }
-    
-                $notification = [
-                    'title' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
-                    'body' => 'Tasks: ' . $request->task_name, // Multiple task names
-                    'image' => "",
-                ];
-    
-                if (count($validTokens) > 0) {
-                    sendPushNotification($validTokens, $notification, $message);
-                }
-            }
-
-            return response()->json([ 'status_code' => 200, 'message' => 'Simple task created successfully.', 'data' => $msg ]);
+            return response()->json([ 'status_code' => 200, 'message' => $message, 'data' => $dailyTask ]);
 
         } catch (\Exception $e) {
             Log::error([
@@ -280,5 +199,72 @@ class DailyTaskController extends Controller
 
             return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
         }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/v1/daily-task-delete",
+     *     summary="Delete a daily task",
+     *     tags={"Daily Task"},
+     *     description="Deletes a daily task by ID.",
+     *     operationId="deleteDailyTask",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"id"},
+     *                 @OA\Property(
+     *                     property="id",
+     *                     type="integer",
+     *                     example=1,
+     *                     description="ID of the daily task to delete"
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Task deleted successfully",
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *             @OA\Schema(
+     *                 @OA\Property(property="status_code", type="integer", example=200),
+     *                 @OA\Property(property="message", type="string", example="Task deleted successfully"),
+     *                 @OA\Property(property="data", type="object")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Invalid request"
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Unauthorized access"
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Message not found"
+     *     )
+     * )
+     */
+
+    public function deleteDailyTask(Request $request)
+    {
+        $request->validate([
+            'id' => 'required|integer|exists:daily_tasks,id',
+        ]);
+
+        $dailyTask = DailyTask::find($request->id);
+
+        if (!$dailyTask) {
+            return response()->json([ 'status_code' => 404, 'message' => 'Daily task not found.', 'data' => "" ]);
+        }
+
+        $dailyTask->delete();
+
+        return response()->json([ 'status_code' => 200, 'message' => 'Daily task deleted successfully.', 'data' => "" ]);
     }
 }
