@@ -6204,12 +6204,28 @@ class ChatController extends Controller
      *     operationId="getSingleMessage",
      *     tags={"Messages"},
      *     security={{"bearerAuth": {}}},
-     *     @OA\Parameter(
-     *         name="message_id",
-     *         in="query",
+     *     @OA\RequestBody(
      *         required=true,
-     *         description="ID of the message to retrieve",
-     *         @OA\Schema(type="integer")
+     *         description="Get message details",
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"message_id"},
+     *                 @OA\Property(
+     *                     property="message_id",
+     *                     type="integer",
+     *                     example=1,
+     *                     description="ID of the message to be updated"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="timezone",
+     *                     type="string",
+     *                     example="America/New_York",
+     *                     description="Timezone of the user making the request",
+     *                     nullable=true
+     *                 ),
+     *             )
+     *         )
      *     ),
      *     @OA\Response(
      *         response=200,
@@ -6221,7 +6237,7 @@ class ChatController extends Controller
      *             @OA\Property(property="data", type="object",
      *                 @OA\Property(property="id", type="integer", example=1),
      *             )
-     *         )
+     *         ),
      *     ),
      *     @OA\Response(
      *         response=400,
@@ -6249,30 +6265,101 @@ class ChatController extends Controller
         $request->validate([
             'message_id' => 'required|exists:message,id',
         ]);
-
-        $message = Message::with(['tasks'])->find($request->message_id);
-
-        if($message) {
-            foreach ($message->tasks as $key => $value) 
-            {
-                $taskUsers = User::whereIn('id', explode(',', $value->users))
-                ->get(['id', 'profile', 'first_name', 'last_name'])
-                ->map(function ($user) {
-                    $user->profile = $user->profile
-                        ? setAssetPath('user-profile/' . $user->profile)
-                        : setAssetPath('assets/media/avatars/blank.png');
-                    $user->name = "{$user->first_name} {$user->last_name}";
-                    return $user;
-                });
-
-                $value->users = $taskUsers;
-            }
+    
+        $message = Message::with('tasks')->find($request->message_id);
+        if (!$message) {
+            return response()->json(['status_code' => 404, 'message' => 'Message not found.', 'data' => ""]);
         }
-
+    
+        $loginUser = auth()->id();
+    
+        // Fetch task details
+        $taskDetails = MessageTask::where('message_id', $request->message_id)->whereNull('deleted_at')->get();
+    
+        if ($taskDetails->isEmpty()) {
+            return response()->json(['status_code' => 404, 'message' => 'No tasks found for this message.', 'data' => ""]);
+        }
+    
+        $taskDetails_task = $taskDetails->first();
+    
+        // Fetch users assigned to tasks
+        $userIds = collect($taskDetails)->pluck('users')->flatMap(fn($users) => explode(',', $users))->unique()->filter();
+        $users = User::whereIn('id', $userIds)->get(['id', 'first_name', 'last_name', 'country_code', 'mobile', 'profile']);
+    
+        $users = $users->map(function ($user) use ($taskDetails, $message) {
+            $user->profile = $user->profile ? setAssetPath("user-profile/{$user->profile}") : setAssetPath('assets/media/avatars/blank.png');
+            $user->task_ids = '';
+            $allTaskId = $doneTaskId = [];
+            $allTasksCheckedByOthers = true;
+    
+            foreach ($taskDetails as $task) {
+                $checkedUsers = array_filter(explode(',', $task->task_checked_users));
+                $checkedByOthers = array_diff($checkedUsers, [$message->created_by]);
+    
+                if (in_array($user->id, $checkedUsers)) {
+                    $doneTaskId[] = $task->id;
+                }
+    
+                if (empty($checkedByOthers) || count($checkedByOthers) < count(explode(',', $task->users)) - 1) {
+                    $allTasksCheckedByOthers = false;
+                }
+    
+                $allTaskId[] = $task->id;
+            }
+    
+            $user->task_done = ($user->id == $message->created_by) ? $allTasksCheckedByOthers : false;
+            return $user;
+        });
+    
+        // Fetch checked user profiles
+        $checkedUserIds = $taskDetails->pluck('task_checked_users')->flatMap(fn($users) => explode(',', $users))->unique()->filter();
+        $checkedUserProfiles = User::whereIn('id', $checkedUserIds)->get(['id', 'profile'])->mapWithKeys(fn($user) => [
+            $user->id => setAssetPath($user->profile ? "user-profile/{$user->profile}" : 'assets/media/avatars/blank.png')
+        ]);
+    
+        // Fetch comments
+        $taskComments = MessageTaskChatComment::with('user')
+            ->whereIn('task_chat_id', $taskDetails->pluck('id'))
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->groupBy('task_chat_id');
+    
+        $tasks = $taskDetails->map(function ($task) use ($checkedUserProfiles, $taskComments) {
+            return [
+                'id' => $task->id,
+                'message_id' => $task->message_id,
+                'checkbox' => $task->checkbox,
+                'task_checked' => (bool) $task->task_checked,
+                'task_checked_users' => implode(',', array_filter(explode(',', $task->task_checked_users))),
+                'profiles' => collect(explode(',', $task->task_checked_users))->map(fn($id) => [
+                    'id' => $id,
+                    'profile_url' => $checkedUserProfiles[$id] ?? setAssetPath('assets/media/avatars/blank.png')
+                ])->values(),
+                'comments' => $taskComments[$task->id] ?? [],
+                'priority_task' => $task->priority_task,
+            ];
+        });
+    
         return response()->json([
             'status_code' => 200,
             'message' => 'Message details retrieved successfully.',
-            'data' => $message
+            'data' => [
+                'messageId' => $request->message_id,
+                'messageType' => $message->message_type,
+                'attachmentType' => $message->attachment_type,
+                'date' => Carbon::parse($message->created_at)->setTimezone($request->timezone ?? 'UTC')->format('Y-m-d H:i:s'),
+                'time' => Carbon::parse($message->updated_at)->setTimezone($request->timezone ?? 'UTC')->format('h:i a'),
+                'timeZone' => Carbon::parse($message->updated_at)->setTimezone($request->timezone ?? 'UTC')->format('Y-m-d\TH:i:s.u\Z'),
+                'sentBy' => ($message->created_by == $loginUser) ? 'loginUser' : 'User',
+                'messageDetails' => [
+                    'task_name' => $taskDetails_task->task_name,
+                    'date' => $message->date,
+                    'time' => $message->time,
+                    'users' => $users,
+                    'tasks' => $tasks,
+                ],
+            ],
         ]);
     }
+     
 }
