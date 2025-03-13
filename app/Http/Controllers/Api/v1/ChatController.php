@@ -4549,6 +4549,7 @@ class ChatController extends Controller
                     'priority_task'        => $firstTask ? $firstTask->priority_task : null,
                     'profiles'             => $profiles,
                     'task_checked_users'   => $firstTask ? $firstTask->task_checked_users : '',
+                    'task_type'            => $getMessage ? $getMessage->message_type == 'DailyTask' ? 'assign_daily_base' : '' : '',
                 ];
             });
 
@@ -4580,6 +4581,7 @@ class ChatController extends Controller
                     "taskReceiverProfile" => "",
                     "date" => date('Y-m-d H:i:s', strtotime($value->created_at)),
                     "time" => date('H:i a', strtotime($value->created_at)),
+                    "task_day" => $value->task_day,
                     "timeZone" => $value
                     ? (isset($request->timezone)
                         ? Carbon::parse($value->created_at)
@@ -4590,14 +4592,21 @@ class ChatController extends Controller
                     : null,
                     "taskStatus" => false,
                     "totalTasks" => count($value->payload['checkbox']),
-                    "tasks" => array_map(function ($task) {
+                    "tasks" => array_map(function ($task) use ($value) {
                         return [
                             'id' => "",
                             'message_id' => "",
                             'checkbox' => $task,
                             'task_checked' => "", // Convert to boolean
                             'task_checked_users' => "",
-                            'profiles' => [], // Attach profiles of users who checked the task
+                            'profiles' => User::whereIn('id', array_map('intval', $value->payload['users']))
+                            ->get(['id', 'profile', 'first_name', 'last_name'])
+                            ->map(fn($user) => [
+                                'id' => $user->id,
+                                'profile' => $user->profile ? setAssetPath('user-profile/' . $user->profile) 
+                                                            : setAssetPath('assets/media/avatars/blank.png'),
+                                'name' => "{$user->first_name} {$user->last_name}"
+                            ]), // Attach profiles of users who checked the task
                             'comments' => [], // Attach task comments
                             'priority_task' => "0", // Attach priority task
                         ];
