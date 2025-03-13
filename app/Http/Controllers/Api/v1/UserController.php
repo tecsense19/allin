@@ -711,7 +711,7 @@ class UserController extends Controller
          $login_user_id = auth()->user()->id;
          $deletedUsers = deleteChatUsers::where('user_id', $login_user_id)->pluck('deleted_user_id');
          $blockUsers = BlockUser::where('from_id', $login_user_id)->pluck('to_id');
-         $removeUsers = array_merge((array)$deletedUsers, (array)$blockUsers);
+         $removeUsers = $deletedUsers->merge($blockUsers)->toArray();
  
          // Fetch users
          $users = User::where('id', '!=', $login_user_id)
