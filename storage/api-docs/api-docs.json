@@ -3195,6 +3195,90 @@
                 ]
             }
         },
+        "/api/v1/add-user-in-meeting": {
+            "post": {
+                "tags": [
+                    "Meetings"
+                ],
+                "summary": "Add a user to a meeting",
+                "description": "Add users in the meetings.",
+                "operationId": "addUserInMeeting",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "message_id",
+                                    "users"
+                                ],
+                                "properties": {
+                                    "message_id": {
+                                        "type": "integer",
+                                        "example": ""
+                                    },
+                                    "users": {
+                                        "type": "string",
+                                        "example": "1,2,3"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "User added successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status_code": {
+                                            "type": "integer",
+                                            "example": 200
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "User added to the meeting successfully"
+                                        },
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation failed"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/v1/daily-task-create-or-update": {
             "post": {
                 "tags": [

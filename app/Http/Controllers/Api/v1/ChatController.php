@@ -23,7 +23,8 @@ use App\Models\{
     ProjectEvent,
     userDeviceToken,
     UserDocument,
-    Option
+    Option,
+    DailyTask
 };
 
 use Carbon\Carbon;
@@ -4561,11 +4562,69 @@ class ChatController extends Controller
                         })
                         ->values(); // Reset keys to be sequential
 
+            $uniqueResultCount = count($uniqueResult);
+
+            $dailyTaskList = DailyTask::where('created_by', $loginUser)->get();
+            $dailyTaskArr = [];
+            foreach ($dailyTaskList as $key => $value) 
+            {
+                $uniqueResultCount++;
+                $dailyTaskArr[] = array(
+                    "unique_id" => $uniqueResultCount,
+                    "user_id" => "",
+                    "message_id" => $value->id,
+                    "inner_task_id" => "",
+                    "message_type" => "DailyTask",
+                    "task_name" => $value->payload['task_name'],
+                    "taskReceiverName" => "",
+                    "taskReceiverProfile" => "",
+                    "date" => date('Y-m-d H:i:s', strtotime($value->created_at)),
+                    "time" => date('H:i a', strtotime($value->created_at)),
+                    "timeZone" => $value
+                    ? (isset($request->timezone)
+                        ? Carbon::parse($value->created_at)
+                                ->setTimezone($request->timezone)
+                                ->format('Y-m-d H:i:s')
+                        : Carbon::parse($value->created_at)
+                                ->format('Y-m-d H:i:s'))
+                    : null,
+                    "taskStatus" => false,
+                    "totalTasks" => count($value->payload['checkbox']),
+                    "tasks" => array_map(function ($task) {
+                        return [
+                            'id' => "",
+                            'message_id' => "",
+                            'checkbox' => $task,
+                            'task_checked' => "", // Convert to boolean
+                            'task_checked_users' => "",
+                            'profiles' => [], // Attach profiles of users who checked the task
+                            'comments' => [], // Attach task comments
+                            'priority_task' => "0", // Attach priority task
+                        ];
+                    }, $value->payload['checkbox']),
+                    "completedTasks" => 0,
+                    "priority_task" => 0,
+                    "profiles" => User::whereIn('id', array_map('intval', $value->payload['users']))
+                    ->get(['id', 'profile', 'first_name', 'last_name'])
+                    ->map(fn($user) => [
+                        'id' => $user->id,
+                        'profile' => $user->profile ? setAssetPath('user-profile/' . $user->profile) 
+                                                    : setAssetPath('assets/media/avatars/blank.png'),
+                        'name' => "{$user->first_name} {$user->last_name}"
+                    ]),
+                    "task_checked_users" => null,
+                    "task_type" => "daily_base",
+                    
+                );
+            }
+
+            $mergedArray = [...$dailyTaskArr, ...$uniqueResult];
+
             $data = [
                 'status_code' => 200,
                 'message'     => "Task User List Get Successfully!",
                 'data'        => [
-                    'userList' => $uniqueResult
+                    'userList' => $type != 'Receive' ? $mergedArray : $uniqueResult,
                 ]
             ];
             return $this->sendJsonResponse($data);
@@ -6490,4 +6549,135 @@ class ChatController extends Controller
         ]);
     }
      
+    /**
+     * @OA\Post(
+     *     path="/api/v1/add-user-in-meeting",
+     *     summary="Add a user to a meeting",
+     *     description="Add users in the meetings.",
+     *     operationId="addUserInMeeting",
+     *     tags={"Meetings"},
+     *     security={{"bearerAuth": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"message_id", "users"},
+     *                 @OA\Property(property="message_id", type="integer", example=""),
+     *                 @OA\Property(property="users", type="string", example="1,2,3")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="User added successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status_code", type="integer", example=200),
+     *             @OA\Property(property="message", type="string", example="User added to the meeting successfully"),
+     *             @OA\Property(property="data", type="object"),
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Validation error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Validation failed")
+     *         )
+     *     )
+     * )
+     */
+    public function addUserInMeeting(Request $request)
+    {
+        $request->validate([
+            'message_id' => 'required|exists:message,id',
+            'users' => 'nullable|string',
+        ]);
+
+        $getMessage = Message::where('id', $request->message_id)->first();
+        $getAllMeetings = MessageMeeting::where('message_id', $request->message_id)->get();
+
+        $loginUser = auth()->user()->id;
+
+        foreach ($getAllMeetings as $key => $value) 
+        {
+            $oldUser = explode(',', $value->users);
+            $newUser = explode(',', $request->users);
+            $addedUsers = array_diff($newUser, $oldUser);
+            $removedUsers = array_diff($oldUser, $newUser);
+            
+            foreach ($removedUsers as $receiverId) {
+                MessageSenderReceiver::where('message_id', $request->message_id)->where('sender_id', $loginUser)->where('receiver_id', $receiverId)->delete();
+            }
+            
+            $value->users = $request->users;
+            $value->save();
+
+            foreach ($addedUsers as $receiverId) {
+                MessageSenderReceiver::updateOrCreate(
+                    [
+                        'message_id' => $request->message_id,
+                        'sender_id' => $loginUser,
+                        'receiver_id' => $receiverId
+                    ],
+                    [
+                        'message_id' => $request->message_id,
+                        'sender_id' => $loginUser,
+                        'receiver_id' => $receiverId
+                    ]
+                );
+
+                $message = [
+                    'id' => $request->message_id,
+                    'sender' => $loginUser,
+                    'receiver' => $receiverId,
+                    'message_type' => $getMessage->message_type,
+                    'mode' => $value->mode,
+                    'title' => $value->title,
+                    'description' => @$value->description ? $value->description : NULL,
+                    'date' => @$value->date ? Carbon::parse($value->date)->format('Y-m-d') : NULL,
+                    'start_time' => @$value->start_time ? $value->start_time : NULL,
+                    'end_time' => @$value->end_time ? $value->end_time : NULL,
+                    'meeting_url' => @$value->meeting_url ? $value->meeting_url : NULL,
+                    'users' => $request->users,
+                    'latitude' => @$value->latitude ? $value->latitude : NULL,
+                    'longitude' => @$value->longitude ? $value->longitude : NULL,
+                    'location_url' => @$value->location_url ? $value->location_url : NULL,
+                    'location' => @$value->location ? $value->location : NULL,
+                ];
+
+                broadcast(new MessageSent($message))->toOthers();
+
+                //Push Notification
+                $validationResults = validateToken($receiverId);
+                $validTokens = [];
+                $invalidTokens = [];
+                foreach ($validationResults as $result) {
+                    $validTokens = array_merge($validTokens, $result['valid']);
+                    $invalidTokens = array_merge($invalidTokens, $result['invalid']);
+                }
+                if (count($invalidTokens) > 0) {
+                    foreach ($invalidTokens as $singleInvalidToken) {
+                        userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
+                    }
+                }
+
+                $notification = [
+                    'title' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
+                    'body' => 'Meeting: ' . @$value->title ? $value->title : '',
+                    'image' => "",
+                ];
+
+                if (count($validTokens) > 0) {
+                    sendPushNotification($validTokens, $notification, $message);
+                }
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'User added to the meeting successfully.',
+            'data' => ""
+        ]);
+    }
 }

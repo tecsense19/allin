@@ -92,6 +92,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
             Route::get('group/votes/fetch', 'fetchVotes');     
             Route::get('/meetings/{id}', 'getMeetingById');    
             Route::post('/image-to-pdf',  'imageToPdf');
+            Route::post('/add-user-in-meeting',  'addUserInMeeting');
              
         });
         Route::controller(ProjectManagementController::class)->group(function () {
