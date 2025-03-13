@@ -14,6 +14,7 @@ use App\Models\GroupMembers;
 use App\Models\MessageTask;
 use App\Models\UserOtp;
 use App\Models\MessageTaskChatComment;
+use App\Models\BlockUser;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -709,6 +710,8 @@ class UserController extends Controller
      try {
          $login_user_id = auth()->user()->id;
          $deletedUsers = deleteChatUsers::where('user_id', $login_user_id)->pluck('deleted_user_id');
+         $blockUsers = BlockUser::where('from_id', $login_user_id)->pluck('to_id');
+         $removeUsers = array_merge((array)$deletedUsers, (array)$blockUsers);
  
          // Fetch users
          $users = User::where('id', '!=', $login_user_id)
@@ -726,7 +729,7 @@ class UserController extends Controller
                      });
                  }
              })
-             ->whereNotIn('id', $deletedUsers)
+             ->whereNotIn('id', $removeUsers)
              ->whereNull('deleted_at')
              ->with(['sentMessages' => function ($query) use ($login_user_id) {
                  $query->where('receiver_id', $login_user_id)
@@ -3079,5 +3082,58 @@ class UserController extends Controller
             'last_name' => $user->last_name,
             'profile_picture' => $user->profile ? asset('/public/user-profile/' . $user->profile) : null,
         ] : null;
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/v1/block-user",
+     *     summary="Block a user",
+     *     description="Blocks a user by setting `is_blocked = true`",
+     *     tags={"User"},
+     *     operationId="blockUser",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"user_id"},
+     *                 @OA\Property(property="user_id", type="integer", example=5, description="ID of the user to block")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="User blocked successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status_code", type="integer", example=200),
+     *             @OA\Property(property="message", type="string", example="User has been blocked successfully."),
+     *             @OA\Property(property="data", type="object")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Invalid request",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="User ID is required.")
+     *         )
+     *     ),
+     * )
+     */
+    public function blockUser(Request $request)
+    {
+        $request->validate([
+            'user_id' => 'required|exists:users,id',
+        ]);
+
+        $loginUser = auth()->user()->id;
+
+        $user = BlockUser::firstOrNew([
+            'from_id' => $loginUser,
+            'to_id'   => $request->user_id
+        ]);
+        $user->save();
+
+        return response()->json([ 'status_code' => 200, 'message' => 'User has been blocked successfully.', 'data' => "" ]);
     }
 }
