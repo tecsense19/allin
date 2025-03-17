@@ -165,6 +165,13 @@ class DailyTaskController extends Controller
                     'data' => ""
                 ]);
             }
+
+            $receiverIdsArray = explode(',', $request->users);
+            $senderId = auth()->user()->id;
+    
+            $receiverIdsArray[] = $senderId;
+            $uniqueIdsArray = array_unique($receiverIdsArray);
+            $mergedIds = implode(',', $uniqueIdsArray);
             
             // Create or update the task
             $dailyTask = DailyTask::updateOrCreate(
@@ -176,7 +183,7 @@ class DailyTaskController extends Controller
                         'message_type' => $request->message_type,
                         'task_name'    => $request->task_name,
                         'checkbox'     => $request->checkbox, // No need for explode
-                        'users'        => explode(',', $request->users), // Convert comma-separated string to array
+                        'users'        => explode(',', $mergedIds), // Convert comma-separated string to array
                         'timezone'     => $request->timezone,
                     ],
                 ]

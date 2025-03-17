@@ -15,6 +15,7 @@ use App\Models\MessageTask;
 use App\Models\UserOtp;
 use App\Models\MessageTaskChatComment;
 use App\Models\BlockUser;
+use App\Models\DailyTask;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -992,6 +993,8 @@ class UserController extends Controller
             $userId = $request->id;
             $filter = [
                 'Task',
+                'SimpleTask',
+                'DailyTask',
                 'Meeting',
                 'Reminder'
             ];
@@ -1191,6 +1194,7 @@ class UserController extends Controller
                     'timeZone' => @$request->timezone ? Carbon::parse($message->message->updated_at)->setTimezone($request->timezone)->format('Y-m-d\TH:i:s.u\Z') : Carbon::parse($message->message->updated_at)->format('Y-m-d\TH:i:s.u\Z'),
                     'sentBy' => ($message->sender_id == $loginUser) ? 'loginUser' : 'User',
                     'messageDetails' => $messageDetails,
+                    'task_type' => $message->message->message_type == 'DailyTask' ? 'assign_daily_base' : '',
                 ];
             })->groupBy(function ($message) {
                 $carbonDate = Carbon::parse($message['date']);
@@ -1234,6 +1238,75 @@ class UserController extends Controller
                     }
                 }
             }
+
+            $dailyTaskList = DailyTask::where('created_by', $loginUser)->get();
+            foreach ($dailyTaskList as $key => $value) 
+            {
+                $date = date('d M Y', strtotime($value['created_at']));
+                $chat[$date][] = array(
+                    "messageId" => $value->id,
+                    "inner_task_id" => "",
+                    "messageType" => "DailyTask",
+                    "attachmentType" => null,
+                    "date" => date('Y-m-d H:i:s', strtotime($value->created_at)),
+                    "time" => date('H:i a', strtotime($value->created_at)),
+                    "task_day" => $value->task_day,
+                    "timeZone" => $value
+                        ? (isset($request->timezone)
+                            ? Carbon::parse($value->created_at)
+                                    ->setTimezone($request->timezone)
+                                    ->format('Y-m-d\TH:i:s.u\Z')
+                            : Carbon::parse($value->created_at)
+                                    ->format('Y-m-d\TH:i:s.u\Z'))
+                        : null,
+                    "sentBy" => 'loginUser',
+                    "messageDetails" => array(
+                        'task_name' => isset($value->payload['task_name']) ? $value->payload['task_name'] : '',
+                        'date' => Carbon::parse($value->created_at)->format('Y-m-d\TH:i:s.u\Z'),
+                        'time' => $value
+                        ? (isset($request->timezone)
+                            ? Carbon::parse($value->task_time)
+                                    ->setTimezone($request->timezone)
+                                    ->format('Y-m-d\TH:i:s.u\Z')
+                            : Carbon::parse($value->task_time)
+                                    ->format('Y-m-d\TH:i:s.u\Z'))
+                        : null,
+                        'users' => User::whereIn('id', array_map('intval', $value->payload['users']))
+                        ->get(['id', 'first_name', 'last_name', 'country_code', 'mobile', 'profile'])
+                        ->map(fn($user) => [
+                            'id' => $user->id,
+                            'first_name' => $user->first_name,
+                            'last_name' => $user->last_name,
+                            'country_code' => $user->country_code,
+                            'mobile' => $user->mobile,
+                            'profile' => $user->profile ? setAssetPath('user-profile/' . $user->profile) : setAssetPath('assets/media/avatars/blank.png'),
+                            'task_ids' => "",
+                            'task_done' => false
+                        ]),
+                        "tasks" => array_map(function ($task) use ($value) {
+                            return [
+                                'id' => "",
+                                'message_id' => "",
+                                'checkbox' => $task,
+                                'task_checked' => "", // Convert to boolean
+                                'task_checked_users' => "",
+                                'profiles' => User::whereIn('id', array_map('intval', $value->payload['users']))
+                                ->get(['id', 'profile', 'first_name', 'last_name'])
+                                ->map(fn($user) => [
+                                    'id' => $user->id,
+                                    'profile' => $user->profile ? setAssetPath('user-profile/' . $user->profile) 
+                                                                : setAssetPath('assets/media/avatars/blank.png'),
+                                    'name' => "{$user->first_name} {$user->last_name}"
+                                ]), // Attach profiles of users who checked the task
+                                'comments' => [], // Attach task comments
+                                'priority_task' => "0", // Attach priority task
+                            ];
+                        }, $value->payload['checkbox']),
+                    ),
+                    "task_type" => "daily_base",                    
+                );
+            }
+
             $data = [
                 'status_code' => 200,
                 'message' => "Get Data Successfully!",
