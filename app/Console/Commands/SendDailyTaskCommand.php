@@ -58,16 +58,17 @@ class SendDailyTaskCommand extends Command
                 if ($currentTime === $taskTime) {
                     // Send task at the exact time
                     \Log::info('Start Daily task messages have been dispatched taskId----> ' . $dTask->id . ' currentDate----> ' . $currentDateTime . ' currentTime----> ' . $currentTime . ' taskTime----> ' . $taskTime);
+
+                    $receiverIdsArray = explode(',', implode(',', $dTask->payload['users']));
+                    $senderId = $dTask->created_by;
                     
                     $msg = new Message();
                     $msg->message_type = $dTask->payload['message_type'];
                     $msg->status = "Unread";
                     $msg->date = $dTask->task_time;
                     $msg->time = $dTask->task_time;
+                    $msg->created_by = $senderId;
                     $msg->save();
-            
-                    $receiverIdsArray = explode(',', implode(',', $dTask->payload['users']));
-                    $senderId = $dTask->created_by;
 
                     $createdUser = User::where('id', $senderId)->first();
             
@@ -88,6 +89,7 @@ class SendDailyTaskCommand extends Command
                         
                         $messageTask->checkbox = $taskName; // Save each task name
                         $messageTask->users = $mergedIds;
+                        $messageTask->created_by = $senderId;
                         $messageTask->save();
                     }
 
