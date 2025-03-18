@@ -6424,9 +6424,13 @@ class ChatController extends Controller
         }
     
         $taskDetails_task = $taskDetails->first();
-    
+
+        
         // Fetch users assigned to tasks
         $userIds = collect($taskDetails)->pluck('users')->flatMap(fn($users) => explode(',', $users))->unique()->filter();
+        if($message->message_type == 'DailyTask' && $message->assign_status == 'Pending') {
+            $userIds = $message->payload ? explode(',', implode(',', json_decode($message->payload)->users)) : $userIds;
+        }
         $users = User::whereIn('id', $userIds)->get(['id', 'first_name', 'last_name', 'country_code', 'mobile', 'profile']);
     
         $users = $users->map(function ($user) use ($taskDetails, $message) {
