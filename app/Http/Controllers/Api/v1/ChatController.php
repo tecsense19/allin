@@ -6498,6 +6498,7 @@ class ChatController extends Controller
                 'time' => Carbon::parse($message->updated_at)->setTimezone($request->timezone ?? 'UTC')->format('h:i a'),
                 'timeZone' => Carbon::parse($message->updated_at)->setTimezone($request->timezone ?? 'UTC')->format('Y-m-d\TH:i:s.u\Z'),
                 'sentBy' => ($message->created_by == $loginUser) ? 'loginUser' : 'User',
+                'task_days' => $message->assign_day,
                 'messageDetails' => [
                     'task_name' => $taskDetails_task->task_name,
                     'date' => $message->date,
