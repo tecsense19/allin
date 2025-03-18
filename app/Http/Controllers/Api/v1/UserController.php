@@ -1201,6 +1201,7 @@ class UserController extends Controller
                     'sentBy' => ($message->sender_id == $loginUser) ? 'loginUser' : 'User',
                     'messageDetails' => $messageDetails,
                     'task_type' => $message->message->message_type == 'DailyTask' ? 'assign_daily_base' : '',
+                    'task_days' => $message->message->assign_day,
                 ];
             })->groupBy(function ($message) {
                 $carbonDate = Carbon::parse($message['date']);
