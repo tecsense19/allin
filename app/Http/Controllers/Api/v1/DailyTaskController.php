@@ -194,9 +194,76 @@ class DailyTaskController extends Controller
                             'checkbox'     => $request->checkbox, // No need for explode
                             'users'        => explode(',', $mergedIds), // Convert comma-separated string to array
                         ]),
-                        'assign_status' => 'Done',
                     ]
                 );
+
+                if($msg->assign_status == 'Pending')
+                {
+                    $receiverIdsArray = [];
+                    $receiverIdsArray[] = $senderId;
+                    MessageSenderReceiver::where('message_id', $msg->id)->forceDelete();
+                    MessageTask::where('message_id', $msg->id)->forceDelete();
+
+                    $task_name_Array = explode(',', implode(',', $request->checkbox));
+                    $task_name_UArray = array_unique($task_name_Array);
+
+                    foreach ($task_name_UArray as $index => $taskName) { // Loop through multiple task names
+                        $messageTask = new MessageTask();
+                        $messageTask->message_id = $msg->id;
+                        $messageTask->task_name = $request->task_name;
+                        
+                        // Use the corresponding task description if available
+                        $messageTask->task_description = null;
+                        
+                        $messageTask->checkbox = $taskName; // Save each task name
+                        $messageTask->users = $senderId;
+                        $messageTask->save();
+                    }
+
+                    foreach ($receiverIdsArray as $receiverId) 
+                    {
+                        $messageSenderReceiver = new MessageSenderReceiver();
+                        $messageSenderReceiver->message_id = $msg->id;
+                        $messageSenderReceiver->sender_id = $senderId;
+                        $messageSenderReceiver->receiver_id = $receiverId;
+                        $messageSenderReceiver->save();
+            
+                        $message = [
+                            'id' => $msg->id,
+                            'sender' => $senderId,
+                            'receiver' => $receiverId,
+                            'message_type' => $request->message_type,
+                            'task_name' => $request->task_name, // You may want to send all task names here
+                            "screen" => "dailytask"
+                        ];
+            
+                        broadcast(new MessageSent($message))->toOthers();
+            
+                        // Push Notification
+                        $validationResults = validateToken($receiverId);
+                        $validTokens = [];
+                        $invalidTokens = [];
+                        foreach ($validationResults as $result) {
+                            $validTokens = array_merge($validTokens, $result['valid']);
+                            $invalidTokens = array_merge($invalidTokens, $result['invalid']);
+                        }
+                        if (count($invalidTokens) > 0) {
+                            foreach ($invalidTokens as $singleInvalidToken) {
+                                userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
+                            }
+                        }
+            
+                        $notification = [
+                            'title' => $createdUser ? $createdUser->first_name . ' ' . $createdUser->last_name : '',
+                            'body' => 'Tasks: ' . $request->task_name, // Multiple task names
+                            'image' => "",
+                        ];
+            
+                        if (count($validTokens) > 0) {
+                            sendPushNotification($validTokens, $notification, $message);
+                        }
+                    }
+                }
 
                 return response()->json([ 'status_code' => 200, 'message' => 'Daily task updated successfully.', 'data' => $msg ]);
             } else {                
