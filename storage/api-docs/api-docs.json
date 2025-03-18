@@ -3347,6 +3347,12 @@
                                         "type": "string",
                                         "example": "America/New_York",
                                         "nullable": true
+                                    },
+                                    "api_action": {
+                                        "description": "create or update",
+                                        "type": "string",
+                                        "example": "",
+                                        "nullable": true
                                     }
                                 },
                                 "type": "object"

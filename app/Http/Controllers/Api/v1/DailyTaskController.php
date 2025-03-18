@@ -110,6 +110,13 @@ class DailyTaskController extends Controller
      *                     example="America/New_York",
      *                     description="Timezone of the user creating the task",
      *                     nullable=true
+     *                 ),
+     *                 @OA\Property(
+     *                     property="api_action",
+     *                     type="string",
+     *                     example="",
+     *                     description="create or update",
+     *                     nullable=true
      *                 )
      *             )
      *         )
@@ -167,14 +174,8 @@ class DailyTaskController extends Controller
             }
 
             $senderId = auth()->user()->id;
-            
-            $todayName = date("l"); // Today's day name
-            $currentTime = date("H:i:00"); // Current time (exact hour and minute)
-            $currentDateTime = date("Y-m-d H:i:00"); // Current date with exact time
 
-            $days = explode(',', $request->task_day); // Convert to array
-            $taskTime = date("H:i:00", strtotime($request->task_time)); // Task time in H:i format
-            if (in_array($todayName, $days)) 
+            if($request->api_action == 'update')
             {
                 $receiverIdsArray = explode(',', $request->users);
                 $createdUser = User::where('id', $senderId)->first();
@@ -183,90 +184,122 @@ class DailyTaskController extends Controller
                 $uniqueIdsArray = array_unique($receiverIdsArray);
                 $mergedIds = implode(',', $uniqueIdsArray);
 
-                if ($currentTime === $taskTime) {                    
-                    $msg = new Message();
-                    $msg->message_type = $request->message_type;
-                    $msg->status = "Unread";
-                    $msg->date = $request->timezone ? Carbon::parse($currentDateTime)->setTimezone($request->timezone)->format('Y-m-d\TH:i:s.u\Z') : Carbon::parse($currentDateTime)->format('Y-m-d\TH:i:s.u\Z');
-                    $msg->time = $request->timezone ? Carbon::parse($currentDateTime)->setTimezone($request->timezone)->format('Y-m-d\TH:i:s.u\Z') : Carbon::parse($currentDateTime)->format('Y-m-d\TH:i:s.u\Z');
-                    $msg->assign_day = $request->task_day;
-                    $msg->assign_time = $request->task_time;
-                    $msg->assign_status = 'Pending';
-                    $msg->payload = json_encode([
-                        'task_name'    => $request->task_name,
-                        'checkbox'     => $request->checkbox, // No need for explode
-                        'users'        => explode(',', $mergedIds), // Convert comma-separated string to array
-                    ]);
-                    $msg->save();
+                $msg = Message::updateOrCreate(
+                    ['id' => $request->message_id], // Search criteria
+                    [
+                        'assign_day'    => $request->task_day,
+                        'assign_time'   => $request->task_time,
+                        'payload'       => json_encode([
+                            'task_name'    => $request->task_name,
+                            'checkbox'     => $request->checkbox, // No need for explode
+                            'users'        => explode(',', $mergedIds), // Convert comma-separated string to array
+                        ]),
+                        'assign_status' => 'Done',
+                    ]
+                );
 
-                    $task_name_Array = explode(',', implode(',', $request->checkbox));
-                    $task_name_UArray = array_unique($task_name_Array);
+                return response()->json([ 'status_code' => 200, 'message' => 'Daily task updated successfully.', 'data' => $msg ]);
+            } else {                
+                $todayName = date("l"); // Today's day name
+                $currentTime = date("H:i:00"); // Current time (exact hour and minute)
+                $currentDateTime = date("Y-m-d H:i:00"); // Current date with exact time
 
-                    foreach ($task_name_UArray as $index => $taskName) { // Loop through multiple task names
-                        $messageTask = new MessageTask();
-                        $messageTask->message_id = $msg->id;
-                        $messageTask->task_name = $request->task_name;
-                        
-                        // Use the corresponding task description if available
-                        $messageTask->task_description = null;
-                        
-                        $messageTask->checkbox = $taskName; // Save each task name
-                        $messageTask->users = $mergedIds;
-                        $messageTask->save();
-                    }
+                $days = explode(',', $request->task_day); // Convert to array
+                $taskTime = date("H:i:00", strtotime($request->task_time)); // Task time in H:i format
+                if (in_array($todayName, $days)) 
+                {
+                    $receiverIdsArray = explode(',', $request->users);
+                    $createdUser = User::where('id', $senderId)->first();
+                
+                    $receiverIdsArray[] = $senderId;
+                    $uniqueIdsArray = array_unique($receiverIdsArray);
+                    $mergedIds = implode(',', $uniqueIdsArray);
 
-                    foreach ($receiverIdsArray as $receiverId) 
-                    {
-                        $messageSenderReceiver = new MessageSenderReceiver();
-                        $messageSenderReceiver->message_id = $msg->id;
-                        $messageSenderReceiver->sender_id = $senderId;
-                        $messageSenderReceiver->receiver_id = $receiverId;
-                        $messageSenderReceiver->save();
-            
-                        $message = [
-                            'id' => $msg->id,
-                            'sender' => $senderId,
-                            'receiver' => $receiverId,
-                            'message_type' => $request->message_type,
-                            'task_name' => $request->task_name, // You may want to send all task names here
-                            "screen" => "dailytask"
-                        ];
-            
-                        broadcast(new MessageSent($message))->toOthers();
-            
-                        // Push Notification
-                        $validationResults = validateToken($receiverId);
-                        $validTokens = [];
-                        $invalidTokens = [];
-                        foreach ($validationResults as $result) {
-                            $validTokens = array_merge($validTokens, $result['valid']);
-                            $invalidTokens = array_merge($invalidTokens, $result['invalid']);
+                    if ($currentTime === $taskTime) {                    
+                        $msg = new Message();
+                        $msg->message_type = $request->message_type;
+                        $msg->status = "Unread";
+                        $msg->date = $request->timezone ? Carbon::parse($currentDateTime)->setTimezone($request->timezone)->format('Y-m-d\TH:i:s.u\Z') : Carbon::parse($currentDateTime)->format('Y-m-d\TH:i:s.u\Z');
+                        $msg->time = $request->timezone ? Carbon::parse($currentDateTime)->setTimezone($request->timezone)->format('Y-m-d\TH:i:s.u\Z') : Carbon::parse($currentDateTime)->format('Y-m-d\TH:i:s.u\Z');
+                        $msg->assign_day = $request->task_day;
+                        $msg->assign_time = $request->task_time;
+                        $msg->assign_status = 'Pending';
+                        $msg->payload = json_encode([
+                            'task_name'    => $request->task_name,
+                            'checkbox'     => $request->checkbox, // No need for explode
+                            'users'        => explode(',', $mergedIds), // Convert comma-separated string to array
+                        ]);
+                        $msg->save();
+
+                        $task_name_Array = explode(',', implode(',', $request->checkbox));
+                        $task_name_UArray = array_unique($task_name_Array);
+
+                        foreach ($task_name_UArray as $index => $taskName) { // Loop through multiple task names
+                            $messageTask = new MessageTask();
+                            $messageTask->message_id = $msg->id;
+                            $messageTask->task_name = $request->task_name;
+                            
+                            // Use the corresponding task description if available
+                            $messageTask->task_description = null;
+                            
+                            $messageTask->checkbox = $taskName; // Save each task name
+                            $messageTask->users = $mergedIds;
+                            $messageTask->save();
                         }
-                        if (count($invalidTokens) > 0) {
-                            foreach ($invalidTokens as $singleInvalidToken) {
-                                userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
+
+                        foreach ($receiverIdsArray as $receiverId) 
+                        {
+                            $messageSenderReceiver = new MessageSenderReceiver();
+                            $messageSenderReceiver->message_id = $msg->id;
+                            $messageSenderReceiver->sender_id = $senderId;
+                            $messageSenderReceiver->receiver_id = $receiverId;
+                            $messageSenderReceiver->save();
+                
+                            $message = [
+                                'id' => $msg->id,
+                                'sender' => $senderId,
+                                'receiver' => $receiverId,
+                                'message_type' => $request->message_type,
+                                'task_name' => $request->task_name, // You may want to send all task names here
+                                "screen" => "dailytask"
+                            ];
+                
+                            broadcast(new MessageSent($message))->toOthers();
+                
+                            // Push Notification
+                            $validationResults = validateToken($receiverId);
+                            $validTokens = [];
+                            $invalidTokens = [];
+                            foreach ($validationResults as $result) {
+                                $validTokens = array_merge($validTokens, $result['valid']);
+                                $invalidTokens = array_merge($invalidTokens, $result['invalid']);
+                            }
+                            if (count($invalidTokens) > 0) {
+                                foreach ($invalidTokens as $singleInvalidToken) {
+                                    userDeviceToken::where('token', $singleInvalidToken)->forceDelete();
+                                }
+                            }
+                
+                            $notification = [
+                                'title' => $createdUser ? $createdUser->first_name . ' ' . $createdUser->last_name : '',
+                                'body' => 'Tasks: ' . $request->task_name, // Multiple task names
+                                'image' => "",
+                            ];
+                
+                            if (count($validTokens) > 0) {
+                                sendPushNotification($validTokens, $notification, $message);
                             }
                         }
-            
-                        $notification = [
-                            'title' => $createdUser ? $createdUser->first_name . ' ' . $createdUser->last_name : '',
-                            'body' => 'Tasks: ' . $request->task_name, // Multiple task names
-                            'image' => "",
-                        ];
-            
-                        if (count($validTokens) > 0) {
-                            sendPushNotification($validTokens, $notification, $message);
-                        }
-                    }
 
-                    return response()->json([ 'status_code' => 200, 'message' => 'Daily task created successfully.', 'data' => $msg ]);
+                        return response()->json([ 'status_code' => 200, 'message' => 'Daily task created successfully.', 'data' => $msg ]);
+                    } else {
+                        $msg = $this->createNewTask($request, $currentDateTime);
+                        return response()->json([ 'status_code' => 200, 'message' => 'Daily task created successfully.', 'data' => $msg ]);
+                    }
                 } else {
                     $msg = $this->createNewTask($request, $currentDateTime);
                     return response()->json([ 'status_code' => 200, 'message' => 'Daily task created successfully.', 'data' => $msg ]);
                 }
-            } else {
-                $msg = $this->createNewTask($request, $currentDateTime);
-                return response()->json([ 'status_code' => 200, 'message' => 'Daily task created successfully.', 'data' => $msg ]);
             }
             
             // Create or update the task
