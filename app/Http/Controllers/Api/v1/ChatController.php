@@ -4509,7 +4509,7 @@ class ChatController extends Controller
                 
                 $taskUsers = array_filter(explode(',', $firstTask->users ?? ''));
 
-                if($getMessage->message_type == 'DailyTask' && $message->message->assign_status == 'Pending') {
+                if($getMessage->message_type == 'DailyTask' && $getMessage->message_type == 'Pending') {
                     $totalUser = $messageSenderReceiver->message->payload ? json_decode($messageSenderReceiver->message->payload)->users : $taskUsers;
                     $taskUsers = explode(',', implode(',', $totalUser));
                 }
