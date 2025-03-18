@@ -46,7 +46,7 @@ class SendDailyTaskCommand extends Command
     {
         $dailyTasks = Message::where('message_type', 'DailyTask')->where('assign_status', 'Pending')->whereDate('created_at', date('Y-m-d'))->orderBy('created_at', 'desc')->get();
         
-        if ($dailyTask) {
+        if ($dailyTasks) {
             foreach ($dailyTasks as $dailyTask)
             {
                 $todayName = date("l"); // Today's day name
