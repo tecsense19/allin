@@ -4115,6 +4115,13 @@ class ChatController extends Controller
             // Parse complete and incomplete user IDs
             $completeUsers = $task->task_checked_users ? explode(',', $task->task_checked_users) : [];
             $allUsers = $task->users ? explode(',', $task->users) : [];
+
+            $getMessage = Message::where('id', $task->message_id)->first();
+
+            if($getMessage->message_type == 'DailyTask') {
+                $totalUser = $getMessage->payload ? json_decode($getMessage->payload)->users : [];
+                $allUsers = explode(',', implode(',', $totalUser));
+            }
             
             // Filter incomplete users to exclude those in the complete users list
             $incompleteUsers = array_diff($allUsers, $completeUsers);                     
@@ -4458,7 +4465,7 @@ class ChatController extends Controller
             } else {
                 $userList = (clone $baseQuery)
                         ->where('sender_id', $loginUser)
-                        ->where('receiver_id', '!=', $loginUser)
+                        // ->where('receiver_id', '!=', $loginUser)
                         // ->get();
                         ->distinct()
                         ->get(['message_id', 'created_by']);
@@ -4501,6 +4508,12 @@ class ChatController extends Controller
                 $getMessage = $message;
                 
                 $taskUsers = array_filter(explode(',', $firstTask->users ?? ''));
+
+                if($getMessage->message_type == 'DailyTask' && $message->message->assign_status == 'Pending') {
+                    $totalUser = $messageSenderReceiver->message->payload ? json_decode($messageSenderReceiver->message->payload)->users : $taskUsers;
+                    $taskUsers = explode(',', implode(',', $totalUser));
+                }
+
                 $profiles = empty($taskUsers) ? [] : User::whereIn('id', array_map('intval', $taskUsers))
                             ->get(['id', 'profile', 'first_name', 'last_name'])
                             ->map(fn($user) => [
@@ -4563,77 +4576,11 @@ class ChatController extends Controller
                         })
                         ->values(); // Reset keys to be sequential
 
-            $uniqueResultCount = count($uniqueResult);
-
-            $dailyTaskList = DailyTask::where('created_by', $loginUser)->get();
-            $dailyTaskArr = [];
-            foreach ($dailyTaskList as $key => $value) 
-            {
-                $uniqueResultCount++;
-                $dailyTaskArr[] = array(
-                    "unique_id" => $uniqueResultCount,
-                    "user_id" => "",
-                    "message_id" => $value->id,
-                    "inner_task_id" => "",
-                    "message_type" => "DailyTask",
-                    "task_name" => $value->payload['task_name'],
-                    "taskReceiverName" => "",
-                    "taskReceiverProfile" => "",
-                    "date" => date('Y-m-d H:i:s', strtotime($value->created_at)),
-                    "time" => date('H:i a', strtotime($value->created_at)),
-                    "task_day" => $value->task_day,
-                    "timeZone" => $value
-                    ? (isset($request->timezone)
-                        ? Carbon::parse($value->created_at)
-                                ->setTimezone($request->timezone)
-                                ->format('Y-m-d H:i:s')
-                        : Carbon::parse($value->created_at)
-                                ->format('Y-m-d H:i:s'))
-                    : null,
-                    "taskStatus" => false,
-                    "totalTasks" => count($value->payload['checkbox']),
-                    "tasks" => array_map(function ($task) use ($value) {
-                        return [
-                            'id' => "",
-                            'message_id' => "",
-                            'checkbox' => $task,
-                            'task_checked' => "", // Convert to boolean
-                            'task_checked_users' => "",
-                            'profiles' => User::whereIn('id', array_map('intval', $value->payload['users']))
-                            ->get(['id', 'profile', 'first_name', 'last_name'])
-                            ->map(fn($user) => [
-                                'id' => $user->id,
-                                'profile' => $user->profile ? setAssetPath('user-profile/' . $user->profile) 
-                                                            : setAssetPath('assets/media/avatars/blank.png'),
-                                'name' => "{$user->first_name} {$user->last_name}"
-                            ]), // Attach profiles of users who checked the task
-                            'comments' => [], // Attach task comments
-                            'priority_task' => "0", // Attach priority task
-                        ];
-                    }, $value->payload['checkbox']),
-                    "completedTasks" => 0,
-                    "priority_task" => 0,
-                    "profiles" => User::whereIn('id', array_map('intval', $value->payload['users']))
-                    ->get(['id', 'profile', 'first_name', 'last_name'])
-                    ->map(fn($user) => [
-                        'id' => $user->id,
-                        'profile' => $user->profile ? setAssetPath('user-profile/' . $user->profile) 
-                                                    : setAssetPath('assets/media/avatars/blank.png'),
-                        'name' => "{$user->first_name} {$user->last_name}"
-                    ]),
-                    "task_checked_users" => null,
-                    "task_type" => "daily_base",
-                    
-                );
-            }
-
-            $mergedArray = [...$dailyTaskArr, ...$uniqueResult];
-
             $data = [
                 'status_code' => 200,
                 'message'     => "Task User List Get Successfully!",
                 'data'        => [
-                    'userList' => $type != 'Receive' ? $mergedArray : $uniqueResult,
+                    'userList' => $uniqueResult,
                 ]
             ];
             return $this->sendJsonResponse($data);
