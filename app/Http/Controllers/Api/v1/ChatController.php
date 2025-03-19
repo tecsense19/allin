@@ -4486,7 +4486,7 @@ class ChatController extends Controller
 
             $taskUsersProfiles = User::whereIn('id', $allTaskUserIds)->get(['id', 'profile', 'first_name', 'last_name'])->keyBy('id');
 
-            $result = $userList->map(function ($messageSenderReceiver, $index) use ($loginUser, $request, $tasksByMessage, $taskUsersProfiles) {
+            $result = $userList->map(function ($messageSenderReceiver, $index) use ($loginUser, $request, $tasksByMessage, $taskUsersProfiles, $type) {
     
                 $message = $messageSenderReceiver->message;
                 $receiver = $messageSenderReceiver->receiver;
@@ -4558,7 +4558,9 @@ class ChatController extends Controller
                                                 : null,
                     'taskStatus'           => $messageSenderReceiver->updated_by == 1,
                     'totalTasks'           => $totalTasks,
-                    'completedTasks'       => $completedTasks,
+                    'completedTasks'       => $type == 'Given' 
+                                                ? $completedTasks 
+                                                : (!empty($firstTask) && in_array($loginUser, explode(',', $firstTask->task_checked_users)) ? 1 : 0),
                     'priority_task'        => $firstTask ? $firstTask->priority_task : null,
                     'profiles'             => $profiles,
                     'task_checked_users'   => $firstTask ? $firstTask->task_checked_users : '',
