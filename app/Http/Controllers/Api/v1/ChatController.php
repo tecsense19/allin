@@ -5662,7 +5662,7 @@ class ChatController extends Controller
         try {
             $userId = auth()->user()->id; // Get the ID of the currently authenticated user
 
-            $documents = UserDocument::where('created_by', $userId)->get();
+            $documents = UserDocument::where('created_by', $userId)->orderBy('id', 'desc')->get();
 
             return response()->json([
                 'status_code' => 200,
@@ -6310,7 +6310,8 @@ class ChatController extends Controller
              $pdf->set_option('isHtml5ParserEnabled', true);
              $pdf->set_option('DOMPDF_ENABLE_REMOTE', true); // Allow remote images
  
-             $pdfPath = 'pdfs/' . time() . '.pdf';
+             $pdfName = time() . '.pdf';
+             $pdfPath = 'pdfs/' . $pdfName;
              Storage::put("public/{$pdfPath}", $pdf->output());
  
              // Delete images from the folder
@@ -6319,6 +6320,12 @@ class ChatController extends Controller
                      unlink($image['path']); // Delete the image file
                  }
              }
+
+            $userDocument = new UserDocument();
+            $userDocument->attachment_name = $pdfName;
+            $userDocument->attachment_path = asset("public/storage/{$pdfPath}");
+            $userDocument->created_by = auth()->user()->id;
+            $userDocument->save();
  
              // Return response
              return response()->json([
