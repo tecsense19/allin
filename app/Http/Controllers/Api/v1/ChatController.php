@@ -4572,7 +4572,7 @@ class ChatController extends Controller
                         ->sortByDesc('message_id')
                         ->sortBy(function ($item) {
                             // Prioritize items with no completed tasks (i.e. false when cast to boolean)
-                            return $item['completedTasks'] > 0;
+                            return $item['completedTasks'] == $item['totalTasks'];
                         })
                         ->values(); // Reset keys to be sequential
 
