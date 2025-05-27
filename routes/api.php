@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Controllers\Api\v1\CallLogController;
 use App\Http\Controllers\Api\v1\ChatController;
 use App\Http\Controllers\Api\v1\GroupController;
 use App\Http\Controllers\Api\v1\OtpController;
 use App\Http\Controllers\Api\v1\ProjectManagementController;
+use App\Http\Controllers\Api\v1\SendEmailController;
 use App\Http\Controllers\Api\v1\UserController;
 use App\Http\Controllers\Api\v1\SimpleTasksController;
 use App\Http\Controllers\Api\v1\DailyTaskController;
@@ -127,6 +129,14 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
         Route::controller(DailyTaskController::class)->group(function () {
             Route::post('/daily-task-create-or-update', 'dailyTaskCreateOrUpdate');
             Route::post('/daily-task-delete', 'deleteDailyTask');
+        });
+
+        Route::controller(SendEmailController::class)->group(function (){
+           Route::post('/send-email',  'sendEmail');
+        });
+
+        Route::controller(CallLogController::class)->group(function (){
+            Route::post('/call-log',  'store');
         });
     });
 });

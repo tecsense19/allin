@@ -10,6 +10,84 @@
         }
     ],
     "paths": {
+        "/api/v1/call-log": {
+            "post": {
+                "tags": [
+                    "Call Logs"
+                ],
+                "summary": "Store a new call log",
+                "operationId": "21ec3556e8f47a38c003c8960791b65d",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "receiver_id",
+                                    "call_start_time",
+                                    "call_end_time"
+                                ],
+                                "properties": {
+                                    "id": {
+                                        "type": "integer",
+                                        "example": ""
+                                    },
+                                    "receiver_id": {
+                                        "type": "integer",
+                                        "format": "int64",
+                                        "example": 2
+                                    },
+                                    "call_start_time": {
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "example": "2024-05-27T14:00:00Z"
+                                    },
+                                    "call_end_time": {
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "example": "2024-05-27T14:20:00Z"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Call log created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "id": {
+                                            "type": "integer",
+                                            "example": 5
+                                        },
+                                        "time_min": {
+                                            "type": "integer",
+                                            "example": 20
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/v1/text-message": {
             "post": {
                 "tags": [
@@ -4924,6 +5002,58 @@
                 ]
             }
         },
+        "/api/v1/send-email": {
+            "post": {
+                "tags": [
+                    "Emails"
+                ],
+                "summary": "Send email with attachment",
+                "description": "Sends an email with optional file attachment to multiple recipients",
+                "operationId": "sendEmail",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "emails",
+                                    "file_upload"
+                                ],
+                                "properties": {
+                                    "emails": {
+                                        "description": "Comma-separated email addresses",
+                                        "type": "string",
+                                        "example": "xyz@gmail.com,abc@gmail.com"
+                                    },
+                                    "file_upload": {
+                                        "description": "File to attach",
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Emails sent successfully"
+                    },
+                    "400": {
+                        "description": "Invalid request"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/v1/simple-task-create-or-update": {
             "post": {
                 "tags": [
@@ -6082,6 +6212,58 @@
         {
             "name": "Authentication",
             "description": ""
+        },
+        {
+            "name": "Call Logs",
+            "description": "Call Logs"
+        },
+        {
+            "name": "Messages",
+            "description": "Messages"
+        },
+        {
+            "name": "Files",
+            "description": "Files"
+        },
+        {
+            "name": "Meetings",
+            "description": "Meetings"
+        },
+        {
+            "name": "Documents",
+            "description": "Documents"
+        },
+        {
+            "name": "Notifications",
+            "description": "Notifications"
+        },
+        {
+            "name": "Daily Task",
+            "description": "Daily Task"
+        },
+        {
+            "name": "Group Chat",
+            "description": "Group Chat"
+        },
+        {
+            "name": "Project Management",
+            "description": "Project Management"
+        },
+        {
+            "name": "Emails",
+            "description": "Emails"
+        },
+        {
+            "name": "Simple Task",
+            "description": "Simple Task"
+        },
+        {
+            "name": "User",
+            "description": "User"
+        },
+        {
+            "name": "Update Tasks",
+            "description": "Update Tasks"
         }
     ]
 }
