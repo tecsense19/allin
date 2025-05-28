@@ -2399,285 +2399,234 @@ class UserController extends Controller
         }
     }
     
-    /**
-     * @OA\Post(
-     *     path="/api/v1/edit-profile",
-     *     summary="Edit Profile",
-     *     tags={"User"},
-     *     description="Edit Profile",
-     *     operationId="editProfile",
-     *     security={{"bearerAuth":{}}},
-     *     @OA\RequestBody(
-     *         required=true,
-     *         description="Edit Profile",
-     *         @OA\MediaType(
-     *             mediaType="multipart/form-data",
-     *             @OA\Schema(
-     *                 required={},
-     *                 @OA\Property(
-     *                     property="first_name",
-     *                     type="string",
-     *                     example="Test",
-     *                     description="Enter First Name"
-     *                 ),
-     *                 @OA\Property(
-     *                     property="last_name",
-     *                     type="string",
-     *                     example="User",
-     *                     description="Enter Last Name"
-     *                 ),
-     *                 @OA\Property(
-     *                     property="country_code",
-     *                     type="string",
-     *                     example="+91",
-     *                     description="Enter Country Code"
-     *                 ),
-     *                 @OA\Property(
-     *                     property="mobile",
-     *                     type="number",
-     *                     example="9876543210",
-     *                     description="Enter Mobile Number"
-     *                 ),
-     *                 @OA\Property(
-     *                     property="email",
-     *                     type="string",
-     *                     example="test@yopmail.com",
-     *                     description="Enter Email Address"
-     *                 ),
-     *                 @OA\Property(
-     *                     property="title",
-     *                     type="string",
-     *                     example="",
-     *                     description="Enter title"
-     *                 ),
-     *                 @OA\Property(
-     *                     property="description",
-     *                     type="string",
-     *                     example="",
-     *                     description="Enter Description"
-     *                 ),
-     *                 @OA\Property(
-     *                     property="account_id",
-     *                     type="string",
-     *                     example="",
-     *                     description="Enter Account Id"
-     *                 ),
-     *                 @OA\Property(
-     *                     property="profile",
-     *                     type="file",
-     *                     description="Profile Image"
-     *                 ),
-     *                 @OA\Property(
-     *                     property="website_url",
-     *                     type="string",
-     *                     example="",
-     *                     description="Enter Website Url"
-     *                 ),
-     *                 @OA\Property(
-     *                     property="cover_image",
-     *                     type="file",
-     *                     description="Cover Image"
-     *                 ),
-     *                 @OA\Property(
-     *                     property="instagram_profile_url",
-     *                     type="string",
-     *                     example="",
-     *                     description="Enter Instagram Profile Url"
-     *                 ),
-     *                 @OA\Property(
-     *                     property="facebook_profile_url",
-     *                     type="string",
-     *                     example="",
-     *                     description="Enter Facebook Profile Url"
-     *                 ),
-     *                 @OA\Property(
-     *                     property="twitter_profile_url",
-     *                     type="string",
-     *                     example="",
-     *                     description="Enter Twitter Profile Url"
-     *                 ),
-     *                 @OA\Property(
-     *                     property="youtube_profile_url",
-     *                     type="string",
-     *                     example="",
-     *                     description="Enter Youtube Profile Url"
-     *                 ),
-     *                 @OA\Property(
-     *                     property="linkedin_profile_url",
-     *                     type="string",
-     *                     example="",
-     *                     description="Enter LinkedIn Profile Url"
-     *                 ),
-     *                 @OA\Property(
-     *                     property="address",
-     *                     type="string",
-     *                     example="",
-     *                     description="Enter your full address"
-     *                 ),
-     *                 @OA\Property(
-     *                     property="longitude",
-     *                     type="string",
-     *                     example="",
-     *                     description="Enter longitude"
-     *                 ),
-     *                 @OA\Property(
-     *                     property="latitude",
-     *                     type="string",
-     *                     example="",
-     *                     description="Enter latitude"
-     *                 ),
-     *             )
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="json schema",
-     *         @OA\MediaType(
-     *             mediaType="application/json",
-     *         ),
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="Invalid Request"
-     *     ),
-     * )
-     */
+   /**
+ * @OA\Post(
+ *     path="/api/v1/edit-profile",
+ *     summary="Edit Profile",
+ *     tags={"User"},
+ *     description="Allows authenticated user to edit profile details and upload images like profile picture, cover image, and company logo.",
+ *     operationId="editProfile",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\RequestBody(
+ *         required=true,
+ *         description="Edit Profile",
+ *         @OA\MediaType(
+ *             mediaType="multipart/form-data",
+ *             @OA\Schema(
+ *                 @OA\Property(property="first_name", type="string", example="Test", description="Enter First Name"),
+ *                 @OA\Property(property="last_name", type="string", example="User", description="Enter Last Name"),
+ *                 @OA\Property(property="country_code", type="string", example="+91", description="Enter Country Code"),
+ *                 @OA\Property(property="mobile", type="number", example="9876543210", description="Enter Mobile Number"),
+ *                 @OA\Property(property="email", type="string", example="test@yopmail.com", description="Enter Email Address"),
+ *                 @OA\Property(property="title", type="string", example="", description="Enter title"),
+ *                 @OA\Property(property="description", type="string", example="", description="Enter Description"),
+ *                 @OA\Property(property="account_id", type="string", example="", description="Enter Account Id"),
+ *                 @OA\Property(property="profile", type="file", description="Profile Image"),
+ *                 @OA\Property(property="cover_image", type="file", description="Cover Image"),
+ *                 @OA\Property(property="company_logo", type="file", description="Company Logo"),
+ *                 @OA\Property(property="website_url", type="string", example="", description="Enter Website Url"),
+ *                 @OA\Property(property="instagram_profile_url", type="string", example="", description="Enter Instagram Profile Url"),
+ *                 @OA\Property(property="facebook_profile_url", type="string", example="", description="Enter Facebook Profile Url"),
+ *                 @OA\Property(property="twitter_profile_url", type="string", example="", description="Enter Twitter Profile Url"),
+ *                 @OA\Property(property="youtube_profile_url", type="string", example="", description="Enter Youtube Profile Url"),
+ *                 @OA\Property(property="linkedin_profile_url", type="string", example="", description="Enter LinkedIn Profile Url"),
+ *                 @OA\Property(property="address", type="string", example="", description="Enter your full address"),
+ *                 @OA\Property(property="longitude", type="string", example="", description="Enter longitude"),
+ *                 @OA\Property(property="latitude", type="string", example="", description="Enter latitude")
+ *             )
+ *         )
+ *     ),
+ *     @OA\Response(
+ *         response=200,
+ *         description="User profile updated successfully",
+ *         @OA\MediaType(mediaType="application/json")
+ *     ),
+ *     @OA\Response(
+ *         response=404,
+ *         description="Invalid Request"
+ *     )
+ * )
+ */
+   
 
     public function editProfile(Request $request)
-    {
-        try {
-            $userId = auth()->user()->id;
-            if (empty($userId)) {
-                $data = [
-                    'status_code' => 400,
-                    'message' => "User Not Found!",
-                    'data' => ""
-                ];
-                return $this->sendJsonResponse($data);
-            }
-            $users = new User();
-            $user = $users->find($userId);
-            $profileImageName = $user->profile;
-            if ($request->hasFile('profile')) {
-                $rule = [
-                    'profile' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-                ];
-                $message = [
-                    'profile.required' => 'Profile image required',
-                    'profile.image' => 'Profile image must be an image file.',
-                    'profile.mimes' => 'Profile image must be a JPEG, JPG, PNG,svg, or WebP file.',
-                    'profile.max' => 'Profile image size must not exceed 2MB.',
-                ];
-                $validator = Validator::make($request->all(), $rule, $message);
-                if ($validator->fails()) {
-                    $data = [
-                        'status_code' => 400,
-                        'message' => $validator->errors()->first(),
-                        'data' => ""
-                    ];
-                    return $this->sendJsonResponse($data);
-                }
-                $profileImage = $request->file('profile');
-                $profileImageName = imageUpload($profileImage, 'user-profile');
-                if ($profileImageName == 'upload_failed') {
-                    $data = [
-                        'status_code' => 400,
-                        'message' => 'profile Upload faild',
-                        'data' => ""
-                    ];
-                    return $this->sendJsonResponse($data);
-                } elseif ($profileImageName == 'invalid_image') {
-                    $data = [
-                        'status_code' => 400,
-                        'message' => 'Please Select jpg, jpeg, png, webp, svg File',
-                        'data' => ""
-                    ];
-                    return $this->sendJsonResponse($data);
-                }
-            }
-            $coverImageName = $user->cover_image;
-            if ($request->hasFile('cover_image')) {
-                $ruleCover = [
-                    'cover_image' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-                ];
-                $messageCover = [
-                    'cover_image.required' => 'Profile image required',
-                    'cover_image.image' => 'Profile image must be an image file.',
-                    'cover_image.mimes' => 'Profile image must be a JPEG, JPG, PNG,svg, or WebP file.',
-                    'cover_image.max' => 'Profile image size must not exceed 2MB.',
-                ];
-                $validatorCover = Validator::make($request->all(), $ruleCover, $messageCover);
-                if ($validatorCover->fails()) {
-                    $dataCover = [
-                        'status_code' => 400,
-                        'message' => $validator->errors()->first(),
-                        'data' => ""
-                    ];
-                    return $this->sendJsonResponse($dataCover);
-                }
-                $coverImage = $request->file('cover_image');
-                $coverImageName = imageUpload($coverImage, 'user-profile-cover-image');
-                if ($coverImageName == 'upload_failed') {
-                    $data = [
-                        'status_code' => 400,
-                        'message' => 'Cover Image Upload faild',
-                        'data' => ""
-                    ];
-                    return $this->sendJsonResponse($data);
-                } elseif ($coverImageName == 'invalid_image') {
-                    $data = [
-                        'status_code' => 400,
-                        'message' => 'Please Select jpg, jpeg, png, webp, svg File',
-                        'data' => ""
-                    ];
-                    return $this->sendJsonResponse($data);
-                }
-            }
-            $user->first_name = @$request->first_name ? $request->first_name : $user->first_name;
-            $user->last_name = @$request->last_name ? $request->last_name : $user->last_name;
-            $user->country_code = @$request->country_code ? $request->country_code : $user->country_code;
-            $user->mobile = @$request->mobile ? $request->mobile : $user->mobile;
-            $user->email = @$request->email ? $request->email : $user->email;
-            $user->profile = $profileImageName;
-            $user->cover_image = $coverImageName;
-            $user->title = @$request->title ? $request->title : NULL;
-            $user->description = @$request->description ? $request->description : NULL;
-            $user->website_url = @$request->website_url ? $request->website_url : NULL;
-            $user->instagram_profile_url = @$request->instagram_profile_url ? $request->instagram_profile_url : NULL;
-            $user->facebook_profile_url = @$request->facebook_profile_url ? $request->facebook_profile_url : NULL;
-            $user->twitter_profile_url = @$request->twitter_profile_url ? $request->twitter_profile_url : NULL;
-            $user->youtube_profile_url = @$request->youtube_profile_url ? $request->youtube_profile_url : NULL;
-            $user->linkedin_profile_url = @$request->linkedin_profile_url ? $request->linkedin_profile_url : NULL;
-            $user->longitude = @$request->longitude ? $request->longitude : NULL;
-            $user->latitude = @$request->latitude ? $request->latitude : NULL;
-            $user->address = @$request->address ? $request->address : NULL;
-            $user->save();
-
-            $user->profile = @$user->profile ? setAssetPath('user-profile/' . $user->profile) : NULL;
-            $user->cover_image = @$user->cover_image ? setAssetPath('user-profile-cover-image/' . $user->cover_image) : NULL;
+{
+    // try {
+        $userId = auth()->user()->id;
+        if (empty($userId)) {
             $data = [
-                'status_code' => 200,
-                'message' => "User Updated Successfully!",
-                'data' => [
-                    'userData' => $user
-                ]
+                'status_code' => 400,
+                'message' => "User Not Found!",
+                'data' => ""
             ];
             return $this->sendJsonResponse($data);
-        } catch (\Exception $e) {
-            Log::error(
-                [
-                    'method' => __METHOD__,
-                    'error' => [
-                        'file' => $e->getFile(),
-                        'line' => $e->getLine(),
-                        'message' => $e->getMessage()
-                    ],
-                    'created_at' => date("Y-m-d H:i:s")
-                ]
-            );
-            return $this->sendJsonResponse(array('status_code' => 500, 'message' => 'Something went wrong'));
         }
-    }
+
+        $users = new User();
+        $user = $users->find($userId);
+
+        // --- Profile Image Upload ---
+        $profileImageName = $user->profile;
+        if ($request->hasFile('profile')) {
+            $rule = [
+                'profile' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            ];
+            $message = [
+                'profile.required' => 'Profile image required',
+                'profile.image' => 'Profile image must be an image file.',
+                'profile.mimes' => 'Profile image must be a JPEG, JPG, PNG,svg, or WebP file.',
+                'profile.max' => 'Profile image size must not exceed 2MB.',
+            ];
+            $validator = Validator::make($request->all(), $rule, $message);
+            if ($validator->fails()) {
+                return $this->sendJsonResponse([
+                    'status_code' => 400,
+                    'message' => $validator->errors()->first(),
+                    'data' => ""
+                ]);
+            }
+            $profileImage = $request->file('profile');
+            $profileImageName = imageUpload($profileImage, 'user-profile');
+            if ($profileImageName == 'upload_failed') {
+                return $this->sendJsonResponse([
+                    'status_code' => 400,
+                    'message' => 'Profile upload failed',
+                    'data' => ""
+                ]);
+            } elseif ($profileImageName == 'invalid_image') {
+                return $this->sendJsonResponse([
+                    'status_code' => 400,
+                    'message' => 'Please select jpg, jpeg, png, webp, svg file for profile',
+                    'data' => ""
+                ]);
+            }
+        }
+
+        // --- Cover Image Upload ---
+        $coverImageName = $user->cover_image;
+        if ($request->hasFile('cover_image')) {
+            $ruleCover = [
+                'cover_image' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            ];
+            $messageCover = [
+                'cover_image.required' => 'Cover image required',
+                'cover_image.image' => 'Cover image must be an image file.',
+                'cover_image.mimes' => 'Cover image must be a JPEG, JPG, PNG,svg, or WebP file.',
+                'cover_image.max' => 'Cover image size must not exceed 2MB.',
+            ];
+            $validatorCover = Validator::make($request->all(), $ruleCover, $messageCover);
+            if ($validatorCover->fails()) {
+                return $this->sendJsonResponse([
+                    'status_code' => 400,
+                    'message' => $validatorCover->errors()->first(),
+                    'data' => ""
+                ]);
+            }
+            $coverImage = $request->file('cover_image');
+            $coverImageName = imageUpload($coverImage, 'user-profile-cover-image');
+            if ($coverImageName == 'upload_failed') {
+                return $this->sendJsonResponse([
+                    'status_code' => 400,
+                    'message' => 'Cover image upload failed',
+                    'data' => ""
+                ]);
+            } elseif ($coverImageName == 'invalid_image') {
+                return $this->sendJsonResponse([
+                    'status_code' => 400,
+                    'message' => 'Please select jpg, jpeg, png, webp, svg file for cover image',
+                    'data' => ""
+                ]);
+            }
+        }
+
+        // --- Company Logo Upload ---
+        $companyLogoName = $user->company_logo ?? null;
+        if ($request->hasFile('company_logo')) {
+            $ruleLogo = [
+                'company_logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            ];
+            $messageLogo = [
+                'company_logo.required' => 'Company logo is required.',
+                'company_logo.image' => 'Company logo must be an image file.',
+                'company_logo.mimes' => 'Company logo must be a JPEG, JPG, PNG, SVG, or WebP file.',
+                'company_logo.max' => 'Company logo size must not exceed 2MB.',
+            ];
+            $validatorLogo = Validator::make($request->all(), $ruleLogo, $messageLogo);
+            if ($validatorLogo->fails()) {
+                return $this->sendJsonResponse([
+                    'status_code' => 400,
+                    'message' => $validatorLogo->errors()->first(),
+                    'data' => ""
+                ]);
+            }
+            $companyLogo = $request->file('company_logo');
+            $companyLogoName = imageUpload($companyLogo, 'company-logo');
+            if ($companyLogoName == 'upload_failed') {
+                return $this->sendJsonResponse([
+                    'status_code' => 400,
+                    'message' => 'Company logo upload failed',
+                    'data' => ""
+                ]);
+            } elseif ($companyLogoName == 'invalid_image') {
+                return $this->sendJsonResponse([
+                    'status_code' => 400,
+                    'message' => 'Please select jpg, jpeg, png, webp, svg file for company logo',
+                    'data' => ""
+                ]);
+            }
+        }
+
+        // --- Assign Fields ---
+        $user->first_name = $request->first_name ?? $user->first_name;
+        $user->last_name = $request->last_name ?? $user->last_name;
+        $user->country_code = $request->country_code ?? $user->country_code;
+        $user->mobile = $request->mobile ?? $user->mobile;
+        $user->email = $request->email ?? $user->email;
+        $user->profile = $profileImageName;
+        $user->cover_image = $coverImageName;
+        $user->company_logo = $companyLogoName;
+        $user->title = $request->title ?? NULL;
+        $user->description = $request->description ?? NULL;
+        $user->website_url = $request->website_url ?? NULL;
+        $user->instagram_profile_url = $request->instagram_profile_url ?? NULL;
+        $user->facebook_profile_url = $request->facebook_profile_url ?? NULL;
+        $user->twitter_profile_url = $request->twitter_profile_url ?? NULL;
+        $user->youtube_profile_url = $request->youtube_profile_url ?? NULL;
+        $user->linkedin_profile_url = $request->linkedin_profile_url ?? NULL;
+        $user->longitude = $request->longitude ?? NULL;
+        $user->latitude = $request->latitude ?? NULL;
+        $user->address = $request->address ?? NULL;
+        $user->save();
+
+        // --- Set Asset Paths ---
+        $user->profile = $user->profile ? setAssetPath('user-profile/' . $user->profile) : NULL;
+        $user->cover_image = $user->cover_image ? setAssetPath('user-profile-cover-image/' . $user->cover_image) : NULL;
+        $user->company_logo = $user->company_logo ? setAssetPath('company-logo/' . $user->company_logo) : NULL;
+
+        return $this->sendJsonResponse([
+            'status_code' => 200,
+            'message' => "User Updated Successfully!",
+            'data' => [
+                'userData' => $user
+            ]
+        ]);
+    // } catch (\Exception $e) {
+    //     Log::error([
+    //         'method' => __METHOD__,
+    //         'error' => [
+    //             'file' => $e->getFile(),
+    //             'line' => $e->getLine(),
+    //             'message' => $e->getMessage()
+    //         ],
+    //         'created_at' => date("Y-m-d H:i:s")
+    //     ]);
+    //     return $this->sendJsonResponse([
+    //         'status_code' => 500,
+    //         'message' => 'Something went wrong'
+    //     ]);
+    // }
+}
+
 
     /**
      * @OA\Post(

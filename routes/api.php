@@ -6,9 +6,11 @@ use App\Http\Controllers\Api\v1\GroupController;
 use App\Http\Controllers\Api\v1\OtpController;
 use App\Http\Controllers\Api\v1\ProjectManagementController;
 use App\Http\Controllers\Api\v1\SendEmailController;
+use App\Http\Controllers\Api\v1\SignaturePdfController;
 use App\Http\Controllers\Api\v1\UserController;
 use App\Http\Controllers\Api\v1\SimpleTasksController;
 use App\Http\Controllers\Api\v1\DailyTaskController;
+use App\Http\Controllers\Api\v1\UserSignatureController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -138,5 +140,16 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
         Route::controller(CallLogController::class)->group(function (){
             Route::post('/call-log',  'store');
         });
+
+        Route::controller(UserSignatureController::class)->group(function (){
+            Route::post('/signature_upload','signatureUpload');
+            Route::get('/signature_listing','signatureListing');
+        });
+
+         Route::controller(SignaturePdfController::class)->group(function (){
+            Route::post('/signature_pdf_upload','signaturePdfUpload');
+            Route::get('/signature_pdf_listing','signaturePdfListing');
+        });
+      
     });
 });

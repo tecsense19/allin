@@ -36,16 +36,6 @@
                                         "type": "integer",
                                         "format": "int64",
                                         "example": 2
-                                    },
-                                    "call_start_time": {
-                                        "type": "string",
-                                        "format": "date-time",
-                                        "example": "2024-05-27T14:00:00Z"
-                                    },
-                                    "call_end_time": {
-                                        "type": "string",
-                                        "format": "date-time",
-                                        "example": "2024-05-27T14:20:00Z"
                                     }
                                 },
                                 "type": "object"
@@ -5054,6 +5044,73 @@
                 ]
             }
         },
+        "/api/v1/signature_pdf_upload": {
+            "post": {
+                "tags": [
+                    "Signature PDF"
+                ],
+                "summary": "Upload a signature PDF",
+                "operationId": "f0563933c4edf6633f165a53247545a2",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "file_upload"
+                                ],
+                                "properties": {
+                                    "file_upload": {
+                                        "description": "Signature PDF file",
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "PDF uploaded successfully"
+                    },
+                    "400": {
+                        "description": "Invalid file or missing data"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/signature_pdf_listing": {
+            "get": {
+                "tags": [
+                    "Signature PDF"
+                ],
+                "summary": "List uploaded signature PDFs",
+                "operationId": "b9cd00882989065e697c53aac6f5c454",
+                "responses": {
+                    "200": {
+                        "description": "List of uploaded signature PDFs"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/v1/simple-task-create-or-update": {
             "post": {
                 "tags": [
@@ -5756,7 +5813,7 @@
                     "User"
                 ],
                 "summary": "Edit Profile",
-                "description": "Edit Profile",
+                "description": "Allows authenticated user to edit profile details and upload images like profile picture, cover image, and company logo.",
                 "operationId": "editProfile",
                 "requestBody": {
                     "description": "Edit Profile",
@@ -5764,7 +5821,6 @@
                     "content": {
                         "multipart/form-data": {
                             "schema": {
-                                "required": [],
                                 "properties": {
                                     "first_name": {
                                         "description": "Enter First Name",
@@ -5810,14 +5866,18 @@
                                         "description": "Profile Image",
                                         "type": "file"
                                     },
+                                    "cover_image": {
+                                        "description": "Cover Image",
+                                        "type": "file"
+                                    },
+                                    "company_logo": {
+                                        "description": "Company Logo",
+                                        "type": "file"
+                                    },
                                     "website_url": {
                                         "description": "Enter Website Url",
                                         "type": "string",
                                         "example": ""
-                                    },
-                                    "cover_image": {
-                                        "description": "Cover Image",
-                                        "type": "file"
                                     },
                                     "instagram_profile_url": {
                                         "description": "Enter Instagram Profile Url",
@@ -5867,7 +5927,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "json schema",
+                        "description": "User profile updated successfully",
                         "content": {
                             "application/json": {}
                         }
@@ -6197,6 +6257,73 @@
                     }
                 ]
             }
+        },
+        "/api/v1/signature_upload": {
+            "post": {
+                "tags": [
+                    "User Signature"
+                ],
+                "summary": "Upload a signature image",
+                "operationId": "cd3b5719f3d2becf4844feebf2d091fe",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "signature_upload"
+                                ],
+                                "properties": {
+                                    "signature_upload": {
+                                        "description": "Signature image file",
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Image uploaded successfully"
+                    },
+                    "400": {
+                        "description": "Invalid image or missing data"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/signature_listing": {
+            "get": {
+                "tags": [
+                    "User Signature"
+                ],
+                "summary": "List uploaded signatures",
+                "operationId": "e49f57f01b5c1db3680540cfd4818a45",
+                "responses": {
+                    "200": {
+                        "description": "List of uploaded signatures"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
         }
     },
     "components": {
@@ -6254,6 +6381,10 @@
             "description": "Emails"
         },
         {
+            "name": "Signature PDF",
+            "description": "Signature PDF"
+        },
+        {
             "name": "Simple Task",
             "description": "Simple Task"
         },
@@ -6264,6 +6395,10 @@
         {
             "name": "Update Tasks",
             "description": "Update Tasks"
+        },
+        {
+            "name": "User Signature",
+            "description": "User Signature"
         }
     ]
 }

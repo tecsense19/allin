@@ -34,6 +34,7 @@ class User extends Authenticatable implements  JWTSubject
         'description',
         'profile',
         'cover_image',
+        'company_logo',
         'website_url',
         'instagram_profile_url',
         'facebook_profile_url',
