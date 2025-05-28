@@ -24,9 +24,7 @@ class CallLogController extends Controller
      *             @OA\Schema(
      *                 required={"receiver_id", "call_start_time", "call_end_time"},
      *                 @OA\Property(property="id", type="integer", example=""),
-     *                 @OA\Property(property="receiver_id", type="integer", format="int64", example=2),
-     *                 @OA\Property(property="call_start_time", type="string", format="date-time", example="2024-05-27T14:00:00Z"),
-     *                 @OA\Property(property="call_end_time", type="string", format="date-time", example="2024-05-27T14:20:00Z")
+     *                 @OA\Property(property="receiver_id", type="integer", format="int64", example=2)           
      *             )
      *         )
      *     ),
@@ -68,7 +66,7 @@ class CallLogController extends Controller
             $call = CallLog::where('id', $validated['id'])->update([
                 'sender_id' => $senderId,
                 'receiver_id' => $validated['receiver_id'],
-                'call_end_time' => $validated['call_end_time'] ? date('Y-m-d H:i:s', strtotime($validated['call_end_time'])) : '',
+                'call_end_time' => now()
             ]);
 
             $call = CallLog::where('id', $validated['id'])->first();
@@ -81,7 +79,7 @@ class CallLogController extends Controller
             $call = CallLog::create([
                 'sender_id' => $senderId,
                 'receiver_id' => $validated['receiver_id'],
-                'call_start_time' => $validated['call_start_time'] ? date('Y-m-d H:i:s', strtotime($validated['call_start_time'])) : '',
+                'call_start_time' => now()
             ]);
         }
         
