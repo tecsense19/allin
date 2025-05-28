@@ -46,8 +46,6 @@ class CallLogController extends Controller
         $validator = Validator::make($request->all(), [
             'id' => 'nullable|string',
             'receiver_id' => 'required|exists:users,id',
-            'call_start_time' => 'nullable|date',
-            'call_end_time' => 'nullable|date|after:call_start_time',
         ]);
 
         if ($validator->fails()) {
