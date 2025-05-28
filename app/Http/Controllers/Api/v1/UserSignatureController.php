@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api\v1;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\UserSignature;
+use Log;
+use Validator;
 
 class UserSignatureController extends Controller
 {
@@ -43,26 +45,58 @@ class UserSignatureController extends Controller
      *     )
      * )
      */
-    public function signatureUpload(Request $request)
-    {
-        $request->validate([
+   public function signatureUpload(Request $request)
+{
+    try {
+        // Validate the request
+        $validator = Validator::make($request->all(), [
             'signature_upload' => 'required|image|max:2048'
         ]);
 
+        if ($validator->fails()) {
+            return response()->json([
+                'status_code' => 400,
+                'message' => $validator->errors()->first(),
+                'data' => ""
+            ]);
+        }
+
+        // Store the file
         $path = $request->file('signature_upload')->store('signatures', 'public');
 
+        // Save to database
         $signature = UserSignature::create([
             'signature_upload' => $path
         ]);
 
-        // Return full URL
+        // Return full URL for the stored signature
         $signature->signature_upload = asset('storage/' . $signature->signature_upload);
 
         return response()->json([
+            'status_code' => 200,
             'message' => 'Signature uploaded successfully',
             'data' => $signature
         ]);
+
+    } catch (\Exception $e) {
+        Log::error([
+            'method' => __METHOD__,
+            'error' => [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'message' => $e->getMessage()
+            ],
+            'created_at' => now()->format("Y-m-d H:i:s")
+        ]);
+
+        return response()->json([
+            'status_code' => 500,
+            'message' => 'Something went wrong while uploading the signature.',
+            'data' => ""
+        ]);
     }
+}
+
 
     /**
      * @OA\Get(

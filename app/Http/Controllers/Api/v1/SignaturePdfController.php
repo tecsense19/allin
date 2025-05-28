@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api\v1;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\SignaturePdf;
+use Log;
+use Validator;
 
 class SignaturePdfController extends Controller
 {
@@ -44,25 +46,56 @@ class SignaturePdfController extends Controller
      * )
      */
     public function signaturePdfUpload(Request $request)
-    {
-        $request->validate([
+{
+    try {
+        // Validate the request
+        $validator = Validator::make($request->all(), [
             'file_upload' => 'required|mimes:pdf|max:2048'
         ]);
 
+        if ($validator->fails()) {
+            return response()->json([
+                'status_code' => 400,
+                'message' => $validator->errors()->first(),
+                'data' => ""
+            ]);
+        }
+
+        // Store the file
         $path = $request->file('file_upload')->store('signatures', 'public');
 
+        // Save to database
         $signature = SignaturePdf::create([
             'file_upload' => $path
-           
         ]);
 
+        // Convert file path to accessible URL
         $signature->file_upload = asset('storage/' . $signature->file_upload);
 
         return response()->json([
+            'status_code' => 200,
             'message' => 'PDF uploaded successfully',
             'data' => $signature
         ]);
+    } catch (\Exception $e) {
+        Log::error([
+            'method' => __METHOD__,
+            'error' => [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'message' => $e->getMessage()
+            ],
+            'created_at' => now()->format("Y-m-d H:i:s")
+        ]);
+
+        return response()->json([
+            'status_code' => 500,
+            'message' => 'Something went wrong while uploading the PDF.',
+            'data' => ""
+        ]);
     }
+}
+
 
     /**
      * @OA\Get(
