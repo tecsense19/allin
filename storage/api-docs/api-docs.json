@@ -76,6 +76,54 @@
                 ]
             }
         },
+        "/api/v1/call-user-list": {
+            "post": {
+                "tags": [
+                    "Call Logs"
+                ],
+                "summary": "User Call List",
+                "description": "User List",
+                "operationId": "callUserList",
+                "parameters": [
+                    {
+                        "name": "timezone",
+                        "in": "query",
+                        "description": "Enter Timezone",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": ""
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Enter Search Value",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": ""
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "json schema",
+                        "content": {
+                            "application/json": {}
+                        }
+                    },
+                    "404": {
+                        "description": "Invalid Request"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/v1/text-message": {
             "post": {
                 "tags": [

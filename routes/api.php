@@ -139,6 +139,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
 
         Route::controller(CallLogController::class)->group(function (){
             Route::post('/call-log',  'store');
+            Route::post('/call-user-list', 'callUserList');
         });
 
         Route::controller(UserSignatureController::class)->group(function (){
