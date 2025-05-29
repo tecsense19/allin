@@ -6309,21 +6309,20 @@
                 "tags": [
                     "User Signature"
                 ],
-                "summary": "Upload a signature image",
+                "summary": "Upload a signature image (Base64)",
                 "operationId": "cd3b5719f3d2becf4844feebf2d091fe",
                 "requestBody": {
                     "required": true,
                     "content": {
-                        "multipart/form-data": {
+                        "application/json": {
                             "schema": {
                                 "required": [
                                     "signature_upload"
                                 ],
                                 "properties": {
                                     "signature_upload": {
-                                        "description": "Signature image file",
-                                        "type": "string",
-                                        "format": "binary"
+                                        "description": "Base64 encoded signature image",
+                                        "type": "string"
                                     }
                                 },
                                 "type": "object"
@@ -6350,12 +6349,12 @@
             }
         },
         "/api/v1/signature_listing": {
-            "get": {
+            "post": {
                 "tags": [
                     "User Signature"
                 ],
                 "summary": "List uploaded signatures",
-                "operationId": "e49f57f01b5c1db3680540cfd4818a45",
+                "operationId": "d1b9823090fb923ae4e165576ba585a6",
                 "responses": {
                     "200": {
                         "description": "List of uploaded signatures"

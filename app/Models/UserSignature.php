@@ -11,5 +11,5 @@ class UserSignature extends Model
 
     protected $table = 'user_signature';
 
-    protected $fillable = ['signature_upload'];
+    protected $fillable = ['signature_upload','user_id'];
 }

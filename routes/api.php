@@ -144,7 +144,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
 
         Route::controller(UserSignatureController::class)->group(function (){
             Route::post('/signature_upload','signatureUpload');
-            Route::get('/signature_listing','signatureListing');
+            Route::post('/signature_listing','signatureListing');
         });
 
          Route::controller(SignaturePdfController::class)->group(function (){
