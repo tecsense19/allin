@@ -16,6 +16,7 @@ use App\Models\UserOtp;
 use App\Models\MessageTaskChatComment;
 use App\Models\BlockUser;
 use App\Models\DailyTask;
+use App\Models\CallLog;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -710,6 +711,7 @@ class UserController extends Controller
      {
      try {
          $login_user_id = auth()->user()->id;
+
          $deletedUsers = deleteChatUsers::where('user_id', $login_user_id)->pluck('deleted_user_id');
          $blockUsers = BlockUser::where('from_id', $login_user_id)->pluck('to_id');
          $removeUsers = $deletedUsers->merge($blockUsers)->toArray();
@@ -849,6 +851,23 @@ class UserController extends Controller
  
          // Merge and sort by last_message_date
          $allEntries = $users->merge($groups)->sortByDesc('last_message_date')->values();
+
+         $callLogs = CallLog::where('sender_id', $login_user_id)->select('receiver_id', DB::raw('MAX(call_start_time) as latest_call_time'))->groupBy('receiver_id')->orderByDesc('latest_call_time')->get();
+
+        $callLogsMap = $callLogs->keyBy('receiver_id');
+
+        $allEntries = $allEntries->map(function ($entry) use ($callLogsMap) {
+            // Only for entries with 'id' matching callLogs receiver_id (users only, groups probably don't have call logs)
+            if (isset($callLogsMap[$entry['id']])) {
+                $entry['latest_call_time'] = $callLogsMap[$entry['id']]->latest_call_time;
+            } else {
+                $entry['latest_call_time'] = null;
+            }
+            return $entry;
+        });
+        
+
+        $allEntries = $allEntries->sortByDesc('last_message_date')->sortByDesc('latest_call_time')->values();
  
          $data = [
              'status_code' => 200,

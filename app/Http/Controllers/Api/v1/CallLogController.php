@@ -22,9 +22,9 @@ class CallLogController extends Controller
      *         @OA\MediaType(
      *             mediaType="multipart/form-data",
      *             @OA\Schema(
-     *                 required={"receiver_id", "call_start_time", "call_end_time"},
-     *                 @OA\Property(property="id", type="integer", example=""),
-     *                 @OA\Property(property="receiver_id", type="integer", format="int64", example=2)           
+     *                 required={"receiver_id"},
+     *                 @OA\Property(property="id", type="integer", example=1),
+     *                 @OA\Property(property="receiver_id", type="integer", format="int64", example=2)
      *             )
      *         )
      *     ),
@@ -42,7 +42,7 @@ class CallLogController extends Controller
      */
     public function store(Request $request)
 {
-    try {
+    // try {
         $validator = Validator::make($request->all(), [
             'id' => 'nullable|string',
             'receiver_id' => 'required|exists:users,id',
@@ -87,23 +87,23 @@ class CallLogController extends Controller
             'message' => 'Call log created successfully.',
             'data' => $call
         ], 201);
-    } catch (\Exception $e) {
-        Log::error([
-            'method' => __METHOD__,
-            'error' => [
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'message' => $e->getMessage()
-            ],
-            'created_at' => now()->format('Y-m-d H:i:s')
-        ]);
+    // } catch (\Exception $e) {
+    //     Log::error([
+    //         'method' => __METHOD__,
+    //         'error' => [
+    //             'file' => $e->getFile(),
+    //             'line' => $e->getLine(),
+    //             'message' => $e->getMessage()
+    //         ],
+    //         'created_at' => now()->format('Y-m-d H:i:s')
+    //     ]);
 
-        return response()->json([
-            'status_code' => 500,
-            'message' => 'Something went wrong while saving call log.',
-            'data' => ''
-        ]);
-    }
+    //     return response()->json([
+    //         'status_code' => 500,
+    //         'message' => 'Something went wrong while saving call log.',
+    //         'data' => ''
+    //     ]);
+    // }
 }
 
 }
