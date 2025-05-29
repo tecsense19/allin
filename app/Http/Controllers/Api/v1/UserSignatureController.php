@@ -107,7 +107,7 @@ public function signatureUpload(Request $request)
         ]);
 
 
-        $signature->signature_upload = asset('storage/' . $getFilePath);
+        $signature->signature_upload = setAssetPath('storage/' . $getFilePath);
 
         return response()->json([
             'status_code' => 200,
@@ -160,7 +160,7 @@ public function signatureUpload(Request $request)
         
         // Add full URL to each signature_upload
         foreach ($signatures as $signature) {
-            $signature->signature_upload = asset('storage/' . $signature->signature_upload);
+            $signature->signature_upload = setAssetPath('storage/' . $signature->signature_upload);
         }
         return response()->json([
             'data' => $signatures

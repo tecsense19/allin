@@ -5095,7 +5095,7 @@
                 "tags": [
                     "Signature PDF"
                 ],
-                "summary": "Upload a signature PDF",
+                "summary": "Place signature on uploaded PDF at specified coordinates",
                 "operationId": "f0563933c4edf6633f165a53247545a2",
                 "requestBody": {
                     "required": true,
@@ -5103,13 +5103,33 @@
                         "multipart/form-data": {
                             "schema": {
                                 "required": [
-                                    "file_upload"
+                                    "file_upload",
+                                    "signature_id",
+                                    "x",
+                                    "y",
+                                    "pagenumber"
                                 ],
                                 "properties": {
                                     "file_upload": {
-                                        "description": "Signature PDF file",
+                                        "description": "PDF file to sign",
                                         "type": "string",
                                         "format": "binary"
+                                    },
+                                    "signature_id": {
+                                        "description": "ID of the signature in DB",
+                                        "type": "integer"
+                                    },
+                                    "x": {
+                                        "description": "X coordinate for signature placement",
+                                        "type": "number"
+                                    },
+                                    "y": {
+                                        "description": "Y coordinate for signature placement",
+                                        "type": "number"
+                                    },
+                                    "pagenumber": {
+                                        "description": "Page number to place the signature on",
+                                        "type": "integer"
                                     }
                                 },
                                 "type": "object"
@@ -5119,10 +5139,10 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "PDF uploaded successfully"
+                        "description": "PDF signed successfully"
                     },
                     "400": {
-                        "description": "Invalid file or missing data"
+                        "description": "Invalid input or missing data"
                     },
                     "401": {
                         "description": "Unauthorized"

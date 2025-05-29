@@ -11,5 +11,5 @@ class SignaturePdf extends Model
 
     protected $table = 'signature_pdfs';
 
-    protected $fillable = ['file_upload'];
+    protected $fillable = ['file_upload','user_id'];
 }
