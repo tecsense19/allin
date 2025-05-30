@@ -100,6 +100,9 @@ class SignaturePdfController extends Controller
                 $uploadedFile->move(dirname($originalPdfPath), basename($originalPdfPath));
 
                 $pageCount = $pdf->setSourceFile($originalPdfPath);
+                // return $request->x;
+                $x = $request->x > 150 ? 150 : $request->x;
+                $y = $request->y > 235 ? 235 : $request->y;
 
                 for ($page = 1; $page <= $pageCount; $page++) {
                     $tplId = $pdf->importPage($page);
@@ -108,19 +111,49 @@ class SignaturePdfController extends Controller
                     $pdf->useTemplate($tplId);
 
                     if ($page == $request->pagenumber) {
-                        $pdf->Image($signaturePath, $request->x, $request->y, 50);
+                        $pdf->Image($signaturePath, $x, $y, 50);
                     }
                 }
             } else {
-                // Handle Image Upload
+
                 $imagePath = storage_path('app/public/temp_image.' . $extension);
                 $uploadedFile->move(dirname($imagePath), basename($imagePath));
 
-                list($width, $height) = getimagesize($imagePath);
+                // Get image dimensions
+                list($imgWidth, $imgHeight) = getimagesize($imagePath);
 
-                $pdf->AddPage('P', [$width, $height]);
-                $pdf->Image($imagePath, 0, 0, $width, $height);
-                $pdf->Image($signaturePath, $request->x, $request->y, 50);
+                // Define A4 dimensions in points (in mm)
+                $a4Width = 210; // mm
+                $a4Height = 297; // mm
+
+                // Calculate image aspect ratio
+                $imgAspect = $imgWidth / $imgHeight;
+                $a4Aspect = $a4Width / $a4Height;
+
+                // Calculate scaled image dimensions to fit in A4
+                if ($imgAspect > $a4Aspect) {
+                    // Image is wider than A4 — scale by width
+                    $newWidth = $a4Width;
+                    $newHeight = $a4Width / $imgAspect;
+                } else {
+                    // Image is taller than A4 — scale by height
+                    $newHeight = $a4Height;
+                    $newWidth = $a4Height * $imgAspect;
+                }
+
+                // Center the image
+                $xOffset = ($a4Width - $newWidth) / 2;
+                $yOffset = ($a4Height - $newHeight) / 2;
+
+                $x = $request->x > 150 ? 150 : $request->x;
+                $y = $request->y > 260 ? 260 : $request->y;
+
+                $pdf->AddPage('P', [$a4Width, $a4Height]);
+                $pdf->Image($imagePath, $xOffset, $yOffset, $newWidth, $newHeight);
+
+                // Set signature on top (adjust $request->x and y if needed)
+                $pdf->Image($signaturePath, $x, $y, 50);
+
             }
 
             $signedFilename = 'signed_' . uniqid() . '.pdf';
@@ -178,15 +211,29 @@ class SignaturePdfController extends Controller
      */
     public function signaturePdfListing()
     {
-        $login_user_id = auth()->user()->id;
-        $signatures = SignaturePdf::where('user_id', $login_user_id)->get();
+        try {
+            $login_user_id = auth()->user()->id;
+            $signatures = SignaturePdf::where('user_id', $login_user_id)->orderBy('id', 'desc')->get();
 
-        foreach ($signatures as $signature) {
-            $signature->file_upload = setAssetPath('storage/' . $signature->file_upload);
+            if ($signatures->isEmpty()) {
+                return response()->json([
+                    'message' => 'Data not found',
+                    'data' => []
+                ], 404);
+            }
+
+            foreach ($signatures as $signature) {
+                $signature->file_upload = setAssetPath('storage/' . $signature->file_upload);
+            }
+
+            return response()->json([
+                'data' => $signatures
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        return response()->json([
-            'data' => $signatures
-        ]);
     }
 }
