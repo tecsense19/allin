@@ -399,6 +399,7 @@ class OtpController extends Controller
                     $this->saveUserDeviceToken($user->id, $request->device_token);
                     $user->profile = @$user->profile ? setAssetPath('user-profile/' . $user->profile) : setAssetPath('assets/media/avatars/blank.png');
                     $user->cover_image = @$user->cover_image ? setAssetPath('user-profile-cover-image/' . $user->cover_image) : setAssetPath('assets/media/misc/image.png');
+                    $user->company_logo = @$user->company_logo ? setAssetPath('company-logo/' . $user->company_logo) : setAssetPath('assets/media/misc/image.png');
                     $authData['userDetails'] = $user;
                     $authData['token'] = $token;
                     $authData['token_type'] = 'bearer';
@@ -426,6 +427,7 @@ class OtpController extends Controller
                     $this->saveUserDeviceToken($user->id, $request->device_token);
                     $user->profile = @$user->profile ? setAssetPath('user-profile/' . $user->profile) : setAssetPath('assets/media/avatars/blank.png');
                     $user->cover_image = @$user->cover_image ? setAssetPath('user-profile-cover-image/' . $user->cover_image) : setAssetPath('assets/media/misc/image.png');
+                    $user->company_logo = @$user->company_logo ? setAssetPath('company-logo/' . $user->company_logo) : setAssetPath('assets/media/misc/image.png');
                     $authData['userDetails'] = $user;
                     $authData['token'] = $token;
                     $authData['token_type'] = 'bearer';
@@ -484,6 +486,7 @@ class OtpController extends Controller
                 $this->saveUserDeviceToken($user->id, $request->device_token);
                 $user->profile = @$user->profile ? setAssetPath('user-profile/' . $user->profile) : setAssetPath('assets/media/avatars/blank.png');
                 $user->cover_image = @$user->cover_image ? setAssetPath('user-profile-cover-image/' . $user->cover_image) : setAssetPath('assets/media/misc/image.png');
+                $user->company_logo = @$user->company_logo ? setAssetPath('company-logo/' . $user->company_logo) : setAssetPath('assets/media/misc/image.png');
                 $authData['userDetails'] = $user;
                 $authData['token'] = $token;
                 $authData['token_type'] = 'bearer';

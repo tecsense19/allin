@@ -50,6 +50,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['XssSanitization']], function (
             Route::post('/users-mobile-numbers', 'userMobileNumbers');
             Route::post('/user-list', 'userList');
             Route::post('/user-details', 'userDetails');
+            Route::post('/get-user-detail', 'getUserDetail');
             Route::post('/user-group-details', 'userGroupDetails');
             Route::post('/edit-profile', 'editProfile');
             Route::post('/delete-chat-user', 'deleteChatUsers');

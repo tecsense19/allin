@@ -988,6 +988,7 @@ class UserController extends Controller
             $userData = $user->find($request->id);
             $userData->profile = @$userData->profile ? setAssetPath('user-profile/' . $userData->profile) : setAssetPath('assets/media/avatars/blank.png');
             $userData->cover_image = @$userData->cover_image ? setAssetPath('user-profile-cover-image/' . $userData->cover_image) : setAssetPath('assets/media/misc/image.png');
+            $userData->company_logo = @$userData->company_logo ? setAssetPath('company-logo/' . $userData->company_logo) : setAssetPath('assets/media/misc/image.png');
 
             $loginUser = auth()->user()->id;
             $userId = $request->id;
@@ -3096,5 +3097,73 @@ class UserController extends Controller
         $user->save();
 
         return response()->json([ 'status_code' => 200, 'message' => 'User has been blocked successfully.', 'data' => "" ]);
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/v1/get-user-detail",
+     *     summary="Get User Details",
+     *     description="Retrieve user details based on the provided user ID.",
+     *     tags={"User"},
+     *     operationId="getUserDetail",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="user_id",
+     *         in="query",
+     *         description="ID of the user",
+     *         required=true,
+     *         @OA\Schema(
+     *             type="integer",
+     *             example=1
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="User details retrieved successfully"
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Invalid request",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="User ID is required.")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="User not found",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="User not found.")
+     *         )
+     *     ),
+     * )
+     */
+    public function getUserDetail(Request $request) 
+    {
+        try {
+            $userId = $request->input('user_id');
+            if (!$userId) {
+                return response()->json(['message' => 'User ID is required.'], 400);
+            }
+            $user = User::find($userId);
+            if (!$user) {
+                return response()->json(['message' => 'User not found.'], 404);
+            }
+            $user->profile = @$user->profile ? setAssetPath('user-profile/' . $user->profile) : setAssetPath('assets/media/avatars/blank.png');
+            $user->cover_image = @$user->cover_image ? setAssetPath('user-profile-cover-image/' . $user->cover_image) : setAssetPath('assets/media/misc/image.png');
+            $user->company_logo = @$user->company_logo ? setAssetPath('company-logo/' . $user->company_logo) : setAssetPath('assets/media/misc/image.png');
+            return response()->json(['status_code' => 200,'message' => 'User details retrieved successfully', 'data' => $user]);
+        } catch (\Exception $e) {
+            Log::error([
+                'method' => __METHOD__,
+                'error' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'message' => $e->getMessage()
+                ],
+                'created_at' => now()->format("Y-m-d H:i:s")
+            ]);
+
+            return $this->sendJsonResponse(['status_code' => 500, 'message' => 'Something went wrong']);
+        }
     }
 }

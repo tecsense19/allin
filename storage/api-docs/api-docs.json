@@ -6324,6 +6324,70 @@
                 ]
             }
         },
+        "/api/v1/get-user-detail": {
+            "post": {
+                "tags": [
+                    "User"
+                ],
+                "summary": "Get User Details",
+                "description": "Retrieve user details based on the provided user ID.",
+                "operationId": "getUserDetail",
+                "parameters": [
+                    {
+                        "name": "user_id",
+                        "in": "query",
+                        "description": "ID of the user",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User details retrieved successfully"
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "User ID is required."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "User not found."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/v1/signature_upload": {
             "post": {
                 "tags": [
@@ -6404,66 +6468,6 @@
         {
             "name": "Authentication",
             "description": ""
-        },
-        {
-            "name": "Call Logs",
-            "description": "Call Logs"
-        },
-        {
-            "name": "Messages",
-            "description": "Messages"
-        },
-        {
-            "name": "Files",
-            "description": "Files"
-        },
-        {
-            "name": "Meetings",
-            "description": "Meetings"
-        },
-        {
-            "name": "Documents",
-            "description": "Documents"
-        },
-        {
-            "name": "Notifications",
-            "description": "Notifications"
-        },
-        {
-            "name": "Daily Task",
-            "description": "Daily Task"
-        },
-        {
-            "name": "Group Chat",
-            "description": "Group Chat"
-        },
-        {
-            "name": "Project Management",
-            "description": "Project Management"
-        },
-        {
-            "name": "Emails",
-            "description": "Emails"
-        },
-        {
-            "name": "Signature PDF",
-            "description": "Signature PDF"
-        },
-        {
-            "name": "Simple Task",
-            "description": "Simple Task"
-        },
-        {
-            "name": "User",
-            "description": "User"
-        },
-        {
-            "name": "Update Tasks",
-            "description": "Update Tasks"
-        },
-        {
-            "name": "User Signature",
-            "description": "User Signature"
         }
     ]
 }
