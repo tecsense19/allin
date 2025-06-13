@@ -6288,31 +6288,37 @@ class ChatController extends Controller
                  }
      
                  $imagePaths[] = [
-                     'url' => asset("images/{$filename}"), // URL to be used in the PDF
+                     'url' => asset("public/images/{$filename}"), // URL to be used in the PDF
                      'path' => $filePath, // Local path for file processing
                      'name' => $image->getClientOriginalName(), // Original file name
                  ];
              }
  
-             // Generate PDF content
-             $htmlContent = '<html><body>';
-             foreach ($imagePaths as $index => $image) {
-                 $htmlContent .= '<div style="margin-bottom: 20px; text-align: center;">';
-                 // Use the URL directly in the img src
-                 $imageData = base64_encode(file_get_contents($image['path']));
-                 $htmlContent .= "<img src='data:image/png;base64,{$imageData} ' style='width:100%; height:auto; margin-bottom: 10px;' />";
-                 $htmlContent .= '</div>';
-             }
-             $htmlContent .= '</body></html>';
- 
-             // Generate PDF
-             $pdf = Pdf::loadHTML($htmlContent);
-             $pdf->set_option('isHtml5ParserEnabled', true);
-             $pdf->set_option('DOMPDF_ENABLE_REMOTE', true); // Allow remote images
- 
-             $pdfName = time() . '.pdf';
-             $pdfPath = 'pdfs/' . $pdfName;
-             Storage::put("public/{$pdfPath}", $pdf->output());
+            // Generate PDF content
+            $htmlContent = '<html><body>';
+
+            foreach ($imagePaths as $index => $image) {
+                $htmlContent .= '<div style="margin-bottom: 20px; text-align: center;">';
+                $htmlContent .= "<img src='{$image['url']}' style='width:100%; height:auto; margin-bottom: 10px;' />";
+                $htmlContent .= '</div>';
+            }
+            
+            $htmlContent .= '</body></html>';
+            
+            // Generate PDF
+            $pdf = Pdf::loadHTML($htmlContent);
+            
+            // Enable remote images
+            $pdf->setOptions([
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled' => true, // This is the correct dompdf option
+            ]);
+            
+            $pdfName = time() . '.pdf';
+            $pdfPath = 'pdfs/' . $pdfName;
+            
+            // Save to storage (e.g., storage/app/public/pdfs/)
+            Storage::put("public/{$pdfPath}", $pdf->output());
  
              // Delete images from the folder
              foreach ($imagePaths as $image) {
